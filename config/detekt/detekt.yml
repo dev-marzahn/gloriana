@@ -1,0 +1,10 @@
+config:
+  warningsAsErrors: true
+
+naming:
+  FunctionNaming:
+    ignoreAnnotated: ['Composable']
+
+Compose:
+  Material2:
+    active: true

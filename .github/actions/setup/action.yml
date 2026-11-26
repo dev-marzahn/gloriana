@@ -1,0 +1,11 @@
+name: Set up the build
+description: The JDK and Gradle, with its cache, that every Gloriana job builds with.
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880
+      with:
+        distribution: temurin
+        java-version: "25"
+    - uses: gradle/actions/setup-gradle@8da46b539cd8fe6ab27ca75128919a18d757604c

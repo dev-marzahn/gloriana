@@ -1,0 +1,8 @@
+gloriana:
+  HardcodedUiText:
+    active: true
+    excludes:
+      - '**/src/test/**'
+      - '**/src/*Test/**'
+      - '**/sharedLogic/**'
+      - '**/stubHost/**'
