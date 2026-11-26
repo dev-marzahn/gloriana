@@ -65,6 +65,46 @@ resolves. Definitions use the Koin compiler plugin's DSL (`viewModel<LibraryView
 at compile time. The plugin's own graph check is off: it cannot yet follow modules declared in other Gradle modules,
 so the `verify()` tests are the graph check.
 
+## Storage
+
+The library is one Room database, `GlorianaDatabase` in `sharedLogic`'s `storage` package, on the bundled SQLite
+driver in WAL mode. Each platform's Koin module binds the database its builder makes (`androidGlorianaDatabase`,
+`desktopGlorianaDatabase`). Both pass Room's generated `GlorianaDatabase_Impl` as the factory, so nothing finds it by
+reflection and the desktop release's ProGuard keeps it. `desktopApp/proguard-rules.pro` keeps only what the bundled
+driver's native code reaches by name: its native methods, and the `SQLiteException(String)` constructor it throws.
+`DatabaseOpenedAtStart` opens the database at start on the app-wide `ApplicationScope` (`logic.app`). A failure
+there goes to its `onFailure`, which in the app is `stopApp`: on Android the default crash handler, on desktop the
+stack trace and exit code 1. The file is `library.db`:
+
+- Android: the app's files directory, `/data/data/dev.marzahn.gloriana/files/library.db`
+  (`dev.marzahn.gloriana.debug` for the debug build).
+- Desktop: the per-OS application-data directory, in `Gloriana`, or `Gloriana Debug` for the debuggable build, so a
+  test run never touches a real library: `~/Library/Application Support/` on macOS, `%APPDATA%` on Windows,
+  `$XDG_DATA_HOME` (or `~/.local/share`) on Linux.
+
+Rules for every table:
+
+- **IDs and timestamps come only from `IdFactory` and `UpdatedAtClock`.** Every row's `id` is a UUIDv7 from the
+  factory, stored as a 16-byte BLOB. Every write sets `updatedAt` to `UpdatedAtClock.updatedAt(previous)`, the larger
+  of now and the previous value plus one, so it only grows when the clock steps back. A write that also stores a
+  time (`deletedAt`) reads `now()` once and passes it to `updatedAt(previous, now)`. Tests pass their own `Clock` or
+  `IdFactory`. Nothing orders rows by `id`.
+- **Every user action that writes is one transaction** (`useWriterConnection { it.immediateTransaction { … } }`), so
+  a crash leaves the state before or after it.
+- **Deletes are final and leave tombstones.** In the delete's transaction, call `Tombstones.record` once per removed
+  row, join rows included: the `EntityType` and the row's key (its `id`, or a join row's two ids in column order).
+  Each table keeps one constant for its name, used by both `@Entity(tableName = …)` and its `EntityType`. Deleting
+  a key again updates its one tombstone. `record` runs in its own transaction, which joins the delete's as a
+  savepoint.
+- **A feature's entities and DAOs stay in its package** (`dev.marzahn.gloriana.logic.<feature>`); other code sees its
+  repositories and domain types. Only the `@Database` class in `logic.storage` lists them, and each feature binds its
+  own DAOs in its own Koin module. `FeatureBoundaryTest` (Konsist) enforces it.
+- **Every schema change is a migration with its test.** Bump `DATABASE_VERSION`, keep the exported schema in
+  `sharedLogic/schemas`, add the migration to `migrations`, and test it with `MigrationHarness`: `createAt` the
+  previous version and write rows, then `migrateToLatest` and read them back through the DAOs. Never
+  `fallbackToDestructiveMigration`: without a migration Room refuses to open the database, and the file stays as it
+  was (`GlorianaDatabaseTest` checks this for a file from a newer version).
+
 ## Strings
 
 Every string the UI shows is a Compose resource in `sharedUI/src/commonMain/composeResources`, with plurals as plural

@@ -5,6 +5,21 @@ plugins {
   id("gloriana.room")
 }
 
+val projectSources = isolated.rootProject.projectDirectory.asFileTree.matching {
+  include("**/src/*/kotlin/**/*.kt")
+  exclude("**/build/**")
+}
+
+val roomSchemas = layout.projectDirectory.dir("schemas").asFile
+
+tasks.named<Test>("jvmTest") {
+  inputs.dir(roomSchemas)
+    .withPropertyName("roomSchemas").withPathSensitivity(PathSensitivity.RELATIVE)
+  systemProperty("gloriana.roomSchemas", roomSchemas.relativeTo(workingDir).path)
+  inputs.files(projectSources)
+    .withPropertyName("projectSources").withPathSensitivity(PathSensitivity.RELATIVE)
+}
+
 kotlin {
   android {
     namespace = "dev.marzahn.gloriana.logic"

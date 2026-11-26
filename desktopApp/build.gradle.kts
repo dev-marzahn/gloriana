@@ -17,6 +17,7 @@ dependencies {
 compose.desktop {
   application {
     mainClass = "dev.marzahn.gloriana.desktop.MainKt"
+    buildTypes.release.proguard.configurationFiles.from(layout.projectDirectory.file("proguard-rules.pro"))
     nativeDistributions {
       targetFormats(TargetFormat.Dmg, TargetFormat.Msi, TargetFormat.Deb)
       packageName = "Gloriana"
