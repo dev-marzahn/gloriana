@@ -104,6 +104,11 @@ Android module, and detekt on every module. Warnings are errors in the Kotlin co
 - detekt runs its default rules plus the Compose rules, from `config/detekt/detekt.yml`. That file lists only where the
   project differs: `@Composable` functions are named in PascalCase, and Material 2 is refused, since the app is
   Material 3 only.
+- detekt also runs the project's own rules from `detektRules`, switched on in that module's bundled
+  `config/config.yml`. `HardcodedUiText` fails on a string literal passed as UI text: `Text`, `BasicText`, the
+  `contentDescription` of `Icon`, `Image` or any named argument or assignment, a desktop `Notification`, and an Android
+  notification's title, text, ticker, big text, summary or action title. Test sources, `sharedLogic` and `stubHost` are
+  out of its scope.
 - Lint ignores the checks that compare dependencies with the newest releases (`lint.xml`): a release elsewhere must
   not fail a build that passed. The app also skips `ChromeOsAbiSupport`, which can't read the ABI list from
   `Abi` (the list holds `x86_64`), and `MissingApplicationIcon` until the app has its icon.
@@ -113,6 +118,12 @@ Locally, run the narrowest tasks that cover your change first, for example `./gr
 
 ## CI
 
-CI runs on GitHub Actions in two jobs. `build`, on every pull request, runs the check and builds both apps; a pull
-request merges only with it green. `device`, nightly, on every tag and by hand, boots Android emulators (API 26 and 36)
-and runs `./gradlew connectedCheck`.
+CI runs on GitHub Actions in two workflows, in `.github/workflows`, set up by the shared `.github/actions/setup`.
+
+- `build`, on every pull request and every push to `main`, runs the check, then builds the Android app and the desktop
+  app for Linux. Making it required for a merge is a ruleset on `main`, added once the check has run on GitHub.
+- `device`, nightly, on every tag and by hand, boots Android emulators (API 26 and 36, x86_64) and runs
+  `./gradlew connectedCheck androidConnectedCheck`: the app's instrumented tests and the libraries' device tests. It
+  fails if the app's tests did not run, and keeps the results as an artifact.
+
+Every third-party action is pinned to a full commit SHA; Dependabot proposes the updates.
