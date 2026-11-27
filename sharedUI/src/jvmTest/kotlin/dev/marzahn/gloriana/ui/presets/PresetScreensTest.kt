@@ -19,7 +19,10 @@ import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.marzahn.gloriana.logic.characters.DesktopExportDestination
 import dev.marzahn.gloriana.logic.characters.DesktopPickedFile
+import dev.marzahn.gloriana.logic.files.OpenedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.logic.presets.PresetEntry
+import dev.marzahn.gloriana.logic.presets.PresetImportFailure
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.StoredPreset
 import dev.marzahn.gloriana.ui.App
@@ -31,6 +34,7 @@ import dev.marzahn.gloriana.ui.resources.changes_not_saved
 import dev.marzahn.gloriana.ui.resources.destination_library
 import dev.marzahn.gloriana.ui.resources.discard
 import dev.marzahn.gloriana.ui.resources.export
+import dev.marzahn.gloriana.ui.resources.import_waiting
 import dev.marzahn.gloriana.ui.resources.keep_editing
 import dev.marzahn.gloriana.ui.resources.library_kind_presets
 import dev.marzahn.gloriana.ui.resources.move_down
@@ -40,6 +44,7 @@ import dev.marzahn.gloriana.ui.resources.preset_more
 import dev.marzahn.gloriana.ui.resources.presets_empty
 import dev.marzahn.gloriana.ui.resources.save
 import dev.marzahn.gloriana.ui.resources.save_changes_first
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.jetbrains.compose.resources.StringResource
@@ -106,7 +111,7 @@ class PresetScreensTest {
     waitUntil(timeoutMillis = WAIT_MILLIS) { onAllNodes(matcher).fetchSemanticsNodes().isNotEmpty() }
   }
 
-  private fun LiveLibrary.imported(file: DesktopPickedFile) = koin.get<PresetImports>().start(file)
+  private fun LiveLibrary.imported(file: PickedFile) = koin.get<PresetImports>().start(file)
 
   private fun LiveLibrary.presets() = runBlocking { koin.get<PresetRepository>().presets().first() }
 
@@ -205,6 +210,32 @@ class PresetScreensTest {
       waitUntil(timeoutMillis = WAIT_MILLIS) { Files.exists(target) && target.readText().contains("Main Prompt") }
       val written = target.readText().filterNot(Char::isWhitespace)
       assertTrue(written.contains("{\"identifier\":\"main\",\"enabled\":false}"))
+    }
+  }
+
+  @Test
+  fun aFileQueuedBehindAFailingImportWaitsAndTheFailureStays() = runComposeUiTest {
+    LiveLibrary.use { library ->
+      openPresets(library)
+      val gate = CompletableDeferred<Unit>()
+      val held = object : PickedFile {
+        override val name = "Broken.json"
+
+        override fun open(): OpenedFile = runBlocking {
+          gate.await()
+          OpenedFile.Unavailable
+        }
+      }
+
+      library.imported(held)
+      library.imported(presetFile("Plain.json"))
+      waitFor(hasText("Plain.json"))
+      waitFor(hasText(getString(Res.string.import_waiting)))
+      gate.complete(Unit)
+
+      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      val failures = library.koin.get<PresetImports>().state.value.failures
+      assertEquals(listOf(ImportFailureNote("Broken.json", PresetImportFailure.CantBeOpened)), failures)
     }
   }
 
