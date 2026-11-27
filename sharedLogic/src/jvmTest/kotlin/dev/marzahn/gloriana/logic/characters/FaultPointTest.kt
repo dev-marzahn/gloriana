@@ -1,5 +1,7 @@
 package dev.marzahn.gloriana.logic.characters
 
+import dev.marzahn.gloriana.logic.debug.FaultInjected
+import dev.marzahn.gloriana.logic.debug.Faults
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
@@ -16,7 +18,7 @@ class FaultPointTest {
   fun aWriteThatFailsAtAnyFaultPointLeavesTheLibraryAsItWas() = CharacterWritePoint.entries.map { point ->
     DynamicTest.dynamicTest(point.name) {
       var armed = false
-      val faults = CharacterWriteFaults { reached -> if (armed && reached == point) throw FaultInjected(reached) }
+      val faults = Faults { reached -> if (armed && reached == point) throw FaultInjected(reached) }
       CharacterLibrary(Files.createTempDirectory(directory, point.name), faults = faults).use { library ->
         runTest {
           val tamsin = library.importedCharacter(ImporterCorpus.charx)

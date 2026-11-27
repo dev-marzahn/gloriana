@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.logic.characters
 
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
+import dev.marzahn.gloriana.logic.debug.DebugHooks
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
@@ -17,9 +18,9 @@ class DebugHooksTest {
 
   @Test
   fun aDebuggableBuildFailsTheWriteAtTheConfiguredFaultPoint() = runTest {
-    writeHooks("fault.DeleteRowRemoved=fail")
+    writeHooks("fault.characters.DeleteRowRemoved=fail")
     val hooks = DebugHooks(LibraryDirectory { directory.resolve("library") }, { true })
-    CharacterLibrary(directory.resolve("library"), faults = hooks.faults).use { library ->
+    CharacterLibrary(directory.resolve("library"), faults = hooks).use { library ->
       val tamsin = library.importedCharacter(ImporterCorpus.charx)
 
       assertEquals(DeleteResult.Failed, library.repository.delete(tamsin.id))
@@ -29,9 +30,10 @@ class DebugHooksTest {
 
   @Test
   fun aReleaseBuildIgnoresTheHooksFile() = runTest {
-    writeHooks("fault.DeleteRowRemoved=fail", "purge.now=on")
-    val hooks = DebugHooks(LibraryDirectory { directory.resolve("library") }, { false })
-    CharacterLibrary(directory.resolve("library"), faults = hooks.faults).use { library ->
+    writeHooks("fault.characters.DeleteRowRemoved=fail", "assets.purge.now=on")
+    val debugHooks = DebugHooks(LibraryDirectory { directory.resolve("library") }, { false })
+    val hooks = CharacterDebugHooks(debugHooks)
+    CharacterLibrary(directory.resolve("library"), faults = debugHooks).use { library ->
       val tamsin = library.importedCharacter(ImporterCorpus.charx)
 
       assertEquals(DeleteResult.Deleted, library.repository.delete(tamsin.id))
@@ -41,8 +43,8 @@ class DebugHooksTest {
 
   @Test
   fun aHeldFileShowsAsImportingUntilItIsReleased() = runTest {
-    writeHooks("import.hold=on")
-    val hooks = DebugHooks(LibraryDirectory { directory.resolve("library") }, { true })
+    writeHooks("characters.import.hold=on")
+    val hooks = CharacterDebugHooks(DebugHooks(LibraryDirectory { directory.resolve("library") }, { true }))
     CharacterLibrary(directory.resolve("library"), hold = hooks.importHold).use { library ->
       val statuses = mutableListOf<FileImportStatus>()
       val pick = async {

@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.characters.files.JvmCardReader
 import dev.marzahn.gloriana.logic.characters.files.JvmCardWriter
 import dev.marzahn.gloriana.logic.characters.storage.CharacterWrites
+import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.TestClock
 import dev.marzahn.gloriana.logic.storage.Tombstones
@@ -20,7 +21,7 @@ import kotlin.uuid.Uuid
 class CharacterLibrary(
   val directory: Path,
   transcoder: AvatarTranscoder = AvatarTranscoder { _, _ -> null },
-  faults: CharacterWriteFaults = CharacterWriteFaults.None,
+  faults: Faults = Faults.None,
   hold: ImportHold = ImportHold.None,
 ) : AutoCloseable {
   val clock = TestClock(epochMillis = 1_000)

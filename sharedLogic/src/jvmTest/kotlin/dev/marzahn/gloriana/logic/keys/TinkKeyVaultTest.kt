@@ -1,0 +1,339 @@
+package dev.marzahn.gloriana.logic.keys
+
+import dev.marzahn.gloriana.logic.assets.LibraryDirectory
+import dev.marzahn.gloriana.logic.debug.DebugHooks
+import dev.marzahn.gloriana.logic.debug.FaultInjected
+import kotlinx.coroutines.test.runTest
+import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
+import java.nio.file.Path
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+import kotlin.uuid.Uuid
+
+class TinkKeyVaultTest {
+  @TempDir
+  lateinit var library: Path
+
+  private val vaults by lazy { Vaults(library) }
+  private val connection = Uuid.random()
+  private val other = Uuid.random()
+  private val dataKeyFile by lazy { library.resolve("keys").resolve("connections.json") }
+  private val keysetFile by lazy { library.resolve("keys").resolve("keyset-device.json") }
+
+  @Test
+  fun aKeyAndAHeaderValueOpenAfterARestart() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-round-trip")
+    val value = vaults.start().sealed(header(connection, "X-Org"), "org-7")
+
+    val restarted = vaults.start()
+    assertEquals("sk-round-trip", restarted.opened(apiKey(connection), key))
+    assertEquals("org-7", restarted.opened(header(connection, "X-Org"), value))
+    assertEquals(VaultState.Unlocked, restarted.state.value)
+  }
+
+  @Test
+  fun aCiphertextMovedToAnotherConnectionOrHeaderDoesNotOpen() = runTest {
+    val vault = vaults.start()
+    vault.sealed(apiKey(other), "sk-other")
+    val key = vault.sealed(apiKey(connection), "sk-moved")
+    val value = vault.sealed(header(connection, "X-Org"), "org-7")
+
+    assertEquals(OpenResult.Missing, vault.open(apiKey(other), key))
+    assertEquals(OpenResult.Missing, vault.open(header(connection, "X-Org"), key))
+    assertEquals(OpenResult.Missing, vault.open(header(connection, "X-Team"), value))
+    assertEquals(OpenResult.Missing, vault.open(apiKey(connection), value))
+    assertEquals(OpenResult.Missing, vault.open(header(other, "X-Org"), value))
+  }
+
+  @Test
+  fun aHeaderNameIsBoundWhateverItsLetterCase() = runTest {
+    val vault = vaults.start()
+    val value = vault.sealed(header(connection, "X-Org"), "org-7")
+
+    assertEquals("org-7", vault.opened(header(connection, "x-org"), value))
+  }
+
+  @Test
+  fun eraseRemovesTheDataKeyAtOnce() = runTest {
+    val vault = vaults.start()
+    val key = vault.sealed(apiKey(connection), "sk-erased")
+    val kept = vault.sealed(apiKey(other), "sk-kept")
+
+    vault.erase(connection)
+
+    assertEquals(OpenResult.Missing, vault.open(apiKey(connection), key))
+    assertFalse(connection.toString() in Files.readString(dataKeyFile))
+    assertEquals(OpenResult.Missing, vaults.start().open(apiKey(connection), key))
+    assertEquals("sk-kept", vaults.start().opened(apiKey(other), kept))
+  }
+
+  @Test
+  fun eraseAndSweepNeverAskTheKeychain() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-erased")
+    vaults.keychain.reads = 0
+    vaults.keychain.unreachable = true
+
+    val restarted = vaults.start()
+    restarted.erase(connection)
+    restarted.sweep(storedConnections = emptySet())
+
+    assertEquals(0, vaults.keychain.reads)
+    assertEquals(VaultState.Closed, restarted.state.value)
+    assertFalse(connection.toString() in Files.readString(dataKeyFile))
+  }
+
+  @Test
+  fun aKillBeforeTheDataKeyIsRemovedIsFinishedByTheStartUpSweep() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-killed")
+    val kept = vaults.start().sealed(apiKey(other), "sk-kept")
+    val dying = vaults.start(faults = { throw FaultInjected(it) })
+
+    assertFailsWith<FaultInjected> { dying.erase(connection) }
+    assertTrue(connection.toString() in Files.readString(dataKeyFile))
+
+    val restarted = vaults.start()
+    restarted.sweep(storedConnections = setOf(other))
+    assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
+    assertFalse(connection.toString() in Files.readString(dataKeyFile))
+    assertEquals("sk-kept", restarted.opened(apiKey(other), kept))
+  }
+
+  @Test
+  fun theDebuggableBuildFailsAnEraseAtItsFaultPoint() = runTest {
+    Files.createDirectories(library.resolve("debug"))
+    Files.writeString(library.resolve("debug").resolve("hooks.properties"), "fault.keys.BeforeDataKeyRemoved=fail")
+    val vault = vaults.start(faults = DebugHooks(LibraryDirectory { library }, { true }))
+    vault.sealed(apiKey(connection), "sk-held")
+
+    assertFailsWith<FaultInjected> { vault.erase(connection) }
+  }
+
+  @Test
+  fun theSweepKeepsADataKeyMadeThisRunForAConnectionNotSavedYet() = runTest {
+    val vault = vaults.start()
+    val key = vault.sealed(apiKey(connection), "sk-saving")
+
+    vault.sweep(storedConnections = emptySet())
+
+    assertEquals("sk-saving", vault.opened(apiKey(connection), key))
+    vaults.start().sweep(storedConnections = emptySet())
+    assertEquals(OpenResult.Missing, vaults.start().open(apiKey(connection), key))
+  }
+
+  @Test
+  fun theKeychainIsOpenedOnlyWhenAKeyIsNeeded() = runTest {
+    val vault = vaults.start()
+
+    assertEquals(VaultState.Closed, vault.state.value)
+    assertEquals(0, vaults.keychain.reads)
+    assertEquals(VaultState.Unlocked, vault.prepare())
+  }
+
+  @Test
+  fun aRemovedKeychainEntryIsALostWrappingKey() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-lost")
+    vaults.keychain.secrets.clear()
+
+    val restarted = vaults.start()
+    assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
+    val entered = restarted.sealed(apiKey(connection), "sk-entered-again")
+    assertEquals("sk-entered-again", vaults.start().opened(apiKey(connection), entered))
+  }
+
+  @Test
+  fun aKeychainThatFailsOnceDestroysNothing() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-kept")
+    val keyset = Files.readAllBytes(keysetFile)
+    vaults.keychain.unreachable = true
+
+    val failing = vaults.start()
+    assertEquals(OpenResult.Unavailable, failing.open(apiKey(connection), key))
+    assertEquals(VaultState.Unavailable, failing.state.value)
+    assertEquals(PassphraseResult.NotAvailable, failing.setPassphrase("anything".passphrase()))
+    assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
+
+    vaults.keychain.unreachable = false
+    assertEquals("sk-kept", failing.opened(apiKey(connection), key))
+    assertEquals("sk-kept", vaults.start().opened(apiKey(connection), key))
+  }
+
+  @Test
+  fun aKeychainBackendGoneAfterTheKeysetWasMadeLeavesItInPlace() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-kept")
+    val keyset = Files.readAllBytes(keysetFile)
+    vaults.keychain.noKeychain = true
+
+    assertEquals(VaultState.Unavailable, vaults.start().prepare())
+    assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
+  }
+
+  @Test
+  fun oneDamagedEntryKeepsTheOtherDataKeys() = runTest {
+    val vault = vaults.start()
+    val key = vault.sealed(apiKey(connection), "sk-kept")
+    Files.writeString(dataKeyFile, Files.readString(dataKeyFile).replace("}", ",\"not-an-id\":\"!!\"}"))
+
+    val restarted = vaults.start()
+    restarted.sealed(apiKey(other), "sk-new")
+    assertEquals("sk-kept", vaults.start().opened(apiKey(connection), key))
+  }
+
+  @Test
+  fun aDamagedDataKeyFileReadsAsMissing() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-damaged")
+    Files.writeString(dataKeyFile, "{not json")
+
+    assertEquals(OpenResult.Missing, vaults.start().open(apiKey(connection), key))
+  }
+
+  @Test
+  fun aKeychainSecretThatIsThereButDifferentLeavesTheKeysetAndAsksForAReset() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-kept")
+    val keyset = Files.readAllBytes(keysetFile)
+    vaults.keychain.replaceEverySecret(ByteArray(32) { 7 })
+
+    val restarted = vaults.start()
+    assertEquals(VaultState.DeviceDamaged, restarted.prepare())
+    assertEquals(OpenResult.Unavailable, restarted.open(apiKey(connection), key))
+    assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
+    assertEquals(PassphraseResult.NotAvailable, restarted.reset("x".passphrase()))
+
+    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+    assertEquals(VaultState.Unlocked, restarted.state.value)
+    assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
+    assertTrue(Files.readString(keysetFile).startsWith("{\"type\":\"device\""))
+    assertEquals(1, vaults.keychain.secrets.size)
+  }
+
+  @Test
+  fun aNotFoundTheBackendCannotConfirmLeavesTheKeysetAndOffersAStartOver() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-kept")
+    val keyset = Files.readAllBytes(keysetFile)
+    val stored = vaults.keychain.secrets.toMap()
+    vaults.keychain.secrets.clear()
+    vaults.keychain.notFoundConfirmed = false
+
+    val restarted = vaults.start()
+    assertEquals(VaultState.DeviceKeyNotFound, restarted.prepare())
+    assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
+
+    vaults.keychain.secrets.putAll(stored)
+    assertEquals("sk-kept", restarted.opened(apiKey(connection), key))
+  }
+
+  @Test
+  fun theUserCanStartOverWhenTheKeyIsNotFound() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-kept")
+    vaults.keychain.secrets.clear()
+    vaults.keychain.notFoundConfirmed = false
+
+    val restarted = vaults.start()
+    assertEquals(VaultState.DeviceKeyNotFound, restarted.prepare())
+    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+    assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
+  }
+
+  @Test
+  fun aReplaceCutShortBeforeTheNewKeysetLandsKeepsTheOldKeyAndFile() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-kept")
+    vaults.keychain.replaceEverySecret(ByteArray(32) { 7 })
+    val oldKeys = vaults.keychain.secrets.keys.toSet()
+    val keyset = Files.readAllBytes(keysetFile)
+    val dying = vaults.start(faults = { throw FaultInjected(it) })
+    dying.prepare()
+
+    assertFailsWith<FaultInjected> { dying.replaceDeviceKeyset() }
+
+    assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
+    assertTrue(vaults.keychain.secrets.keys.containsAll(oldKeys))
+    assertEquals(VaultState.DeviceDamaged, vaults.start().prepare())
+  }
+
+  @Test
+  fun aMalformedKeychainEntryIsDamagedAndCanBeStartedOver() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-kept")
+    vaults.keychain.malformed += vaults.keychain.secrets.keys
+
+    val restarted = vaults.start()
+    assertEquals(VaultState.DeviceDamaged, restarted.prepare())
+    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+  }
+
+  @Test
+  fun aFirstStartOnABackendThatCannotConfirmStillMakesAKey() = runTest {
+    vaults.keychain.notFoundConfirmed = false
+
+    assertEquals(VaultState.Unlocked, vaults.start().prepare())
+  }
+
+  @Test
+  fun aKeychainWriteThatDoesNotStickWritesNoKeyset() = runTest {
+    vaults.keychain.writesAreLost = true
+
+    assertEquals(VaultState.Unavailable, vaults.start().prepare())
+    assertFalse(Files.exists(keysetFile))
+  }
+
+  @Test
+  fun aKeychainSecretOfTheWrongLengthIsDamagedNotLost() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-kept")
+    val keyset = Files.readAllBytes(keysetFile)
+    vaults.keychain.replaceEverySecret(ByteArray(5))
+
+    assertEquals(VaultState.DeviceDamaged, vaults.start().prepare())
+    assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
+  }
+
+  @Test
+  fun aDeviceKeysetWithAnUnreadableHeaderIsDamagedAndStaysOnTheDevice() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-kept")
+    Files.writeString(keysetFile, "garbage")
+
+    val restarted = vaults.start()
+    assertEquals(VaultState.DeviceDamaged, restarted.prepare())
+    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+    assertEquals(VaultState.Unlocked, vaults.start().prepare())
+  }
+
+  @Test
+  fun aWriteThatFailsDropsTheKeysetAndReadsTheFileAgain() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-kept")
+    vaults.keychain.replaceEverySecret(ByteArray(32) { 7 })
+    val restarted = vaults.start()
+    restarted.prepare()
+    val directory = keysetFile.parent.toFile()
+    directory.setWritable(false)
+    try {
+      assertEquals(PassphraseResult.NotAvailable, restarted.replaceDeviceKeyset())
+      assertEquals(VaultState.Closed, restarted.state.value)
+      assertEquals(KeyFileResult.Unavailable, restarted.erase(connection))
+    } finally {
+      directory.setWritable(true)
+    }
+    assertEquals(VaultState.DeviceDamaged, restarted.prepare())
+  }
+
+  @Test
+  fun aPartialWriteLeftByAKillIsRemovedAndTheOldKeysetOpens() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-kept")
+    val partial = keysetFile.resolveSibling(".keyset-device.json12345.part")
+    Files.writeString(partial, "half a keyset")
+
+    assertEquals("sk-kept", vaults.start().opened(apiKey(connection), key))
+    assertFalse(Files.exists(partial))
+  }
+
+  @Test
+  fun anUnreadableKeysDirectoryIsUnavailableNotACrash() = runTest {
+    Files.createDirectories(library)
+    Files.writeString(library.resolve("keys"), "a file where the directory belongs")
+
+    val vault = vaults.start()
+    assertEquals(VaultState.Unavailable, vault.prepare())
+    assertEquals(SealResult.Unavailable, vault.seal(apiKey(connection), "sk-nowhere"))
+  }
+}

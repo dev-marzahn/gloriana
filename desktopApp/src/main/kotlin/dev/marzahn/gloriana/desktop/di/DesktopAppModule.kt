@@ -1,10 +1,13 @@
 package dev.marzahn.gloriana.desktop.di
 
 import dev.marzahn.gloriana.desktop.SkiaAvatarTranscoder
+import dev.marzahn.gloriana.desktop.keys.JavaKeyringKeychain
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.characters.AvatarTranscoder
-import dev.marzahn.gloriana.logic.characters.DebuggableBuild
+import dev.marzahn.gloriana.logic.debug.DebuggableBuild
 import dev.marzahn.gloriana.logic.di.logicModule
+import dev.marzahn.gloriana.logic.keys.DeviceKeyStore
+import dev.marzahn.gloriana.logic.keys.KeychainKeyStore
 import dev.marzahn.gloriana.logic.storage.DesktopBuild
 import dev.marzahn.gloriana.logic.storage.DesktopEnvironment
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
@@ -17,6 +20,7 @@ private val desktopPlatformModule = module {
   single { desktopGlorianaDatabase(get<LibraryDirectory>().path()) }
   single<DebuggableBuild> { DebuggableBuild { DesktopBuild.current() == DesktopBuild.Debuggable } }
   single { SkiaAvatarTranscoder() } bind AvatarTranscoder::class
+  single<DeviceKeyStore> { KeychainKeyStore(JavaKeyringKeychain(service = DesktopBuild.current().directoryName)) }
 }
 
 val desktopAppModule = module {

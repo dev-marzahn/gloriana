@@ -7,7 +7,8 @@ import java.nio.channels.FileChannel
 import java.nio.file.FileAlreadyExistsException
 import java.nio.file.Files
 import java.nio.file.Path
-import java.nio.file.StandardCopyOption
+import dev.marzahn.gloriana.logic.storage.createDirectoriesDurably
+import dev.marzahn.gloriana.logic.storage.moveDurably
 import java.nio.file.StandardOpenOption
 import java.security.DigestOutputStream
 import java.security.MessageDigest
@@ -52,9 +53,9 @@ internal class AssetStore(libraryDirectory: LibraryDirectory) : AssetFiles {
 
   fun commit(staged: StagedAsset) = storeIo {
     val target = fileOf(staged.hash)
-    Files.createDirectories(target.parent)
+    target.parent.createDirectoriesDurably()
     try {
-      Files.move(staged.file, target, StandardCopyOption.ATOMIC_MOVE)
+      staged.file.moveDurably(target)
     } catch (_: FileAlreadyExistsException) {
       Files.deleteIfExists(staged.file)
     }

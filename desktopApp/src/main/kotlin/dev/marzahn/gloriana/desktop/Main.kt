@@ -14,12 +14,15 @@ import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.startKoin
 import java.awt.Dimension
 
+private const val SLF4J_VERBOSITY = "slf4j.internal.verbosity"
+private const val ONLY_ERRORS = "ERROR"
 private val OpeningSize = DpSize(1280.dp, 800.dp)
 private val MinimumSize = DpSize(400.dp, 600.dp)
 
 private fun DpSize.inAwtUnits() = Dimension(width.value.toInt(), height.value.toInt())
 
 fun main() {
+  System.setProperty(SLF4J_VERBOSITY, ONLY_ERRORS)
   startKoin { modules(desktopAppModule) }
   application {
     Window(

@@ -14,10 +14,9 @@ internal actual val cardFilesModule: Module = module {
   single { AssetStore(get()) } bind AssetFiles::class
   single { JvmCardReader(get()) } bind CardReader::class
   single { JvmCardWriter(get(), get()) } bind CardWriter::class
-  single { DebugHooks(get(), get()) }
-  single { get<DebugHooks>().faults }
-  single { get<DebugHooks>().importHold }
-  single { get<DebugHooks>().purge }
+  single { CharacterDebugHooks(get()) }
+  single { get<CharacterDebugHooks>().importHold }
+  single { get<CharacterDebugHooks>().purge }
   single { AssetPurge(get(), get(), get(), get(), get()) }
   single(createdAtStart = true) { AssetPurgeAtStart(get(), get(), get()) }
 }

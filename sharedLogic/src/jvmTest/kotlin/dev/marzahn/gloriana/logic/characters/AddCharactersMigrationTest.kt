@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.logic.characters
 import androidx.sqlite.execSQL
 import dev.marzahn.gloriana.logic.characters.storage.CharacterWrites
 import dev.marzahn.gloriana.logic.characters.storage.toCharacter
+import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.storage.MigrationHarness
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.TestClock
@@ -37,7 +38,7 @@ class AddCharactersMigrationTest {
     val (tombstones, stored) = harness.migrateToLatest { database ->
       val clock = UpdatedAtClock(TestClock(epochMillis = 1_000))
       val tombstones = Tombstones(database, clock)
-      val writes = CharacterWrites(database, UuidV7IdFactory, clock, tombstones, CharacterWriteFaults.None)
+      val writes = CharacterWrites(database, UuidV7IdFactory, clock, tombstones, Faults.None)
       val id = writes.insert(content)
       database.tombstoneDao().all().map { it.rowKey } to database.characterDao().rows(id)?.toCharacter()
     }

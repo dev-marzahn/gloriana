@@ -4,7 +4,7 @@ import androidx.room.immediateTransaction
 import androidx.room.useWriterConnection
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.characters.CharacterFields
-import dev.marzahn.gloriana.logic.characters.CharacterWriteFaults
+import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.characters.CharacterWritePoint
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.IdFactory
@@ -26,7 +26,7 @@ internal class CharacterWrites(
   private val ids: IdFactory,
   private val clock: UpdatedAtClock,
   private val tombstones: Tombstones,
-  private val faults: CharacterWriteFaults,
+  private val faults: Faults,
 ) {
   private val characters = database.characterDao()
   private val children = database.characterChildDao()

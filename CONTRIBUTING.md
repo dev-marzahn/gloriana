@@ -62,9 +62,19 @@ run on the JVM only and make the Android plugin warn.
 Koin, one module per layer: `logicModule` (`sharedLogic`), `uiModule` (`sharedUI`) and each app's platform module.
 Each app has one app module (`androidAppModule`, `desktopAppModule`) that includes all three; the app starts Koin with
 it, and a `verify()` test per platform (`AndroidGraphTest`, `DesktopGraphTest`) checks that every definition in it
-resolves. Definitions use the Koin compiler plugin's DSL (`viewModel<LibraryViewModel>()`), which wires constructors
-at compile time. The plugin's own graph check is off: it cannot yet follow modules declared in other Gradle modules,
-so the `verify()` tests are the graph check.
+resolves. `sharedUI` applies the Koin compiler plugin and uses its DSL (`viewModel<LibraryViewModel>()`), which wires
+constructors at compile time; `sharedLogic` and the apps don't apply it and call constructors in `single { … }`
+lambdas, which the `verify()` tests read. The plugin's own graph check is off: it cannot yet follow modules declared in
+other Gradle modules, so the `verify()` tests are the graph check. A feature whose implementation is shared JVM code
+(`jvmShared`) exposes its Koin module to common code through one `internal expect val` (`cardFilesModule`,
+`vaultModule`, `debugModule`).
+
+Debuggable-build hooks live in `logic.debug`: `DebugHooks` reads `debug/hooks.properties` (nothing in a release build)
+and is the one binding of `Faults` and `DebugSwitches`. A write with fault points takes `Faults` and passes
+`FaultPoint`s; a feature's switches are a `DebugSwitch` enum; both keys name their feature
+(`fault.characters.DeleteRowRemoved=kill`, `fault.keys.NewKeysetStaged=fail`, `characters.import.hold=on`,
+`assets.purge.now=on`, `keys.passphrase=on`). Before the feature prefixes, the keys were `fault.<Point>`, `import.hold`
+and `purge.now`; a hooks file with those does nothing now.
 
 ## Storage
 
@@ -147,6 +157,51 @@ Android resource; `LauncherLabelTest` keeps it equal to the Compose `app_name`.
 
 No API key, custom header value or message text is ever logged, put in an error message, or sent anywhere but the
 host the user set up for it. A log line can't be taken back once it is in a crash report or a shared bug report.
+The `checkNoHttpLogging` task (part of `check`, from `gloriana.no-http-logging`) refuses Ktor's and OkHttp's HTTP loggers
+on each app's shipped runtime classpath, `NoHttpLoggingTest` refuses their imports in any source, and `KeysAtRestTest`
+searches every file the app writes, its standard output and its `java.util.logging` output for marker keys and header
+values.
+
+Keys and custom header values go through `KeyVault` (`logic.keys`) and nothing else:
+
+- `seal` encrypts a value for a `SecretSlot` (a Connection's key, or one header of it by `HeaderName`) and `open`
+  decrypts it, only when a request is built. The Connection's id, and the header's name in lower case, are bound into
+  the ciphertext, so renaming a header means sealing its value again. Store the `SealedSecret` bytes; never keep the
+  opened value in state. The vault clears every passphrase array it is given.
+- Each Connection has its own data key in `keys/connections.json`, made on its first `seal`. Call `erase` right after a
+  Connection's delete commits, and after a save that fails. Until the start-up sweep is wired with the stored
+  Connections, `sweep` is called with their ids; it keeps a data key made in this run. Neither opens the keyset, and
+  both answer `KeyFileResult.Unavailable` when the file can't be written. `open` answers `Missing` for a value whose
+  data key is gone or can't be read, `Locked` until a passphrase is set or entered, and `Unavailable` otherwise.
+- The vault owns the keyset file and opens it only when a key is needed (`prepare` opens it at once). The file's name
+  records what wraps it (`keys/keyset-device.json` or `keys/keyset-passphrase.json`), so even a damaged file keeps its
+  protection. The platform's `DeviceKeyStore` holds named keys: an AES-GCM key in the Android Keystore, or a secret in
+  the OS keychain through java-keyring on desktop; the device keyset's header names its key. A lookup answers `Found`,
+  `Lost` (confirmed gone or invalidated: only then is a new key and keyset made), `Unconfirmed` (the Secret Service
+  reports D-Bus errors as not found; the state is `DeviceKeyNotFound`, retried at each use), `Unusable` (an entry that
+  isn't a key), `Unreachable` (retried at the next use) or `NoStore`. A key that is there but doesn't open the keyset,
+  an unusable entry or a damaged device file give `DeviceDamaged`. In `DeviceDamaged` and `DeviceKeyNotFound` the user
+  can start over with `replaceDeviceKeyset`; nothing replaces a key on its own. Every new keyset is written under a
+  newly named key, and the old key is deleted only after the file is in place, so a replace cut short keeps the old
+  key and file; data keys are erased first, as `reset` does. A desktop key is read back before a keyset is written
+  under it.
+- Which store wraps the keyset is recorded in the file name, so a device that starts on the passphrase stays on it. Where no
+  store exists the state is `NoKeychain` and `setPassphrase` sets one (Argon2id, at most the shipped cost); after a
+  restart it is `Locked` until `unlock`. `changePassphrase` wraps the same keyset under a new passphrase in one file
+  replace, and `reset` replaces a forgotten or damaged (`PassphraseDamaged`) one and erases every data key. Each
+  answers `NotAvailable` in a state it doesn't apply to, and after a write that fails the vault reads the file again.
+  In the debuggable Android build, `keys.passphrase=on` skips the Keystore for a fresh library; turned on over a
+  Keystore keyset it leaves the vault `Unavailable`, so clear the app's data first.
+- Files the vault keeps are written with `writeAtomically` (`logic.storage`): a temporary file, synced, renamed over
+  the old one, then the directory synced where the file system allows it; new directories come from
+  `createDirectoriesDurably`. A `.part` file a kill leaves in `keys/` is removed the next time the keyset is opened.
+- `desktopApp/proguard-rules.pro` keeps what Tink, JNA and the keychain backends reach by reflection. That isn't
+  verifiable through shipped code until shipped code seals a key (the Connection screens). Until then, check a change
+  to the rules or those libraries by adding a temporary `seal` call after Koin starts in `Main.kt`, running
+  `./gradlew :desktopApp:proguardReleaseJars` and
+  `java -Duser.home=<empty temp dir> -Dgloriana.debuggable=true -cp "desktopApp/build/compose/tmp/main-release/proguard/*"
+  dev.marzahn.gloriana.desktop.MainKt` twice: the seal succeeds and the second launch opens
+  `keys/keyset-device.json` unchanged. Remove the call and the `Gloriana Debug` keychain entries afterwards.
 
 ## Versions
 
