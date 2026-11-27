@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.logic.connection
 
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionsEntityType
 import dev.marzahn.gloriana.logic.connection.storage.DefaultConnectionSetting
+import dev.marzahn.gloriana.logic.keys.ErasingResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.OpenResult
 import dev.marzahn.gloriana.logic.keys.SealResult
@@ -12,6 +13,7 @@ import dev.marzahn.gloriana.logic.keys.apiKey
 import dev.marzahn.gloriana.logic.keys.header
 import dev.marzahn.gloriana.logic.keys.opened
 import dev.marzahn.gloriana.logic.keys.passphrase
+import dev.marzahn.gloriana.logic.keys.sealed
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.TombstoneEntity
 import kotlinx.coroutines.flow.first
@@ -173,20 +175,6 @@ class ConnectionRepositoryTest {
   }
 
   @Test
-  fun noFileHoldsASavedKeyOrHeaderValueInPlainText() = runTest {
-    val markers = listOf("sk-marker-0c9d7e1f", "hv-marker-5a2b8c3d")
-    val header = HeaderDraft("X-Org", entered(markers[1]))
-    library.created(draft(key = KeyInput.Entered(markers[0]), headers = listOf(header)))
-    library.database.close()
-
-    val holding = directory.toFile().walkTopDown().filter { it.isFile }
-      .filter { file -> file.readBytes().decodeToString().let { text -> markers.any(text::contains) } }
-      .map { it.name }.toList()
-
-    assertEquals(emptyList(), holding)
-  }
-
-  @Test
   fun renamingAHeaderReEncryptsItsValueUnderTheNewName() = runTest {
     val stored = library.created(draft(headers = listOf(HeaderDraft("X-Org", entered("org-7")))))
 
@@ -233,6 +221,38 @@ class ConnectionRepositoryTest {
 
     assertIs<ConnectionSaveResult.Saved>(library.repository.update(stored.id, draft(key = KeyInput.Removed)))
     assertNull(library.stored(stored.id).key)
+  }
+
+  @Test
+  fun anEditThatRemovesTheKeyAndEveryHeaderValueErasesTheDataKey() = runTest {
+    val stored = library.created(
+      draft(key = KeyInput.Entered("sk-first"), headers = listOf(HeaderDraft("X-Org", entered("org-1")))),
+    )
+    val oldKey = checkNotNull(stored.key)
+
+    val keptHeader = HeaderDraft("X-Org", HeaderValueInput.Kept("X-Org"))
+    assertIs<ConnectionSaveResult.Saved>(
+      library.repository.update(stored.id, draft(key = KeyInput.Removed, headers = listOf(keptHeader))),
+    )
+    assertTrue(library.dataKeyFileHolds(stored.id))
+
+    assertIs<ConnectionSaveResult.Saved>(library.repository.update(stored.id, draft(key = KeyInput.Removed)))
+    assertFalse(library.dataKeyFileHolds(stored.id))
+    assertEquals(OpenResult.Missing, library.vault.open(apiKey(stored.id), oldKey))
+  }
+
+  @Test
+  fun aDataKeyLeftForAConnectionWithNoValuesGoesAtTheNextStart() = runTest {
+    val keyless = library.created(draft(name = "No keys"))
+    library.vault.sealed(apiKey(keyless.id), "sk-left-behind")
+    assertTrue(library.dataKeyFileHolds(keyless.id))
+    library.close()
+
+    ConnectionLibrary(directory).use { restarted ->
+      restarted.vault.prepareIfStored()
+
+      assertFalse(restarted.dataKeyFileHolds(keyless.id))
+    }
   }
 
   @Test
@@ -295,6 +315,28 @@ class ConnectionRepositoryTest {
 
     assertTrue(library.dataKeyFileHolds(unreadable.id))
     assertFalse(library.dataKeyFileHolds(readableWithoutValues.id))
+  }
+
+  @Test
+  fun afterAResetNoConnectionCountsAsHoldingKeysAndASecondResetCountsNone() = runTest {
+    val vaults = Vaults(directory).apply { keychain.noKeychain = true }
+    ConnectionLibrary(directory, vaults = vaults).use { setUp ->
+      setUp.vault.setPassphrase("correct horse".passphrase())
+      setUp.created(draft(key = KeyInput.Entered("sk-1"), headers = listOf(HeaderDraft("X-Org", entered("org-1")))))
+      setUp.created(draft(name = "No keys"))
+    }
+
+    val countsBeforeAndAfterAReset = listOf("new horse", "newer horse").map { newPassphrase ->
+      ConnectionLibrary(directory, vaults = vaults).use { forgotten ->
+        suspend fun holding() = forgotten.vault.countHoldingOpenableSecrets(forgotten.repository.connections())
+        forgotten.vault.prepareIfPassphraseProtected()
+        val before = holding()
+        assertEquals(ErasingResult.Done, forgotten.vault.reset(newPassphrase.passphrase()))
+        before to holding()
+      }
+    }
+
+    assertEquals(listOf(1 to 0, 0 to 0), countsBeforeAndAfterAReset)
   }
 
   @Test

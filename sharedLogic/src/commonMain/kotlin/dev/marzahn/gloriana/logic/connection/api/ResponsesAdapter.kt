@@ -1,6 +1,8 @@
 package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
+import dev.marzahn.gloriana.logic.connection.STREAM
+import dev.marzahn.gloriana.logic.connection.mergedWith
 import dev.marzahn.gloriana.logic.json.long
 import dev.marzahn.gloriana.logic.json.objectAt
 import dev.marzahn.gloriana.logic.json.objects

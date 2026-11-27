@@ -1,6 +1,10 @@
 package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
+import dev.marzahn.gloriana.logic.connection.STREAM
+import dev.marzahn.gloriana.logic.connection.StreamValue
+import dev.marzahn.gloriana.logic.connection.mergedWith
+import dev.marzahn.gloriana.logic.connection.streamValue
 import dev.marzahn.gloriana.logic.json.holds
 import dev.marzahn.gloriana.logic.json.long
 import dev.marzahn.gloriana.logic.json.objectAt
@@ -24,17 +28,17 @@ internal object ChatCompletionsAdapter : FormatAdapter {
 
   override fun keyValue(key: String) = bearer(key)
 
-  override fun body(sections: List<PromptSection>, fields: ConnectionFields, samplers: SentSamplers): JsonObject {
-    val streams = fields.customBody.streamsOr(fields.streaming)
-    return buildJsonObject {
+  override fun body(sections: List<PromptSection>, fields: ConnectionFields, samplers: SentSamplers): JsonObject =
+    buildJsonObject {
       put("model", fields.model)
       put("messages", roleMessages(sections))
       put("max_tokens", fields.maxReplyTokens)
       put(STREAM, fields.streaming)
-      if (streams && fields.includeUsage) putJsonObject(STREAM_OPTIONS) { put("include_usage", true) }
+      if (fields.streamValue == StreamValue.On && fields.includeUsage) {
+        putJsonObject(STREAM_OPTIONS) { put("include_usage", true) }
+      }
       samplers.putInto(this)
     }.mergedWith(fields.customBody)
-  }
 
   override fun streamReader(scrubber: Scrubber): StreamReader = ChatCompletionsStream(scrubber)
 

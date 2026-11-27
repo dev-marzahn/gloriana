@@ -74,6 +74,24 @@ A named header among a Preset's entries that organises the list only: it sends n
 the nearest group above it. Not a group chat (a chat with several Characters), which is a different thing.
 _Avoid_: Folder, section, group header
 
+**Wrapper prompt**:
+A Preset's text that wraps one piece of the prompt, such as the Persona's description or the scenario, or stands
+in for a step like Impersonate or Continue.
+_Avoid_: Utility prompt, format string
+
+**Connection template**:
+A starting point for a new Connection that fills in its API format and base URL for a known host.
+_Avoid_: Template (alone, which means a macro or EJS template), provider preset
+
+**Passphrase**:
+The words the user sets to protect the stored keys where the device has no keychain, asked for at each launch.
+_Avoid_: Password, master password
+
+**Start over**:
+Erasing every stored key and header value and making new key protection, when the saved keys can no longer be
+opened; the user then enters each key again.
+_Avoid_: Reset (which is for a forgotten Passphrase), wipe
+
 **Tag**:
 A label that any Character, Persona, Lorebook or preset can carry many of, used for filtering.
 

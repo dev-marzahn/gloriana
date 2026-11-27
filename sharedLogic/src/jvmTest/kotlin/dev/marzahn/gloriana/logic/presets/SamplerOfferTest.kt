@@ -9,6 +9,7 @@ import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.Sampler
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.SamplersUpdateResult
+import dev.marzahn.gloriana.logic.connection.api.SentValue
 import dev.marzahn.gloriana.logic.connection.draft
 import dev.marzahn.gloriana.logic.connection.entered
 import kotlinx.coroutines.test.runTest
@@ -49,7 +50,7 @@ class SamplerOfferTest {
           changes = listOf(
             SamplerChange(Sampler.Temperature, 0.85, SentValue.Own(0.7)),
             SamplerChange(Sampler.TopP, 0.92, SentValue.Global(0.5)),
-            SamplerChange(Sampler.Seed, 7.0, SentValue.NotSet),
+            SamplerChange(Sampler.Seed, 7L, SentValue.NotSet),
           ),
           notCopied = listOf(
             NotCopied(fileSampler(Sampler.TopK), NotCopiedBecause.FormatSendsNone),
@@ -81,6 +82,24 @@ class SamplerOfferTest {
       assertEquals(
         listOf(SamplerChange(Sampler.Temperature, 0.4, SentValue.NotSet)),
         found(library, withinRange, connection.id).changes,
+      )
+    }
+  }
+
+  @Test
+  fun sentNowIsWhatTheMergeSendsEvenWhereThePresetRuleWouldReadItAsUnset() = runTest {
+    PresetLibrary(directory).use { library ->
+      val anthropic = anthropic(library)
+      val chatCompletions = library.connections.created(draft(name = "Chat Completions"))
+      library.global.setSamplers(Samplers(topK = 0, seed = -1))
+
+      assertEquals(
+        listOf(SamplerChange(Sampler.TopK, 40L, SentValue.Global(0L))),
+        found(library, PresetSamplers(mapOf(fileSampler(Sampler.TopK) to 40.0)), anthropic.id).changes,
+      )
+      assertEquals(
+        listOf(SamplerChange(Sampler.Seed, 7L, SentValue.Global(-1L))),
+        found(library, PresetSamplers(mapOf(fileSampler(Sampler.Seed) to 7.0)), chatCompletions.id).changes,
       )
     }
   }

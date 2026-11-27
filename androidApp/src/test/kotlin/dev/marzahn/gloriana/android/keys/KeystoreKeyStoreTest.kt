@@ -74,10 +74,20 @@ class KeystoreKeyStoreTest {
   }
 
   @Test
-  fun aKeyTheKeystoreCanNoLongerRecoverIsLost() {
-    keys.loadFailure = UnrecoverableKeyException("invalidated")
+  fun anUnrecoverableKeyIsUnreachableNotLost() {
+    keys.loadFailure = UnrecoverableKeyException("Failed to obtain information about key")
 
-    assertEquals(DeviceKey.Lost, store.find("any"))
+    assertEquals(DeviceKey.Unreachable, store.find("any"))
+  }
+
+  @Test
+  fun anUnrecoverableKeyWhileOpeningIsUnreachableNotLost() {
+    val sealed = assertIs<NewDeviceKey.Made>(store.create()).key.seal("keyset".encodeToByteArray(), associated)
+    val failing = KeystoreWrappingKey(keys.keys.values.single()) { _, _, _ ->
+      throw UnrecoverableKeyException("Failed to obtain information about key")
+    }
+
+    assertFailsWith<DeviceKeyUnreachable> { failing.open(sealed, associated) }
   }
 
   @Test

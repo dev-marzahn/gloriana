@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.logic.connection
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionWrites
 import dev.marzahn.gloriana.logic.connection.storage.DefaultConnection
+import dev.marzahn.gloriana.logic.connection.storage.needsDataKey
 import dev.marzahn.gloriana.logic.keys.StoredConnections
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import org.koin.dsl.bind
@@ -11,7 +12,7 @@ import kotlin.uuid.Uuid
 
 val connectionsModule = module {
   single { get<GlorianaDatabase>().connectionDao() }
-  single { StoredConnectionIds(get()) } bind StoredConnections::class
+  single { ConnectionsNeedingDataKeys(get()) } bind StoredConnections::class
   single { ConnectionChats.NoneYet }
   single { DefaultConnection(get(), get()) }
   single { ConnectionWrites(get(), get(), get(), get(), get()) }
@@ -19,6 +20,6 @@ val connectionsModule = module {
   single { GlobalModelSettings(get()) }
 }
 
-internal class StoredConnectionIds(private val dao: ConnectionDao) : StoredConnections {
-  override suspend fun ids(): Set<Uuid> = dao.ids().toSet()
+internal class ConnectionsNeedingDataKeys(private val dao: ConnectionDao) : StoredConnections {
+  override suspend fun ids(): Set<Uuid> = dao.all().filter { it.needsDataKey }.mapTo(HashSet()) { it.id }
 }

@@ -23,29 +23,30 @@ internal class TinkKeyVault(
   private val faults: Faults,
   stored: StoredConnections,
   passphraseCost: Argon2idCost = Argon2idCost.Default,
+  private val derivation: KeyDerivation = KeyDerivation.Argon2id,
 ) : KeyVault {
   private val directory = library.path().resolve(KEYS_DIRECTORY)
   private val dataKeys = DataKeys(directory.resolve(DATA_KEYS_FILE))
-  private val keyring = Keyring(directory, device, dataKeys, faults, passphraseCost)
+  private val keyring = Keyring(directory, device, dataKeys, faults, passphraseCost, derivation)
   private val holder = KeysetHolder(keyring)
-  private val sweep = StartSweep(dataKeys, stored)
+  private val sweep = StartSweep(dataKeys, stored, holder)
   private val foundMissing = MutableStateFlow<Set<SecretSlot>>(emptySet())
 
   override val state: StateFlow<VaultState> = holder.state
 
   override val findings: Flow<KeyFindings> = combine(dataKeys.filed, foundMissing, ::KeyFindings)
 
-  override suspend fun prepare(): VaultState = swept { holder.withKeyset { it.state } }
+  override suspend fun prepare(): VaultState = sweep.thenRun { holder.withKeyset { it.state } }
 
-  override suspend fun prepareIfPassphraseProtected(): VaultState = swept {
-    when (holder.withFiles { keyring.storedKind() }) {
-      StoredKind.Passphrase -> holder.withKeyset { it.state }
-      StoredKind.Unreadable -> VaultState.Unavailable
-      StoredKind.Device, StoredKind.None -> state.value
-    }
+  override suspend fun prepareIfStored(): VaultState = sweep.thenRun {
+    val holdsADataKey = holder.withFiles { unlessFilesFail(unavailable = true) { dataKeys.holdsAny() } }
+    if (holdsADataKey) holder.stateOpening(StoredKind.EveryKeyset) else state.value
   }
 
-  override suspend fun seal(slot: SecretSlot, value: String): SealResult = swept {
+  override suspend fun prepareIfPassphraseProtected(): VaultState =
+    sweep.thenRun { holder.stateOpening(setOf(StoredKind.Passphrase)) }
+
+  override suspend fun seal(slot: SecretSlot, value: String): SealResult = sweep.thenRun {
     holder.withKeyset { keyset ->
       keyset.withAead(SealOutcomes) { aead ->
         unlessFilesFail(SealResult.Unavailable) {
@@ -57,7 +58,7 @@ internal class TinkKeyVault(
     }
   }
 
-  override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = swept {
+  override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = sweep.thenRun {
     holder.withKeyset { keyset ->
       keyset.withAead(OpenOutcomes) { aead ->
         unlessFilesFail(OpenResult.Unavailable) {
@@ -68,12 +69,7 @@ internal class TinkKeyVault(
     }
   }
 
-  private suspend fun <T> swept(action: suspend () -> T): T {
-    sweep.runIfDue(holder)
-    return action()
-  }
-
-  override suspend fun erase(connectionId: Uuid): KeyFileResult = swept {
+  override suspend fun erase(connectionId: Uuid): KeyFileResult = sweep.thenRun {
     holder.withFiles {
       faults.reached(KeyWritePoint.BeforeDataKeyRemoved)
       unlessFilesFail(KeyFileResult.Unavailable) {
@@ -93,9 +89,11 @@ internal class TinkKeyVault(
   override suspend fun unlock(passphrase: CharArray): PassphraseResult = clearing(passphrase) {
     holder.withKeyset { keyset ->
       if (keyset !is Keyset.Locked) return@withKeyset PassphraseResult.NotAvailable
-      val opened = keyset.stored.open(passphrase) ?: return@withKeyset PassphraseResult.WrongPassphrase
-      holder.keyset = Keyset.PassphraseUnlocked(Keysets.aead(opened))
-      PassphraseResult.Accepted
+      unlessFilesFail(PassphraseResult.NotAvailable) {
+        val opened = keyset.stored.open(passphrase, derivation) ?: return@withKeyset PassphraseResult.WrongPassphrase
+        holder.keyset = Keyset.PassphraseUnlocked(Keysets.aead(opened))
+        PassphraseResult.Accepted
+      }
     }
   }
 
@@ -104,7 +102,7 @@ internal class TinkKeyVault(
       holder.rewriting(applies = { it is Keyset.Locked || it is Keyset.PassphraseUnlocked }) {
         val stored = keyring.storedPassphraseKeyset() as? StoredKeyset.Passphrase
           ?: return@rewriting PassphraseResult.NotAvailable
-        val opened = stored.open(current) ?: return@rewriting PassphraseResult.WrongPassphrase
+        val opened = stored.open(current, derivation) ?: return@rewriting PassphraseResult.WrongPassphrase
         unlessFilesFail(PassphraseResult.NotAvailable) {
           holder.keyset = keyring.writePassphraseKeyset(opened, new)
           PassphraseResult.Accepted

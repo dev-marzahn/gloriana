@@ -66,6 +66,12 @@ internal fun ConnectionEntity.readableOrNull(): Connection? = when (val stored =
   StoredConnection.Unreadable -> null
 }
 
+internal val ConnectionEntity.needsDataKey: Boolean
+  get() = when (val stored = decoded()) {
+    is StoredConnection.Readable -> stored.connection.holdsSecrets
+    StoredConnection.Unreadable -> true
+  }
+
 private fun ConnectionEntity.readable(apiFormat: ApiFormat) = Connection(
   id = id,
   fields = ConnectionFields(

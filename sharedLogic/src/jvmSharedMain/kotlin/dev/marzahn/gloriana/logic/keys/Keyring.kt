@@ -47,7 +47,17 @@ internal sealed interface Keyset {
   }
 }
 
-internal enum class StoredKind { Passphrase, Device, None, Unreadable }
+internal enum class StoredKind {
+  Passphrase,
+  Device,
+  None,
+  Unreadable,
+  ;
+
+  companion object {
+    val EveryKeyset: Set<StoredKind> = setOf(Passphrase, Device)
+  }
+}
 
 internal sealed interface Rewrite {
   class Written(val keyset: Keyset) : Rewrite
@@ -63,6 +73,7 @@ internal class Keyring(
   private val dataKeys: DataKeys,
   private val faults: Faults,
   private val passphraseCost: Argon2idCost,
+  private val derivation: KeyDerivation,
 ) {
   private val files = KeysetFiles(directory)
 
@@ -95,7 +106,9 @@ internal class Keyring(
 
   fun writePassphraseKeyset(keyset: KeysetHandle, passphrase: CharArray): Keyset {
     val protection = newPassphraseProtection(passphraseCost)
-    files.write(protection, keyset, protection.wrapping(passphrase)) { faults.reached(KeyWritePoint.NewKeysetStaged) }
+    files.write(protection, keyset, protection.wrapping(passphrase, derivation)) {
+      faults.reached(KeyWritePoint.NewKeysetStaged)
+    }
     return Keyset.PassphraseUnlocked(Keysets.aead(keyset))
   }
 

@@ -36,6 +36,22 @@ class PassphraseVaultTest {
   }
 
   @Test
+  fun runningOutOfMemoryWhileDerivingReadsAsNotAvailableAndCrashesNothing() = runTest {
+    val outOfMemory = KeyDerivation { _, _, _ -> throw OutOfMemoryError("Argon2id") }
+    assertEquals(PassphraseResult.NotAvailable, vaults.start(derivation = outOfMemory).setPassphrase("p".passphrase()))
+    passphraseSet().sealed(apiKey(connection), "sk-kept")
+
+    val starved = vaults.start(derivation = outOfMemory)
+    assertEquals(VaultState.Locked, starved.prepare())
+    assertEquals(PassphraseResult.NotAvailable, starved.unlock("correct horse".passphrase()))
+    assertEquals(
+      PassphraseResult.NotAvailable,
+      starved.changePassphrase("correct horse".passphrase(), "new".passphrase()),
+    )
+    assertEquals(ErasingResult.KeysErasedKeysetKept, vaults.start(derivation = outOfMemory).reset("new".passphrase()))
+  }
+
+  @Test
   fun aRestartAsksForThePassphraseAgain() = runTest {
     val key = passphraseSet().sealed(apiKey(connection), "sk-passphrase")
 

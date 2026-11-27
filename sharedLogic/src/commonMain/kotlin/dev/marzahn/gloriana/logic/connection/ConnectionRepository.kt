@@ -37,7 +37,9 @@ private sealed interface SaveTarget {
 private sealed interface Prepared {
   class Stop(val result: ConnectionSaveResult) : Prepared
 
-  class Ready(val target: SaveTarget, val fields: ConnectionFields, val plan: SecretsPlan) : Prepared
+  class Ready(val target: SaveTarget, val fields: ConnectionFields, val plan: SecretsPlan) : Prepared {
+    val mayHaveMadeOrLeftADataKey: Boolean get() = plan.holdsAny || target.stored?.holdsSecrets == true
+  }
 }
 
 class ConnectionRepository internal constructor(
@@ -91,8 +93,8 @@ class ConnectionRepository internal constructor(
   private suspend fun save(request: SaveRequest, draft: ConnectionDraft): ConnectionSaveResult = erasure.oneAtATime {
     when (val prepared = failingAs({ Prepared.Stop(saveFailure(it)) }) { writes.prepared(dao, request, draft) }) {
       is Prepared.Stop -> prepared.result
-      is Prepared.Ready -> failingAs(::saveFailure) { writes.sealAndWrite(secrets, prepared) }.also { result ->
-        if (result !is ConnectionSaveResult.Saved) eraseUnlessStoredValuesNeedIt(prepared.target.id)
+      is Prepared.Ready -> failingAs(::saveFailure) { writes.sealAndWrite(secrets, prepared) }.also {
+        if (prepared.mayHaveMadeOrLeftADataKey) eraseUnlessStoredValuesNeedIt(prepared.target.id)
       }
     }
   }

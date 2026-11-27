@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.io.TempDir
+import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -161,6 +162,42 @@ class KeyFindingsTest {
     val restarted = vaults.start()
 
     assertEquals(VaultState.Closed, restarted.prepareIfPassphraseProtected())
+    assertEquals(readsBefore, vaults.keychain.reads)
+  }
+
+  @Test
+  fun withNoKeysetOpeningAStoredOneAsksNoKeychainAndMakesNoFile() = runTest {
+    val vault = vaults.start()
+
+    assertEquals(VaultState.Closed, vault.prepareIfStored())
+    assertEquals(0, vaults.keychain.reads)
+    assertTrue(vaults.keychain.secrets.isEmpty())
+    assertFalse(Files.exists(library.resolve("keys/keyset-device.json")))
+  }
+
+  @Test
+  fun aStoredDeviceKeysetIsOpenedByPrepareIfStored() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-device")
+
+    assertEquals(VaultState.Unlocked, vaults.start().prepareIfStored())
+  }
+
+  @Test
+  fun aStoredPassphraseKeysetIsLockedByPrepareIfStored() = runTest {
+    vaults.keychain.noKeychain = true
+    vaults.start().apply { setPassphrase("correct horse".passphrase()) }.sealed(apiKey(connection), "sk-pass")
+
+    assertEquals(VaultState.Locked, vaults.start().prepareIfStored())
+  }
+
+  @Test
+  fun aKeysetLeftWithNoDataKeyIsNotOpenedByPrepareIfStored() = runTest {
+    val first = vaults.start()
+    first.sealed(apiKey(connection), "sk-device")
+    first.erase(connection)
+    val readsBefore = vaults.keychain.reads
+
+    assertEquals(VaultState.Closed, vaults.start().prepareIfStored())
     assertEquals(readsBefore, vaults.keychain.reads)
   }
 

@@ -41,8 +41,10 @@ private val visibleAsciiAndSpace = ' '..'~'
 
 fun headerFaults(name: String, value: String?): Set<HeaderFault> = setOfNotNull(
   nameFault(name),
-  value?.let { valueFault(HeaderName.of(name), it) },
+  value?.let { valueFault(HeaderName.of(name), withoutPadding(it)) },
 )
+
+internal fun withoutPadding(value: String): String = value.trim(' ', TAB)
 
 internal fun firstUnsendableCharacter(value: String): Char? =
   value.firstOrNull { it != TAB && it !in visibleAsciiAndSpace }

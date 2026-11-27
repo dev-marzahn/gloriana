@@ -11,6 +11,8 @@ import dev.marzahn.gloriana.logic.connection.entered
 import dev.marzahn.gloriana.logic.keys.KeyFileResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.OpenResult
+import dev.marzahn.gloriana.logic.keys.SealedSecret
+import dev.marzahn.gloriana.logic.keys.SecretSlot
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
@@ -19,7 +21,11 @@ import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
 import kotlin.test.Test
+import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
+import kotlin.test.assertFalse
+import kotlin.test.assertIs
 
 class VaultModelApiTest {
   @TempDir
@@ -66,6 +72,39 @@ class VaultModelApiTest {
     val body = recorded.getValue("body").jsonObject
     assertEquals(JsonPrimitive(0.9), body["temperature"])
     assertEquals(JsonPrimitive(0.6), body["top_p"])
+  }
+
+  @Test
+  fun aPaddedKeySavedThroughTheDraftGoesOutTrimmedAndItsEchoIsMasked() = runBlocking {
+    everyWay.forEach { (format, streams) ->
+      val way = "$format streaming=$streams"
+      val padded = draft(
+        name = way,
+        baseUrl = stub.host.baseUrl("key-echo"),
+        key = KeyInput.Entered(" \t$TEST_KEY \t"),
+        format = format,
+      )
+      val connection = library.created(padded.copy(fields = padded.fields.copy(streaming = streams)))
+
+      val failure = api().reply(greeting, connection).toList().filterIsInstance<ModelEvent.Failed>().single()
+
+      val body = assertIs<ModelApiError.KeyRejected>(failure.error, way).body
+      assertContains(body, "The key $MASK is not valid.", message = way)
+      assertFalse(TEST_KEY in body, way)
+    }
+  }
+
+  @Test
+  fun aBugWhileOpeningTheKeyIsNotReportedAsAnUnreachableHost() = runBlocking {
+    val connection = stored(KeyInput.Entered("sk-vault-bug"))
+    val broken = object : KeyVault by library.vault {
+      override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = error("a bug in the vault")
+    }
+
+    val thrown = assertFailsWith<IllegalStateException> { api(broken).reply(greeting, connection).toList() }
+
+    assertEquals("a bug in the vault", thrown.message)
+    assertEquals(emptyList(), stub.recordedRequests())
   }
 
   @Test

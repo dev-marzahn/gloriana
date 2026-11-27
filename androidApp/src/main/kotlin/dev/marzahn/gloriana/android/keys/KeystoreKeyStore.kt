@@ -14,7 +14,6 @@ import java.security.GeneralSecurityException
 import java.security.KeyStore
 import java.security.ProviderException
 import java.security.SecureRandom
-import java.security.UnrecoverableKeyException
 import javax.crypto.AEADBadTagException
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
@@ -128,8 +127,6 @@ private inline fun <T> keystoreVerdict(lost: (Exception) -> T, unreachable: (Exc
   try {
     operation()
   } catch (failure: KeyPermanentlyInvalidatedException) {
-    lost(failure)
-  } catch (failure: UnrecoverableKeyException) {
     lost(failure)
   } catch (failure: GeneralSecurityException) {
     unreachable(failure)

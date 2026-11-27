@@ -17,8 +17,10 @@ import dev.marzahn.gloriana.ui.resources.error_format_empty
 import dev.marzahn.gloriana.ui.resources.error_header_name_empty
 import dev.marzahn.gloriana.ui.resources.error_header_value_enter
 import dev.marzahn.gloriana.ui.resources.error_json_object
+import dev.marzahn.gloriana.ui.resources.error_key_blank
 import dev.marzahn.gloriana.ui.resources.error_model_empty
 import dev.marzahn.gloriana.ui.resources.error_name_empty
+import dev.marzahn.gloriana.ui.resources.error_stream_boolean
 import dev.marzahn.gloriana.ui.resources.error_whole_above_zero
 import dev.marzahn.gloriana.ui.resources.key_missing_hint
 import org.jetbrains.compose.resources.StringResource
@@ -70,6 +72,8 @@ sealed interface FieldError {
 
   data object KeyMissing : Fixed(Res.string.key_missing_hint)
 
+  data object KeyBlank : Fixed(Res.string.error_key_blank)
+
   data object ModelEmpty : Fixed(Res.string.error_model_empty)
 
   data object WholeAboveZero : Fixed(Res.string.error_whole_above_zero)
@@ -83,6 +87,8 @@ sealed interface FieldError {
   data object HeaderValueMissing : Fixed(Res.string.error_header_value_enter)
 
   data object NotAnObject : Fixed(Res.string.error_json_object)
+
+  data object StreamNotBoolean : Fixed(Res.string.error_stream_boolean)
 
   data class NameTaken(val name: String) : FieldError
 
@@ -151,6 +157,8 @@ internal fun ConnectionForm.fieldError(problem: ConnectionProblem): FieldProblem
     FormField.SamplerField(problem.sampler) shows FieldError.Sampler(SamplerError.NotANumber)
   is ConnectionProblem.KeyBadCharacter -> FormField.Key shows FieldError.KeyBadCharacter(problem.character)
   ConnectionProblem.KeyMissing -> FormField.Key shows FieldError.KeyMissing
+  ConnectionProblem.KeyBlank -> FormField.Key shows FieldError.KeyBlank
+  ConnectionProblem.StreamNotBoolean -> FormField.CustomBody shows FieldError.StreamNotBoolean
   is ConnectionProblem.HeaderNameEmpty -> headerName(problem.index) { FieldError.HeaderNameEmpty }
   is ConnectionProblem.HeaderNameNotToken ->
     headerName(problem.index) { FieldError.HeaderNameBadCharacter(problem.character) }

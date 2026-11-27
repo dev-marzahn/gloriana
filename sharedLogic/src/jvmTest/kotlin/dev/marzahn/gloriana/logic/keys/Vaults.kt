@@ -51,12 +51,14 @@ class Vaults(private val library: Path) {
     faults: Faults = Faults.None,
     cost: Argon2idCost = CheapPassphrase,
     stored: StoredConnections = everyFiledConnection,
+    derivation: KeyDerivation = KeyDerivation.Argon2id,
   ) = TinkKeyVault(
     library = LibraryDirectory { library },
     device = KeychainKeyStore(keychain),
     faults = faults,
     stored = stored,
     passphraseCost = cost,
+    derivation = derivation,
   )
 }
 

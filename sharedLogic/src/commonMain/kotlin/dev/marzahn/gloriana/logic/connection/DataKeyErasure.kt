@@ -2,8 +2,7 @@ package dev.marzahn.gloriana.logic.connection
 
 import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
-import dev.marzahn.gloriana.logic.connection.storage.StoredConnection
-import dev.marzahn.gloriana.logic.connection.storage.decoded
+import dev.marzahn.gloriana.logic.connection.storage.needsDataKey
 import dev.marzahn.gloriana.logic.keys.KeyFileResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import kotlinx.coroutines.sync.Mutex
@@ -27,9 +26,5 @@ internal class DataKeyErasure(private val vault: KeyVault, private val dao: Conn
     }
   }
 
-  private suspend fun storedValuesNeedKey(id: Uuid): Boolean = when (val stored = dao.find(id)?.decoded()) {
-    null -> false
-    StoredConnection.Unreadable -> true
-    is StoredConnection.Readable -> stored.connection.holdsSecrets
-  }
+  private suspend fun storedValuesNeedKey(id: Uuid): Boolean = dao.find(id)?.needsDataKey ?: false
 }

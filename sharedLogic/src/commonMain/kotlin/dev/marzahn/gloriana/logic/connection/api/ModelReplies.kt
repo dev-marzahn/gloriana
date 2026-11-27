@@ -1,6 +1,8 @@
 package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.connection.StreamValue
+import dev.marzahn.gloriana.logic.connection.streamValue
 import dev.marzahn.gloriana.logic.json.parsedObject
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.flow.Flow
@@ -16,7 +18,7 @@ internal class ModelReplies(private val host: HostCalls) {
     val body = adapter.body(sections, fields, mergeSamplers(fields.format, global, fields.samplers))
     val request = hostRequest(connection, HttpMethod.Post, adapter.path, body)
       ?: return flowOf(ModelEvent.Failed(ModelApiError.BadAddress))
-    return when (body.streamValue()) {
+    return when (fields.streamValue) {
       StreamValue.On -> streamed(request, adapter.streamReader(request.scrubber))
       StreamValue.Off -> whole(request, adapter)
       StreamValue.NotBoolean -> flowOf(ModelEvent.Failed(ModelApiError.StreamNotBoolean))

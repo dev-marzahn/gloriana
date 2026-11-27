@@ -12,6 +12,8 @@ interface KeyVault {
 
   suspend fun prepare(): VaultState
 
+  suspend fun prepareIfStored(): VaultState
+
   suspend fun prepareIfPassphraseProtected(): VaultState
 
   suspend fun seal(slot: SecretSlot, value: String): SealResult

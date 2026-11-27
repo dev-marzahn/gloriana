@@ -1,6 +1,5 @@
 package dev.marzahn.gloriana.logic.connection.api
 
-import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.connection.ContentTypeHeader
 import dev.marzahn.gloriana.logic.connection.contentTypeOrNull
 import dev.marzahn.gloriana.logic.connection.headerFaults
@@ -57,7 +56,7 @@ internal sealed interface HostEvent {
 internal class HostCalls(private val clients: ModelHttpClients) {
   suspend fun whole(request: HostRequest): HostReply {
     refusal(request)?.let { return HostReply.Failed(it) }
-    return failingAs({ HostReply.Failed(failureOf(it)) }) {
+    return failingOnTheNetworkAs({ HostReply.Failed(failureOf(it)) }) {
       val response = clients.forUrl(request.url).request { applyTo(request) }
       if (response.status.isSuccess()) {
         HostReply.Body(response.bodyAsUtf8())
@@ -69,7 +68,7 @@ internal class HostCalls(private val clients: ModelHttpClients) {
 
   fun events(request: HostRequest): Flow<HostEvent> = channelFlow {
     val scrubber = request.scrubber
-    val failure = refusal(request) ?: failingAs({ failureOf(it) }) {
+    val failure = refusal(request) ?: failingOnTheNetworkAs(::failureOf) {
       clients.forUrl(request.url).prepareRequest {
         applyTo(request)
         accept(ContentType.Text.EventStream)
@@ -117,8 +116,14 @@ private fun HttpRequestBuilder.applyTo(request: HostRequest) {
   }
 }
 
-internal fun failureOf(failure: Throwable): ModelApiError =
-  generateSequence(failure) { it.cause }.firstNotNullOfOrNull { cause ->
+private inline fun <T> failingOnTheNetworkAs(failed: (IOException) -> T, work: () -> T): T = try {
+  work()
+} catch (failure: IOException) {
+  failed(failure)
+}
+
+private fun failureOf(failure: IOException): ModelApiError =
+  generateSequence<Throwable>(failure) { it.cause }.firstNotNullOfOrNull { cause ->
     when (cause) {
       is PlainHttpRefused -> ModelApiError.PlainHttpToPublicHost
       is ConnectTimeoutException, is SocketTimeoutException -> ModelApiError.Timeout

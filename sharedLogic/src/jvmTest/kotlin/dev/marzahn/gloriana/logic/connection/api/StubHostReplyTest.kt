@@ -137,6 +137,21 @@ class StubHostReplyTest {
   }
 
   @Test
+  fun aPaddedCustomKeyHeaderGoesOutTrimmedAndIsMasked() {
+    val proxy = stub.connection(
+      ApiFormat.OpenAiChatCompletions,
+      "key-echo",
+      key = null,
+      headers = listOf(header("Authorization", "  Bearer proxy-MARKER-2\t")),
+    )
+
+    val body = assertIs<ModelApiError.KeyRejected>(stub.events(proxy).failure()).body
+
+    assertContains(body, "The key $MASK is not valid.")
+    assertFalse("proxy-MARKER-2" in body)
+  }
+
+  @Test
   fun aKeyTheHostEchoesInARateLimitBodyIsMasked() {
     everyWay.forEach { (format, streams) ->
       val failure = events(format, "key-echo-429", streams).failure()

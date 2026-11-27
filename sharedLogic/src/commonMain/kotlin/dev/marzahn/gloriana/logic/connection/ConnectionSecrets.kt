@@ -20,7 +20,9 @@ internal sealed interface ValuePlan : SecretPlan {
 
 internal class HeaderPlan(val name: String, val value: SecretPlan)
 
-internal class SecretsPlan(val key: SecretPlan?, val headers: List<HeaderPlan>)
+internal class SecretsPlan(val key: SecretPlan?, val headers: List<HeaderPlan>) {
+  val holdsAny: Boolean get() = key != null || headers.isNotEmpty()
+}
 
 internal sealed interface SecretSource {
   class Typed(val value: String) : SecretSource

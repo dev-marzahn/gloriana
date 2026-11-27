@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
+import dev.marzahn.gloriana.logic.connection.withoutPadding
 import dev.marzahn.gloriana.logic.keys.HeaderName
 import io.ktor.http.HttpMethod
 import io.ktor.http.Url
@@ -29,7 +30,9 @@ private val credentialHeaders: Set<HeaderName> =
   ApiFormat.entries.map { it.adapter.keyHeaderName }.toSet() + listOf("api-key", "x-goog-api-key").map(HeaderName::of)
 
 private fun credentialParts(value: String): List<String> =
-  listOf(value, value.substringAfter(' ', missingDelimiterValue = "").trim()).filter(String::isNotEmpty)
+  withoutPadding(value).let { sent ->
+    listOf(sent, withoutPadding(sent.substringAfter(' ', missingDelimiterValue = ""))).filter(String::isNotEmpty)
+  }
 
 internal fun headersWith(own: List<HostHeader>, custom: List<HostHeader>): List<HostHeader> {
   val replaced = custom.mapTo(HashSet(), HostHeader::name)

@@ -3,6 +3,8 @@ package dev.marzahn.gloriana.logic.connection.api
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.connection.StreamValue
+import dev.marzahn.gloriana.logic.connection.streamValue
 import io.ktor.http.HttpMethod
 import kotlin.test.Test
 import kotlin.test.assertEquals

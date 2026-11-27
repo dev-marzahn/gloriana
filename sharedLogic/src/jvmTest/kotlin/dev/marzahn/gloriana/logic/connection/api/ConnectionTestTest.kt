@@ -73,12 +73,13 @@ class ConnectionTestTest {
   }
 
   @Test
-  fun aStreamFlagThatIsNoBooleanFailsBeforeAnyRequest() = runBlocking {
+  fun aStreamFlagThatIsNoBooleanIsRefusedAsSaveRefusesIt() = runBlocking {
     val draft = harness.draftFor(ApiFormat.OpenAiChatCompletions, "normal") {
       it.copy(customBody = json("""{"stream":"yes"}"""))
     }
 
-    assertEquals(ProbeResult.Failed(ModelApiError.StreamNotBoolean), harness.probe().test(draft, stored = null))
+    val refused = ProbeResult.Refused(setOf(ConnectionProblem.StreamNotBoolean))
+    assertEquals(refused, harness.probe().test(draft, stored = null))
     assertEquals(emptyList(), harness.stub.recordedRequests())
   }
 
@@ -135,6 +136,19 @@ class ConnectionTestTest {
         assertContains(body, "The key $MASK is not valid.", message = way)
         assertFalse(TEST_KEY in body, way)
       }
+    }
+  }
+
+  @Test
+  fun aPaddedKeyGoesOutTrimmedAndTheHostsEchoOfItIsScrubbed() = runBlocking {
+    ApiFormat.entries.forEach { format ->
+      val padded = harness.draftFor(format, "key-echo", key = KeyInput.Entered(" \t$TEST_KEY \t"))
+
+      val result = assertIs<ProbeResult.Failed>(harness.probe().test(padded, stored = null), "$format")
+
+      val body = assertIs<ModelApiError.KeyRejected>(result.error, "$format").body
+      assertContains(body, "The key $MASK is not valid.", message = "$format")
+      assertFalse(TEST_KEY in body, "$format")
     }
   }
 

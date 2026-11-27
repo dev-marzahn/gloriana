@@ -181,6 +181,7 @@
     <string name="error_sampler_whole">Use a whole number.</string>
     <string name="error_sampler_number">Use a number.</string>
     <string name="error_sampler_no_format">No format takes %1$s: the widest range is %2$s.</string>
+    <string name="error_key_blank">Enter the key, or leave the field empty for no key.</string>
     <string name="error_key_character">A key can't hold %1$s. Use plain letters, digits and punctuation.</string>
     <string name="error_header_name_empty">Give this header a name.</string>
     <string name="error_header_name_character">A header name can't hold %1$s. Use letters, digits and !#$%&amp;'*+-.^_`|~.</string>
@@ -192,6 +193,7 @@
     <string name="error_json">This isn't valid JSON: %1$s at line %2$d, column %3$d.</string>
     <string name="error_json_unplaced">This isn't valid JSON: %1$s.</string>
     <string name="error_json_object">This must be a JSON object, in { }.</string>
+    <string name="error_stream_boolean">Set stream to true or false, or take it out.</string>
     <string name="json_comma">a comma is missing</string>
     <string name="json_brace">a } is missing</string>
     <string name="json_bracket">a ] is missing</string>

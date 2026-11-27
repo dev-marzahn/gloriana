@@ -6,10 +6,12 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
 import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertContains
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
 
@@ -34,6 +36,21 @@ class HostCallsTest {
     val reply = assertIs<HostReply.Body>(stub.calls.whole(get("record")))
 
     assertContains(reply.text, "/normal/v1/chat/completions")
+  }
+
+  @Test
+  fun aNetworkFailureIsUnreachableAndABugIsNotCaught() = runBlocking {
+    val request = get("record")
+    val offline = HostCalls { throw IOException("connection reset") }
+    val broken = HostCalls { error("a bug while building the client") }
+
+    assertEquals(ModelApiError.Unreachable, assertIs<HostReply.Failed>(offline.whole(request)).error)
+    assertEquals(
+      listOf(ModelApiError.Unreachable),
+      offline.events(request).toList().map { assertIs<HostEvent.Failed>(it).error },
+    )
+    assertFailsWith<IllegalStateException> { broken.whole(request) }
+    assertFailsWith<IllegalStateException> { broken.events(request).toList() }
   }
 
   @Test

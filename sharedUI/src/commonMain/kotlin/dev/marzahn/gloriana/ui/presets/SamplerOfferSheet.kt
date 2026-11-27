@@ -24,13 +24,13 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.Sampler
+import dev.marzahn.gloriana.logic.connection.api.SentValue
 import dev.marzahn.gloriana.logic.presets.NotCopied
 import dev.marzahn.gloriana.logic.presets.NotCopiedBecause
 import dev.marzahn.gloriana.logic.presets.PresetSampler
 import dev.marzahn.gloriana.logic.presets.PresetSamplers
 import dev.marzahn.gloriana.logic.presets.SamplerChange
 import dev.marzahn.gloriana.logic.presets.SamplerDifference
-import dev.marzahn.gloriana.logic.presets.SentValue
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaDropdownField

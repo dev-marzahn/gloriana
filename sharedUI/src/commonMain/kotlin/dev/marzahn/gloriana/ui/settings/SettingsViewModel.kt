@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.SecretsState
+import dev.marzahn.gloriana.logic.connection.holdsOpenableSecrets
 import dev.marzahn.gloriana.logic.connection.secretChecks
 import dev.marzahn.gloriana.logic.connection.secretsState
+import dev.marzahn.gloriana.logic.keys.KeyFindings
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.VaultState
 import dev.marzahn.gloriana.ui.connections.CommandResult
@@ -154,7 +156,7 @@ class SettingsViewModel(
       SettingsState(
         connections = list,
         showsPassphrase = vaultState.hasPassphrase,
-        keys = keysNote(list, vaultState, current.startOver),
+        keys = keysNote(list, vaultState, findings, current.startOver),
         rowActivity = current.rows,
         focus = focus(list, deleted, current.focusFirstRow),
       )
@@ -223,12 +225,12 @@ class SettingsViewModel(
   }
 }
 
-private fun keysNote(list: ConnectionsList, vault: VaultState, step: StartOverStep): KeysNote {
+private fun keysNote(list: ConnectionsList, vault: VaultState, findings: KeyFindings, step: StartOverStep): KeysNote {
   val rows = when (list) {
     is ConnectionsList.Loaded -> list.rows
     ConnectionsList.Loading, ConnectionsList.CouldNotLoad -> emptyList()
   }
-  val holding = rows.count { it.connection.holdsSecrets }
+  val holding = rows.count { findings.holdsOpenableSecrets(it.connection) }
   return if (vault.needsStartingOver && holding > 0) KeysNote.Unreadable(holding, step) else KeysNote.None
 }
 

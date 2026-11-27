@@ -8,24 +8,31 @@ import dev.marzahn.gloriana.logic.connection.ConnectionProblem.BaseUrlHasUserInf
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.BaseUrlNoHost
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.BaseUrlNotHttp
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.ContextSizeNotPositive
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderContentTypeInvalid
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameEmpty
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameNotToken
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameRepeated
-import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderContentTypeInvalid
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameReserved
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderValueBadCharacter
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderValueGone
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.KeyBadCharacter
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.KeyBlank
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.MaxReplyTokensNotBelowContextSize
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.MaxReplyTokensNotPositive
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.ModelEmpty
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.NameEmpty
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.NameTaken
-import dev.marzahn.gloriana.logic.connection.ConnectionProblem.KeyBadCharacter
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.SamplerNotFinite
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.SamplerOutOfRange
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.StreamNotBoolean
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.TimeoutNotPositive
+import dev.marzahn.gloriana.logic.keys.SecretSlot
+import dev.marzahn.gloriana.logic.keys.header
+import dev.marzahn.gloriana.logic.keys.opened
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.DynamicTest
 import org.junit.jupiter.api.TestFactory
@@ -136,6 +143,39 @@ class ConnectionRefusalTest {
         }
       }
     }
+  }
+
+  @Test
+  fun aCustomBodyStreamThatIsNoBooleanIsRefused() = runTest {
+    listOf("""{"stream":"true"}""", """{"stream":1}""", """{"stream":{}}""").forEach { body ->
+      val result = library.repository.create(draftWithBody(body))
+
+      assertEquals(setOf(StreamNotBoolean), assertIs<ConnectionSaveResult.Refused>(result).problems, body)
+    }
+    assertIs<ConnectionSaveResult.Saved>(library.repository.create(draftWithBody("""{"stream":null}""")))
+  }
+
+  private fun draftWithBody(body: String) =
+    draft().let { it.copy(fields = it.fields.copy(customBody = Json.parseToJsonElement(body).jsonObject)) }
+
+  @Test
+  fun aBlankKeyIsRefused() = runTest {
+    listOf("", " ", " \t ").forEach { key ->
+      val result = library.repository.create(draft(key = KeyInput.Entered(key)))
+
+      assertEquals(setOf(KeyBlank), assertIs<ConnectionSaveResult.Refused>(result).problems, "'$key'")
+    }
+    assertEquals(emptyList(), library.list())
+  }
+
+  @Test
+  fun aPaddedKeyAndHeaderValueAreStoredAsTheyGoOut() = runTest {
+    val saved = library.created(
+      draft(key = KeyInput.Entered(" sk-padded\t"), headers = listOf(HeaderDraft("X-Org", entered("\torg-1  ")))),
+    )
+
+    assertEquals("sk-padded", library.vault.opened(SecretSlot.ApiKey(saved.id), checkNotNull(saved.key)))
+    assertEquals("org-1", library.vault.opened(header(saved.id, "X-Org"), saved.headers.single().value))
   }
 
   @Test

@@ -5,10 +5,12 @@ import dev.marzahn.gloriana.logic.keys.KeyFindings
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.SecretSlot
 import dev.marzahn.gloriana.logic.keys.VaultState
+import dev.marzahn.gloriana.logic.app.failingAs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 
 enum class HeldSecrets {
@@ -55,6 +57,13 @@ private fun Connection.missingSecrets(findings: KeyFindings): SecretsState {
     .filterTo(mutableSetOf()) { findings.isMissing(SecretSlot.HeaderValue(id, it)) }
   val held = HeldSecrets.of(keyMissing, headersMissing.isNotEmpty()) ?: return SecretsState.Usable
   return SecretsState.Missing(keyMissing, headersMissing, held)
+}
+
+fun KeyFindings.holdsOpenableSecrets(connection: Connection): Boolean =
+  connection.storedSecrets().any { !isMissing(it.slot) }
+
+suspend fun KeyVault.countHoldingOpenableSecrets(connections: Flow<List<Connection>>): Int? = failingAs(null) {
+  combine(connections, findings) { list, found -> list.count(found::holdsOpenableSecrets) }.first()
 }
 
 fun KeyVault.secretChecks(connections: Flow<List<Connection>>): Flow<Unit> =

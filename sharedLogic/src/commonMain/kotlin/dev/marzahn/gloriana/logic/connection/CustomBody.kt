@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.logic.connection.api
+package dev.marzahn.gloriana.logic.connection
 
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -28,8 +28,8 @@ internal enum class StreamValue {
   NotBoolean,
 }
 
-internal fun JsonObject.streamsOr(generated: Boolean): Boolean =
-  if (STREAM in this) streamValue() == StreamValue.On else generated
+internal val ConnectionFields.streamValue: StreamValue
+  get() = JsonObject(mapOf(STREAM to JsonPrimitive(streaming))).mergedWith(customBody).streamValue()
 
 internal fun JsonObject.streamValue(): StreamValue {
   val stream = this[STREAM] ?: return StreamValue.Off

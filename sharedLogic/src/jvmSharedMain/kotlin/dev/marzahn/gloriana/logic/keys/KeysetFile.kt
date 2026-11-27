@@ -47,8 +47,8 @@ internal sealed interface StoredKeyset {
     private val header: ByteArray,
     private val body: ByteArray,
   ) : StoredKeyset {
-    fun open(passphrase: CharArray): KeysetHandle? =
-      when (val opening = Keysets.open(body, protection.wrapping(passphrase), header)) {
+    fun open(passphrase: CharArray, derivation: KeyDerivation): KeysetHandle? =
+      when (val opening = Keysets.open(body, protection.wrapping(passphrase, derivation), header)) {
         is KeysetOpening.Opened -> opening.keyset
         KeysetOpening.WrongKey, KeysetOpening.Lost -> null
       }

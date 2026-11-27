@@ -33,6 +33,10 @@ sealed interface ConnectionProblem {
 
   data class SamplerNotFinite(val sampler: Sampler) : ConnectionProblem
 
+  data object StreamNotBoolean : ConnectionProblem
+
+  data object KeyBlank : ConnectionProblem
+
   data class KeyBadCharacter(val character: Char) : ConnectionProblem
 
   data object KeyMissing : ConnectionProblem

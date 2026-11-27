@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.keys.DeviceKeyStore
 import dev.marzahn.gloriana.logic.keys.OpenResult
+import dev.marzahn.gloriana.logic.keys.PassphraseResult
 import dev.marzahn.gloriana.logic.keys.SealResult
 import dev.marzahn.gloriana.logic.keys.SecretSlot
 import dev.marzahn.gloriana.logic.keys.VaultState
@@ -55,12 +56,17 @@ class KeystoreKeyStoreDeviceTest {
   }
 
   @Test
-  fun aKeyTheKeystoreNoLongerRecoversIsReplaced() = runBlocking {
+  fun anUnrecoverableKeyLeavesEverythingAndTheNextUseOpensIt() = runBlocking {
     val sealed = sealed(vault(keystore))
+    val aliases = appAliases()
 
     val restarted = vault(KeystoreKeyStore(UnrecoverableOnce()))
-    assertEquals(OpenResult.Missing, restarted.open(SecretSlot.ApiKey(connection), sealed))
-    assertEquals(VaultState.Unlocked, vault(keystore).prepare())
+    assertEquals(OpenResult.Unavailable, restarted.open(SecretSlot.ApiKey(connection), sealed))
+    assertEquals(VaultState.Unavailable, restarted.state.value)
+    assertEquals(aliases, appAliases())
+
+    val retried = restarted.open(SecretSlot.ApiKey(connection), sealed)
+    assertEquals("sk-device", assertIs<OpenResult.Opened>(retried).value)
   }
 
   @Test
@@ -77,12 +83,24 @@ class KeystoreKeyStoreDeviceTest {
   }
 
   @Test
-  fun aKeystoreThatCannotEncryptAsksForAPassphrase() = runBlocking {
+  fun aKeystoreThatCannotEncryptLeavesNoUnwrappedKeysetAndAsksForAPassphrase() = runBlocking {
     val broken = KeystoreKeyStore(AndroidKeystoreKeys(), CannotEncrypt)
+    val fallback = vault(broken)
 
-    assertEquals(VaultState.NoKeychain, vault(broken).prepare())
+    assertEquals(VaultState.NoKeychain, fallback.prepare())
+    assertEquals(SealResult.NeedsPassphrase, fallback.seal(SecretSlot.ApiKey(connection), "sk-device"))
     assertEquals(emptyList(), appAliases())
+    assertEquals(emptyList(), keyFiles())
+
+    assertEquals(PassphraseResult.Accepted, fallback.setPassphrase("correct horse".toCharArray()))
+    sealed(fallback)
+    assertEquals(listOf("connections.json", "keyset-passphrase.json"), keyFiles())
+    assertEquals(emptyList(), appAliases())
+    assertEquals(VaultState.Locked, vault(broken).prepare())
   }
+
+  private fun keyFiles(): List<String> =
+    library.resolve("keys").toFile().list().orEmpty().filterNot { it.startsWith(".") }.sorted()
 
   private suspend fun sealed(vault: dev.marzahn.gloriana.logic.keys.KeyVault) =
     assertIs<SealResult.Sealed>(vault.seal(SecretSlot.ApiKey(connection), "sk-device")).secret

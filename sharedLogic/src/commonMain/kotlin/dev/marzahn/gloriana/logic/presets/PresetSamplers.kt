@@ -41,18 +41,16 @@ internal fun ApiFormat.sends(sampler: Sampler, value: Double): Boolean {
   return range != null && value.isFinite() && sampler.accepts(value) && range.holds(sampler.typed(value))
 }
 
-internal fun Sampler.read(samplers: Samplers): Double? = valueIn(samplers)?.toDouble()
-
-internal fun Sampler.written(samplers: Samplers, value: Double): Samplers = when (this) {
-  Sampler.Temperature -> samplers.copy(temperature = value)
-  Sampler.TopP -> samplers.copy(topP = value)
+internal fun Sampler.written(samplers: Samplers, value: Number): Samplers = when (this) {
+  Sampler.Temperature -> samplers.copy(temperature = value.toDouble())
+  Sampler.TopP -> samplers.copy(topP = value.toDouble())
   Sampler.TopK -> samplers.copy(topK = value.toLong())
-  Sampler.FrequencyPenalty -> samplers.copy(frequencyPenalty = value)
-  Sampler.PresencePenalty -> samplers.copy(presencePenalty = value)
+  Sampler.FrequencyPenalty -> samplers.copy(frequencyPenalty = value.toDouble())
+  Sampler.PresencePenalty -> samplers.copy(presencePenalty = value.toDouble())
   Sampler.Seed -> samplers.copy(seed = value.toLong())
 }
 
-private fun Sampler.typed(value: Double): Number = when (kind) {
+internal fun Sampler.typed(value: Double): Number = when (kind) {
   SamplerKind.Decimal -> value
   SamplerKind.Whole -> value.toLong()
 }

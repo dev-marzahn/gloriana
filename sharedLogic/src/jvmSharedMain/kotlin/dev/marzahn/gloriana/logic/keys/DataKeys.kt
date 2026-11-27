@@ -20,6 +20,8 @@ internal class DataKeys(path: Path) {
       ?.let(Keysets::aead)
       ?.also { opened[connectionId] = it }
 
+  fun holdsAny(): Boolean = read().isNotEmpty()
+
   fun findOrMake(connectionId: Uuid, keyset: Aead): Aead = find(connectionId, keyset) ?: make(connectionId, keyset)
 
   fun erase(connectionId: Uuid) {

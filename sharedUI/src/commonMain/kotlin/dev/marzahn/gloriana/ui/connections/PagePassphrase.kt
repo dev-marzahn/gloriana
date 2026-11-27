@@ -1,12 +1,10 @@
 package dev.marzahn.gloriana.ui.connections
 
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
+import dev.marzahn.gloriana.logic.connection.countHoldingOpenableSecrets
 import dev.marzahn.gloriana.logic.keys.ErasingResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.firstOrNull
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -34,7 +32,7 @@ internal class PagePassphrase(
   private fun forgot() {
     val unlocking = activity.prompt.unlocking()?.takeUnless { it.entry.checking } ?: return
     context.scope.launch {
-      val holding = repository.connections().map { list -> list.count { it.holdsSecrets } }.catch { }.firstOrNull()
+      val holding = vault.countHoldingOpenableSecrets(repository.connections())
       context.activity(
         when (holding) {
           null -> unlocking.copy(entry = unlocking.entry.couldNotCheck())

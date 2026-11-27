@@ -1,6 +1,5 @@
 package dev.marzahn.gloriana.logic.connection.api
 
-import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionDraft
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
@@ -42,13 +41,11 @@ internal class VaultConnectionProbe(
     stored: Connection?,
     waived: Set<ConnectionProblem>,
     work: suspend (OpenedConnection) -> ProbeResult<T>,
-  ): ProbeResult<T> = failingAs({ ProbeResult.Failed(failureOf(it)) }) {
-    when (val check = draft.check(stored, waivedFieldProblems = waived)) {
-      is DraftCheck.Refused -> ProbeResult.Refused(check.problems)
-      is DraftCheck.Ready -> when (val opening = vault.openSecrets(check.sources)) {
-        is SecretsOpening.Refused -> ProbeResult.Failed(opening.error)
-        is SecretsOpening.Opened -> work(OpenedConnection(check.fields, opening.key, opening.headers))
-      }
+  ): ProbeResult<T> = when (val check = draft.check(stored, waivedFieldProblems = waived)) {
+    is DraftCheck.Refused -> ProbeResult.Refused(check.problems)
+    is DraftCheck.Ready -> when (val opening = vault.openSecrets(check.sources)) {
+      is SecretsOpening.Refused -> ProbeResult.Failed(opening.error)
+      is SecretsOpening.Opened -> work(OpenedConnection(check.fields, opening.key, opening.headers))
     }
   }
 

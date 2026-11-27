@@ -7,7 +7,8 @@ internal fun ConnectionFields.normalised(): ConnectionFields =
 
 internal fun ConnectionFields.problems(): Set<ConnectionProblem> =
   textProblems(name, model, baseUrl) + numberProblems(contextSize, maxReplyTokens, timeoutSeconds) +
-    samplerProblems(samplers, format.samplerRanges)
+    samplerProblems(samplers, format.samplerRanges) +
+    setOfNotNull(ConnectionProblem.StreamNotBoolean.takeIf { streamValue == StreamValue.NotBoolean })
 
 fun textProblems(name: String, model: String, baseUrl: String): Set<ConnectionProblem> = buildSet {
   if (name.trim().isEmpty()) add(ConnectionProblem.NameEmpty)
@@ -50,15 +51,34 @@ internal fun ConnectionDraft.check(
   waivedFieldProblems: Set<ConnectionProblem> = emptySet(),
 ): DraftCheck {
   val normalised = fields.normalised()
-  val lookup = lookUpSources(stored, this)
+  val lookup = lookUpSources(stored, withTrimmedSecrets())
   val problems =
     (normalised.problems() - waivedFieldProblems) + key.problems() + headers.problems() + lookup.gone + alsoRefused
   return if (problems.isEmpty()) DraftCheck.Ready(normalised, lookup.sources) else DraftCheck.Refused(problems)
 }
 
-fun KeyInput.problems(): Set<ConnectionProblem> = setOfNotNull(
-  (this as? KeyInput.Entered)?.value?.let(::firstUnsendableCharacter)?.let(ConnectionProblem::KeyBadCharacter),
+private fun ConnectionDraft.withTrimmedSecrets(): ConnectionDraft = copy(
+  key = when (key) {
+    is KeyInput.Entered -> KeyInput.Entered(withoutPadding(key.value))
+    KeyInput.Kept, KeyInput.Removed -> key
+  },
+  headers = headers.map { header ->
+    when (val value = header.value) {
+      is HeaderValueInput.Entered -> header.copy(value = HeaderValueInput.Entered(withoutPadding(value.value)))
+      is HeaderValueInput.Kept -> header
+    }
+  },
 )
+
+fun KeyInput.problems(): Set<ConnectionProblem> = when (this) {
+  is KeyInput.Entered -> withoutPadding(value).let { sent ->
+    setOfNotNull(
+      ConnectionProblem.KeyBlank.takeIf { sent.isEmpty() },
+      firstUnsendableCharacter(sent)?.let(ConnectionProblem::KeyBadCharacter),
+    )
+  }
+  KeyInput.Kept, KeyInput.Removed -> emptySet()
+}
 
 fun List<HeaderDraft>.problems(): Set<ConnectionProblem> = buildSet {
   val seen = mutableSetOf<HeaderName>()

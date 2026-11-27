@@ -28,6 +28,13 @@ internal class KeysetHolder(private val keyring: Keyring) {
     action(keyset)
   }
 
+  suspend fun stateOpening(kinds: Set<StoredKind>): VaultState =
+    when (val kind = withFiles { keyring.storedKind() }) {
+      StoredKind.Unreadable -> VaultState.Unavailable
+      in kinds -> withKeyset { it.state }
+      else -> state.value
+    }
+
   suspend fun rewriting(applies: (Keyset) -> Boolean, write: (Keyset) -> PassphraseResult): PassphraseResult =
     withKeyset { current ->
       if (!applies(current)) return@withKeyset PassphraseResult.NotAvailable
