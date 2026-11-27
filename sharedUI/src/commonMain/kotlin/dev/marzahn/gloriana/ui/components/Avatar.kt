@@ -7,11 +7,13 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Immutable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
@@ -22,15 +24,17 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.marzahn.gloriana.logic.brand.AvatarGradientColors
+import dev.marzahn.gloriana.logic.brand.avatarGradientColors
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.ic_person
 import dev.marzahn.gloriana.ui.resources.ic_person_20
-import dev.marzahn.gloriana.ui.theme.AvatarGradient
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.painterResource
 import kotlin.uuid.Uuid
 
 private const val LETTER_SHARE = 0.4f
+private const val OPAQUE = 0xFF shl 24
 private val SmallIconMax = 20.dp
 
 private val combiningMarks = setOf(
@@ -39,7 +43,14 @@ private val combiningMarks = setOf(
   CharCategory.ENCLOSING_MARK,
 )
 
-fun avatarGradientIndex(id: Uuid, gradientCount: Int): Int = id.hashCode().mod(gradientCount)
+@Immutable
+data class AvatarGradient(val start: Color, val end: Color)
+
+fun avatarGradient(id: Uuid): AvatarGradient = avatarGradientColors(id).toAvatarGradient()
+
+internal fun AvatarGradientColors.toAvatarGradient() = AvatarGradient(opaque(startRgb), opaque(endRgb))
+
+private fun opaque(rgb: Int) = Color(OPAQUE or rgb)
 
 fun avatarInitial(name: String, locale: Locale): String? {
   val trimmed = name.trimStart()
@@ -48,7 +59,7 @@ fun avatarInitial(name: String, locale: Locale): String? {
   return (first + marks).toUpperCase(locale)
 }
 
-private fun AvatarGradient.brushFromTopStart(direction: LayoutDirection): Brush {
+internal fun AvatarGradient.brushFromTopStart(direction: LayoutDirection): Brush {
   val topStart = if (direction == LayoutDirection.Ltr) Offset.Zero else Offset(Float.POSITIVE_INFINITY, 0f)
   val bottomEnd = if (direction == LayoutDirection.Ltr) Offset.Infinite else Offset(0f, Float.POSITIVE_INFINITY)
   return Brush.linearGradient(listOf(start, end), topStart, bottomEnd)
@@ -57,8 +68,7 @@ private fun AvatarGradient.brushFromTopStart(direction: LayoutDirection): Brush 
 @Composable
 fun Avatar(id: Uuid, name: String, size: AvatarSize, modifier: Modifier = Modifier) {
   val shape = if (size.shape == AvatarShape.Tile) GlorianaTheme.shapes.panel else GlorianaTheme.shapes.pill
-  val gradients = GlorianaTheme.avatarGradients
-  val brush = gradients[avatarGradientIndex(id, gradients.size)].brushFromTopStart(LocalLayoutDirection.current)
+  val brush = avatarGradient(id).brushFromTopStart(LocalLayoutDirection.current)
   val initial = avatarInitial(name, Locale.current)
   Box(modifier.size(size.side).clip(shape).background(brush), contentAlignment = Alignment.Center) {
     if (initial == null) NoNameIcon(size.side / 2) else AvatarLetter(initial, size.side)

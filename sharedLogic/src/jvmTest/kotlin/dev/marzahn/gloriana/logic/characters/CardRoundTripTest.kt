@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.characters
 
+import dev.marzahn.gloriana.logic.brand.avatarGradientColors
 import dev.marzahn.gloriana.logic.characters.CardFixtures.sha256
 import dev.marzahn.gloriana.logic.characters.files.PlaceholderAvatar
 import kotlinx.coroutines.test.runTest
@@ -43,7 +44,7 @@ class CardRoundTripTest {
         val again = library.importedCharacter(CorpusFile("again.png", png))
 
         assertIs<ExportResult.Saved>(result)
-        val expectedAvatar = original.avatar ?: sha256(PlaceholderAvatar.png)
+        val expectedAvatar = original.avatar ?: sha256(PlaceholderAvatar.png(avatarGradientColors(original.id)))
         assertEquals(original.comparable().copy(avatar = expectedAvatar), again.comparable())
       }
     }
@@ -190,7 +191,7 @@ class CardRoundTripTest {
     val again = library.importedCharacter(CorpusFile("again.png", png))
 
     assertEquals(ExportResult.Saved(AvatarChange.Unreadable), result)
-    assertEquals(sha256(PlaceholderAvatar.png), again.avatar)
+    assertEquals(sha256(PlaceholderAvatar.png(avatarGradientColors(character.id))), again.avatar)
   }
 
   @Test

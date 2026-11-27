@@ -68,9 +68,6 @@ object GlorianaTheme {
   val motion: LookMotion
     @Composable @ReadOnlyComposable get() = LocalLook.current.tokens.motion
 
-  val avatarGradients: List<AvatarGradient>
-    @Composable @ReadOnlyComposable get() = LocalLook.current.tokens.avatarGradients
-
   val chat: ChatLook
     @Composable @ReadOnlyComposable get() = LocalLook.current.set.chat
 

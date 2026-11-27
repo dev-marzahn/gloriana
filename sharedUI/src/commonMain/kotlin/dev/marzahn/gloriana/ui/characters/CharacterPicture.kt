@@ -15,8 +15,6 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalDensity
@@ -24,10 +22,10 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.intl.Locale
 import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.sp
-import dev.marzahn.gloriana.ui.components.avatarGradientIndex
+import dev.marzahn.gloriana.ui.components.avatarGradient
 import dev.marzahn.gloriana.ui.components.avatarInitial
+import dev.marzahn.gloriana.ui.components.brushFromTopStart
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.ic_person
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
@@ -69,12 +67,8 @@ fun CharacterPicture(
 
 @Composable
 fun LetterPicture(id: Uuid, name: String, modifier: Modifier = Modifier) {
-  val gradients = GlorianaTheme.avatarGradients
-  val gradient = gradients[avatarGradientIndex(id, gradients.size)]
-  val direction = LocalLayoutDirection.current
-  val end = if (direction == LayoutDirection.Ltr) Offset.Infinite else Offset(0f, Float.POSITIVE_INFINITY)
-  val start = if (direction == LayoutDirection.Ltr) Offset.Zero else Offset(Float.POSITIVE_INFINITY, 0f)
-  BoxWithConstraints(modifier.background(Brush.linearGradient(listOf(gradient.start, gradient.end), start, end))) {
+  val brush = avatarGradient(id).brushFromTopStart(LocalLayoutDirection.current)
+  BoxWithConstraints(modifier.background(brush)) {
     val side = maxWidth * LETTER_SHARE
     val initial = avatarInitial(name, Locale.current)
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

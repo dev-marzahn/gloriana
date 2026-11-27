@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.marzahn.gloriana.logic.characters.AssetSource
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.characters.CharacterAsset
 import dev.marzahn.gloriana.ui.characters.fields.FieldContent
@@ -52,7 +51,6 @@ fun CharacterPanels(character: Character, modifier: Modifier = Modifier) {
   val model = remember(character) { sentToTheModel(character) }
   val notes = remember(character) { creatorNotes(character) }
   val tags = character.keptFields.tags.filter { it.isNotBlank() }
-  val assets = character.assets.filterNot { (it.source as? AssetSource.Stored)?.hash == character.avatar }
   Column(modifier, verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s16)) {
     val (nickname, rest) = model.partition { it.label == FieldLabel.Nickname }
     val sentRows = nickname.map(::markupRow) + listOf<PanelRow> { PronounsRow(character.pronouns.forms()) } +
@@ -61,7 +59,7 @@ fun CharacterPanels(character: Character, modifier: Modifier = Modifier) {
     val privateRows = listOfNotNull(
       notes?.let(::markupRow),
       tags.takeIf { it.isNotEmpty() }?.let(::tagsRow),
-      assets.takeIf { it.isNotEmpty() }?.let { { AssetsRow(it) } },
+      character.assets.takeIf { it.isNotEmpty() }?.let { { AssetsRow(it) } },
     )
     if (privateRows.isNotEmpty()) Panel(Res.drawable.ic_lock, stringResource(Res.string.panel_private), privateRows)
   }

@@ -3,6 +3,8 @@ package dev.marzahn.gloriana.ui.theme
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.text.font.FontFamily
+import dev.marzahn.gloriana.logic.brand.AvatarGradientTable
+import dev.marzahn.gloriana.ui.components.toAvatarGradient
 import kotlin.math.max
 import kotlin.math.min
 import kotlin.test.Test
@@ -56,7 +58,7 @@ class ContrastTest {
   fun avatarLettersReadOnEveryGradientStopInBothModes() {
     val tokens = defaultLookTokens(LookFonts(FontFamily.Serif, FontFamily.SansSerif))
     listOf(tokens.light, tokens.dark).forEach { set ->
-      tokens.avatarGradients.forEachIndexed { index, gradient ->
+      AvatarGradientTable.map { it.toAvatarGradient() }.forEachIndexed { index, gradient ->
         assertContrast("letter on gradient $index start", set.colors.onAvatar, gradient.start, TEXT)
         assertContrast("letter on gradient $index end", set.colors.onAvatar, gradient.end, TEXT)
       }

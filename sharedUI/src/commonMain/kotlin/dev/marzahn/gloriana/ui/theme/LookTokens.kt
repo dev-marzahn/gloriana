@@ -16,7 +16,6 @@ data class LookTokens(
   val baseRadius: Dp,
   val spacing: Spacing,
   val motion: LookMotion,
-  val avatarGradients: List<AvatarGradient>,
 ) {
   fun forMode(dark: Boolean): LookSet = if (dark) this.dark else light
 }
@@ -26,9 +25,6 @@ data class LookSet(val colors: LookColors, val shadows: LookShadows, val chat: C
 
 @Immutable
 data class LookFonts(val display: FontFamily, val ui: FontFamily)
-
-@Immutable
-data class AvatarGradient(val start: Color, val end: Color)
 
 @Immutable
 sealed interface ChatBackground {

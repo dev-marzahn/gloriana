@@ -12,11 +12,9 @@ import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
@@ -40,6 +38,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import dev.marzahn.gloriana.ui.navigation.ShellInsets
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.close
 import dev.marzahn.gloriana.ui.resources.ic_close
@@ -121,7 +120,10 @@ private fun Viewer(name: String, avatarPath: String, onClose: () -> Unit) {
 private fun TopBar(name: String, onClose: () -> Unit, modifier: Modifier = Modifier) {
   val onImage = GlorianaTheme.colors.onAvatar
   Row(
-    modifier.fillMaxWidth().windowInsetsPadding(WindowInsets.safeDrawing).padding(GlorianaTheme.spacing.s8),
+    modifier
+      .fillMaxWidth()
+      .windowInsetsPadding(ShellInsets.safeDrawingWithoutKeyboard)
+      .padding(GlorianaTheme.spacing.s8),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     val shape = GlorianaTheme.shapes.control

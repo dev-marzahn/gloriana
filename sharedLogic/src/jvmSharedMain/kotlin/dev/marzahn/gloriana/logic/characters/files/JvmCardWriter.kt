@@ -54,7 +54,7 @@ internal class JvmCardWriter(private val store: AssetStore, transcoder: AvatarTr
   }
 
   private fun writePng(card: CardForExport, embedded: Set<AssetHash>, destination: ExportDestination): ExportResult {
-    val avatar = avatars.of(card.character.avatar)
+    val avatar = avatars.of(card.character)
     val assets = listOf(PNG_AVATAR_ENTRY) + card.character.assets.mapNotNull(::pngEntry)
     val cards = cardJson(card, CardSpec.V2, assets) to cardJson(card, CardSpec.V3, assets)
     return destination.write { sink ->

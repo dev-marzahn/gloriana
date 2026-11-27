@@ -49,15 +49,6 @@ private val DefaultMotion = LookMotion(
   paneIn = MotionToken(durationMillis = 150, easing = EmphasizedDecelerate).after(PaneOut),
 )
 
-private val DefaultAvatarGradients = listOf(
-  AvatarGradient(start = Color(0xFF3D4A6B), end = Color(0xFF55618A)),
-  AvatarGradient(start = Color(0xFF2F4858), end = Color(0xFF3F6E70)),
-  AvatarGradient(start = Color(0xFF5A4A78), end = Color(0xFF7A5C96)),
-  AvatarGradient(start = Color(0xFF6E5200), end = Color(0xFF8A6414)),
-  AvatarGradient(start = Color(0xFF3C5A3A), end = Color(0xFF4E7044)),
-  AvatarGradient(start = Color(0xFF4A3B33), end = Color(0xFF6E5446)),
-)
-
 @Composable
 fun bundledLookFonts(): LookFonts = LookFonts(
   display = FontFamily(
@@ -99,7 +90,6 @@ fun defaultLookTokens(fonts: LookFonts): LookTokens = LookTokens(
   baseRadius = BaseRadius,
   spacing = DefaultSpacing,
   motion = DefaultMotion,
-  avatarGradients = DefaultAvatarGradients,
 )
 
 private fun defaultLookSet(colors: LookColors, shadows: LookShadows): LookSet {

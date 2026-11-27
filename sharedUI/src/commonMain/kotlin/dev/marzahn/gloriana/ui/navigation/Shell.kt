@@ -21,11 +21,7 @@ import dev.marzahn.gloriana.ui.components.GlorianaSnackbarHost
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.only
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -48,8 +44,6 @@ import dev.marzahn.gloriana.ui.theme.LookMotion
 import dev.marzahn.gloriana.ui.theme.Navigation
 
 private val PushDistance = 30.dp
-private val TopSides = WindowInsetsSides.Top + WindowInsetsSides.Horizontal
-private val SidesBesideRail = WindowInsetsSides.End + WindowInsetsSides.Vertical
 
 @Composable
 internal fun Shell(
@@ -65,13 +59,13 @@ internal fun Shell(
     val besideRail = @Composable { rail: @Composable () -> Unit ->
       Row(shellModifier) {
         rail()
-        val insets = WindowInsets.safeDrawing.only(SidesBesideRail)
+        val insets = ShellInsets.besideRail
         DestinationContent(navigator, entries, navigation, messages, Modifier.weight(1f).windowInsetsPadding(insets))
       }
     }
     when (navigation) {
       Navigation.Bar -> Column(shellModifier) {
-        val insets = if (navigator.atRoot) WindowInsets.safeDrawing.only(TopSides) else WindowInsets.safeDrawing
+        val insets = if (navigator.atRoot) ShellInsets.topLevelScreen else ShellInsets.safeDrawingWithoutKeyboard
         DestinationContent(navigator, entries, navigation, messages, Modifier.weight(1f).windowInsetsPadding(insets))
         if (navigator.atRoot) GlorianaNavigationBar(navigator.current, navigator::select)
       }

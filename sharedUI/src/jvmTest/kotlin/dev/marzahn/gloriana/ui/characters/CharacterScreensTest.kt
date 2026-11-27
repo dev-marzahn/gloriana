@@ -20,6 +20,9 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.v2.runComposeUiTest
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import dev.marzahn.gloriana.logic.assets.AssetHash
+import dev.marzahn.gloriana.logic.characters.AssetSource
+import dev.marzahn.gloriana.logic.characters.CharacterAsset
 import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.DamagedAs
 import dev.marzahn.gloriana.logic.characters.ExportFailure
@@ -34,9 +37,11 @@ import dev.marzahn.gloriana.ui.library.LibraryState
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.characters_error
 import dev.marzahn.gloriana.ui.resources.create
+import dev.marzahn.gloriana.ui.resources.delete_part_assets
 import dev.marzahn.gloriana.ui.resources.edit
 import dev.marzahn.gloriana.ui.resources.export
 import dev.marzahn.gloriana.ui.resources.field_alternate_greeting
+import dev.marzahn.gloriana.ui.resources.field_assets
 import dev.marzahn.gloriana.ui.resources.field_description
 import dev.marzahn.gloriana.ui.resources.field_greeting
 import dev.marzahn.gloriana.ui.resources.field_nickname
@@ -215,6 +220,37 @@ class CharacterScreensTest {
     val failed = ExportState.NotSaved("Tamsin.png", problem)
     show(phone) { CharacterContent(shown(fullCharacter, failed), PageActions()) }
     onNodeWithText("Tamsin.png wasn't saved:", substring = true).assertIsDisplayed()
+  }
+
+  @Test
+  fun `an asset that shares the avatar's file is still listed among the other assets`() = runComposeUiTest {
+    val avatar = AssetHash("a".repeat(64))
+    val sharesAvatarFile = CharacterAsset("emotion", "joy", "png", AssetSource.Stored(avatar))
+    val linked = CharacterAsset("background", "hall", "png", AssetSource.Uri("https://example.com/hall.png"))
+    val withAvatar = character().copy(avatar = avatar, assets = listOf(sharesAvatarFile, linked))
+    show(phone) { CharacterContent(shown(withAvatar), PageActions()) }
+    onNodeWithText(getString(Res.string.field_assets)).assertExists()
+    onNodeWithText("joy").assertExists()
+    onNodeWithText("hall").assertExists()
+  }
+
+  @Test
+  fun `with no avatar every asset is listed`() = runComposeUiTest {
+    val stored = CharacterAsset("emotion", "joy", "png", AssetSource.Stored(AssetHash("b".repeat(64))))
+    val linked = CharacterAsset("background", "hall", "png", AssetSource.Uri("https://example.com/hall.png"))
+    show(phone) { CharacterContent(shown(character().copy(assets = listOf(stored, linked))), PageActions()) }
+    onNodeWithText("joy").assertExists()
+    onNodeWithText("hall").assertExists()
+  }
+
+  @Test
+  fun `the delete confirmation counts every stored asset besides the avatar`() = runComposeUiTest {
+    val stored = listOf("joy", "anger").mapIndexed { index, name ->
+      CharacterAsset("emotion", name, "png", AssetSource.Stored(AssetHash("${index + 1}".repeat(64))))
+    }
+    val withAvatar = character().copy(avatar = AssetHash("a".repeat(64)), assets = stored)
+    show(phone) { DeleteSheet(withAvatar, deleting = false, onConfirm = {}, onDismiss = {}) }
+    onNodeWithText(getPluralString(Res.plurals.delete_part_assets, 2, 2), substring = true).assertExists()
   }
 
   @Test

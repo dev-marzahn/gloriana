@@ -189,8 +189,7 @@ fun DeleteSheet(
 
 @Composable
 private fun deleteMessage(character: Character): String {
-  val otherAssets = character.assets.count { it.source is AssetSource.Stored } -
-    if (character.avatar != null) 1 else 0
+  val otherAssets = character.assets.count { it.source is AssetSource.Stored }
   val parts = listOfNotNull(
     character.avatar?.let { stringResource(Res.string.delete_part_avatar) },
     otherAssets.takeIf { it > 0 }?.let { pluralStringResource(Res.plurals.delete_part_assets, it, it) },

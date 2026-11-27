@@ -6,13 +6,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.WindowInsetsSides
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.selection.selectableGroup
@@ -50,8 +46,6 @@ private val RailWidth = 80.dp
 private val RailEdge = 12.dp
 private val MarkToFirstItem = 14.dp
 private val RailItemGap = 6.dp
-
-private val RailInsets = WindowInsetsSides.Start + WindowInsetsSides.Vertical
 
 @Composable
 private fun LookColors.barItemColors(): NavigationBarItemColors = NavigationBarItemDefaults.colors(
@@ -120,7 +114,7 @@ internal fun LabelledNavigationRail(
   val itemColors = colors.railItemColors()
   val ringShape = GlorianaTheme.shapes.control
   Row(modifier.fillMaxHeight()) {
-    NavigationRail(containerColor = colors.rail, windowInsets = WindowInsets.safeDrawing.only(RailInsets)) {
+    NavigationRail(containerColor = colors.rail, windowInsets = ShellInsets.rail) {
       Destination.entries.forEach { destination ->
         val selected = destination == current
         val source = remember { MutableInteractionSource() }
@@ -151,7 +145,7 @@ internal fun WorkbenchRail(current: Destination, onSelect: (Destination) -> Unit
       Modifier
         .fillMaxHeight()
         .width(RailWidth)
-        .windowInsetsPadding(WindowInsets.safeDrawing.only(RailInsets))
+        .windowInsetsPadding(ShellInsets.rail)
         .padding(vertical = RailEdge)
         .selectableGroup(),
       horizontalAlignment = Alignment.CenterHorizontally,

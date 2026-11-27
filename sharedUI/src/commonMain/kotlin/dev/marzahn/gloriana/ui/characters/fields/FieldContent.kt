@@ -28,7 +28,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.details_summary
 import dev.marzahn.gloriana.ui.resources.ic_chevron_right
@@ -101,6 +100,9 @@ private fun ItemListView(list: FieldBlock.ItemList, panel: Color) {
   }
 }
 
+internal fun codeBlockStyle(reading: TextStyle): TextStyle =
+  reading.copy(fontFamily = FontFamily.Monospace, fontSize = reading.fontSize * CODE_BLOCK)
+
 @Composable
 private fun Preformatted(text: String) {
   val colors = GlorianaTheme.colors
@@ -115,7 +117,7 @@ private fun Preformatted(text: String) {
   ) {
     Text(
       text,
-      style = GlorianaTheme.type.reading.copy(fontFamily = FontFamily.Monospace, fontSize = CODE_BLOCK.em),
+      style = codeBlockStyle(GlorianaTheme.type.reading),
       color = colors.text,
       softWrap = false,
     )
