@@ -159,7 +159,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
   var creating by rememberSaveable { mutableStateOf(false) }
   val actions = SettingsActions(
     onOpen = { navigator.replaceTop(Destination.Settings, it) },
-    onCreate = { navigator.leaving(Destination.Settings) { creating = true } },
+    onCreate = { creating = true },
     onIntent = viewModel::on,
   )
   val onWorkbench = GlorianaTheme.widthClass.navigation == Navigation.Workbench

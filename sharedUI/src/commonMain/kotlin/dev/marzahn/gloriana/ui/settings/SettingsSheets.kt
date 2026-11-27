@@ -22,23 +22,12 @@ internal fun SettingsSheets(state: SettingsState, onIntent: (SettingsIntent) -> 
       onDismiss = { onIntent(SettingsIntent.CancelDelete) },
     )
   }
-  when (val keys = state.keys) {
-    is KeysNote.Unreadable -> StartOverSheet(keys, onIntent)
-    KeysNote.None -> Unit
+  state.startOver?.let { sheet ->
+    StartOverConfirmation(
+      connections = sheet.holding,
+      erasing = sheet.erasing,
+      onConfirm = { onIntent(SettingsIntent.ConfirmStartOver) },
+      onDismiss = { onIntent(SettingsIntent.CancelStartOver) },
+    )
   }
-}
-
-@Composable
-private fun StartOverSheet(keys: KeysNote.Unreadable, onIntent: (SettingsIntent) -> Unit) {
-  val erasing = when (keys.step) {
-    StartOverStep.Confirming -> false
-    StartOverStep.Erasing -> true
-    StartOverStep.Idle, is StartOverStep.Failed -> return
-  }
-  StartOverConfirmation(
-    connections = keys.holding,
-    erasing = erasing,
-    onConfirm = { onIntent(SettingsIntent.ConfirmStartOver) },
-    onDismiss = { onIntent(SettingsIntent.CancelStartOver) },
-  )
 }

@@ -95,13 +95,13 @@ internal class PagePassphrase(
   }
 }
 
-private fun PageActivity.Prompt.typedPassphrase(text: String): PageActivity.Prompt = when (this) {
+private fun PageActivity.Prompt.typedPassphrase(text: SecretText): PageActivity.Prompt = when (this) {
   is PageActivity.SettingPassphrase -> copy(entry = entry.typedPassphrase(text))
   is PageActivity.Unlocking -> copy(entry = entry.typed(text))
   is PageActivity.Resetting -> copy(entry = entry.typedPassphrase(text))
 }
 
-private fun PageActivity.Prompt.typedAgain(text: String): PageActivity.Prompt = when (this) {
+private fun PageActivity.Prompt.typedAgain(text: SecretText): PageActivity.Prompt = when (this) {
   is PageActivity.SettingPassphrase -> copy(entry = entry.typedAgain(text))
   is PageActivity.Unlocking -> this
   is PageActivity.Resetting -> copy(entry = entry.typedAgain(text))

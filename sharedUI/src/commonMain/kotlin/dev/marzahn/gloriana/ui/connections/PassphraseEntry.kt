@@ -23,9 +23,9 @@ data class NewPassphraseEntry(
 ) {
   val busy: Boolean get() = step == EntryStep.Busy
 
-  fun typedPassphrase(text: String) = copy(passphrase = SecretText(text), problem = null)
+  fun typedPassphrase(text: SecretText) = copy(passphrase = text, problem = null)
 
-  fun typedAgain(text: String) = copy(again = SecretText(text), problem = null)
+  fun typedAgain(text: SecretText) = copy(again = text, problem = null)
 }
 
 sealed interface Submitted<out R> {
@@ -66,7 +66,7 @@ enum class UnlockStep { Typing, Checking, Wrong, CouldNotCheck }
 data class UnlockEntry(val passphrase: SecretText = SecretText.Empty, val step: UnlockStep = UnlockStep.Typing) {
   val checking: Boolean get() = step == UnlockStep.Checking
 
-  fun typed(text: String) = UnlockEntry(SecretText(text), UnlockStep.Typing)
+  fun typed(text: SecretText) = UnlockEntry(text, UnlockStep.Typing)
 
   fun couldNotCheck() = copy(step = UnlockStep.CouldNotCheck)
 

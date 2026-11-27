@@ -16,7 +16,7 @@ internal class PageProbing(private val context: PageContext, private val probe: 
   fun test() {
     val page = context.idlePage() ?: return
     val draft = context.ready(page.form, testWaives) ?: return
-    val probed = Probed(page.form.keyContext, draft.fields.timeoutSeconds, context.held(page))
+    val probed = Probed(page.form.keyContext, draft.fields.timeoutSeconds, context.held(page, draft))
     session.update { it.copy(activity = PageActivity.Testing, note = null, test = null) }
     context.scope.launch {
       val started = TimeSource.Monotonic.markNow()
@@ -45,7 +45,7 @@ internal class PageProbing(private val context: PageContext, private val probe: 
   fun openModelList() {
     val page = context.idlePage() ?: return
     val draft = context.ready(page.form, modelListWaives) ?: return
-    val probed = Probed(page.form.keyContext, draft.fields.timeoutSeconds, context.held(page))
+    val probed = Probed(page.form.keyContext, draft.fields.timeoutSeconds, context.held(page, draft))
     val asking = PageActivity.PickingModel(ModelList.Asking)
     session.update { it.copy(activity = asking, modelListNote = null) }
     context.scope.launch {

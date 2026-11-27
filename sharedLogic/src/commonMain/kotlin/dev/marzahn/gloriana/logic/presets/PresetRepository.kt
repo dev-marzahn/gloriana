@@ -1,5 +1,7 @@
 package dev.marzahn.gloriana.logic.presets
 
+import dev.marzahn.gloriana.logic.storage.ChatSetting
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.assets.isStorageFull
 import dev.marzahn.gloriana.logic.files.ExportDestination
@@ -17,7 +19,7 @@ class PresetRepository internal constructor(
   private val dao: PresetDao,
   private val writes: PresetWrites,
   private val ids: IdFactory,
-  private val chats: PresetChats,
+  private val chats: ChatsUsing,
 ) {
   fun presets(): Flow<List<PresetSummary>> =
     dao.summaries().map { rows -> rows.map { PresetSummary(it.id, it.name, it.entries, it.entriesOn) } }
@@ -26,7 +28,7 @@ class PresetRepository internal constructor(
 
   fun newGroup(name: String): PresetGroup = PresetGroup(ids.newId(), name)
 
-  suspend fun chatsUsing(id: Uuid): Int = chats.count(id)
+  suspend fun chatsUsing(id: Uuid): Int = chats.count(ChatSetting.Preset, id)
 
   suspend fun save(preset: Preset): PresetSaveResult {
     val trimmed = preset.copy(name = preset.name.trim())

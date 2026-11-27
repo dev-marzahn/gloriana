@@ -1,14 +1,21 @@
 package dev.marzahn.gloriana.ui.connections
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.SemanticsNodeInteraction
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.hasAnyDescendant
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isEnabled
+import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onLast
@@ -17,6 +24,7 @@ import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.marzahn.gloriana.ui.App
 import dev.marzahn.gloriana.ui.resources.Res
+import dev.marzahn.gloriana.ui.resources.cancel
 import dev.marzahn.gloriana.ui.resources.connection_default_mark
 import dev.marzahn.gloriana.ui.resources.connection_more
 import dev.marzahn.gloriana.ui.resources.create
@@ -24,9 +32,12 @@ import dev.marzahn.gloriana.ui.resources.delete
 import dev.marzahn.gloriana.ui.resources.delete_connection
 import dev.marzahn.gloriana.ui.resources.destination_settings
 import dev.marzahn.gloriana.ui.resources.discard
+import dev.marzahn.gloriana.ui.resources.keep_editing
 import dev.marzahn.gloriana.ui.resources.make_default
 import dev.marzahn.gloriana.ui.resources.model_placeholder
+import dev.marzahn.gloriana.ui.resources.model_settings
 import dev.marzahn.gloriana.ui.resources.save
+import dev.marzahn.gloriana.ui.resources.saving
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
@@ -164,6 +175,91 @@ class ConnectionScreensTest {
       waitUntil(timeoutMillis = WAIT_MILLIS) { library.connections().isEmpty() }
       waitUntil(timeoutMillis = WAIT_MILLIS) { onAllNodesWithText("Work, edited").fetchSemanticsNodes().isEmpty() }
       noDiscardQuestion()
+    }
+  }
+
+  @Test
+  fun createAsksAboutUnsavedChangesOnlyOnceATemplateIsPicked() = LiveLibrary.use { library ->
+    runComposeUiTest {
+      library.created("Work")
+      setContent { library.Show { Box(Modifier.size(1000.dp, 700.dp)) { App() } } }
+      tap(hasContentDescription(getString(Res.string.destination_settings)) and hasClickAction())
+      openRow("Work")
+      field("Work").performTextReplacement("Work, edited")
+
+      tap(Res.string.create)
+      waitFor(hasText("Anthropic") and hasClickAction())
+      noDiscardQuestion()
+      tap(Res.string.cancel)
+      waitForIdle()
+      noDiscardQuestion()
+      field("Work, edited")
+
+      tap(Res.string.create)
+      tap(hasText("Anthropic") and hasClickAction())
+      tap(Res.string.keep_editing)
+      field("Work, edited")
+    }
+  }
+
+  @Test
+  fun thePageTakesNoEditWhileItSavesSoNoneIsLost() = LiveLibrary.use { library ->
+    runComposeUiTest {
+      library.created("Work")
+      openSettings(library)
+      openRow("Work")
+      field("Work").performTextReplacement("Home")
+      library.writes.hold()
+      tap(Res.string.save)
+      waitFor(hasText(getString(Res.string.saving)))
+
+      waitFor(hasText("Home") and isNotEnabled())
+      assertTrue(onAllNodes(hasSetTextAction() and isEnabled()).fetchSemanticsNodes().isEmpty())
+      waitUntil(timeoutMillis = WAIT_MILLIS) { library.writes.writesCaught > 0 }
+      library.writes.release()
+      waitUntil(timeoutMillis = WAIT_MILLIS) { library.connections().single().fields.name == "Home" }
+      field("Home").assertIsEnabled()
+    }
+  }
+
+  @Test
+  fun anEditMadeWhileModelSettingsSaveStaysUnsaved() = LiveLibrary.use { library ->
+    runComposeUiTest {
+      openSettings(library)
+      tap(Res.string.model_settings)
+      val temperature = hasSetTextAction()
+      waitFor(temperature)
+      onAllNodes(temperature).onFirst().performTextReplacement("0.5")
+      library.writes.hold()
+      tap(Res.string.save)
+      waitFor(hasText(getString(Res.string.saving)))
+      field("0.5").performTextReplacement("0.9")
+      waitUntil(timeoutMillis = WAIT_MILLIS) { library.writes.writesCaught > 0 }
+      library.writes.release()
+
+      waitUntil(timeoutMillis = WAIT_MILLIS) { library.globalSamplers().temperature == 0.5 }
+      waitForIdle()
+      field("0.9")
+      tap(Res.string.save)
+      waitUntil(timeoutMillis = WAIT_MILLIS) { library.globalSamplers().temperature == 0.9 }
+    }
+  }
+
+  @Test
+  fun discardingModelSettingsPutsBackWhatIsSaved() = LiveLibrary.use { library ->
+    runComposeUiTest {
+      openSettings(library)
+      tap(Res.string.model_settings)
+      val temperature = hasSetTextAction()
+      waitFor(temperature)
+      onAllNodes(temperature).onFirst().performTextReplacement("0.5")
+      tap(hasContentDescription(getString(Res.string.destination_settings)) and hasClickAction())
+      tap(Res.string.discard)
+
+      tap(Res.string.model_settings)
+      waitFor(temperature)
+      assertTrue(onAllNodesWithText("0.5").fetchSemanticsNodes().isEmpty())
+      assertEquals(null, library.globalSamplers().temperature)
     }
   }
 }

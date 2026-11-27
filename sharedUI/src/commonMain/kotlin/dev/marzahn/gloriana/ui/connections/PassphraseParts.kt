@@ -43,6 +43,7 @@ import dev.marzahn.gloriana.ui.resources.hide_passphrase
 import dev.marzahn.gloriana.ui.resources.ic_check_20
 import dev.marzahn.gloriana.ui.resources.ic_visibility
 import dev.marzahn.gloriana.ui.resources.ic_visibility_off
+import dev.marzahn.gloriana.ui.resources.no_keys_held
 import dev.marzahn.gloriana.ui.resources.passphrase_hint
 import dev.marzahn.gloriana.ui.resources.show_passphrase
 import dev.marzahn.gloriana.ui.resources.start_over_confirm
@@ -63,8 +64,8 @@ fun passphraseLabels() = SecretLabels(
 
 @Composable
 fun SecretField(
-  value: String,
-  onValueChange: (String) -> Unit,
+  value: SecretText,
+  onValueChange: (SecretText) -> Unit,
   labels: SecretLabels,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
@@ -72,14 +73,16 @@ fun SecretField(
   imeAction: ImeAction = ImeAction.Next,
   onDone: () -> Unit = {},
   selectAll: Boolean = false,
+  placeholder: String? = null,
 ) {
   var shown by rememberSaveable { mutableStateOf(false) }
   GlorianaTextField(
-    value = value,
-    onValueChange = onValueChange,
+    value = value.text,
+    onValueChange = { onValueChange(SecretText(it)) },
     selectAll = selectAll,
     modifier = modifier.fillMaxWidth(),
     enabled = enabled,
+    placeholder = placeholder,
     error = error,
     visualTransformation = if (shown) VisualTransformation.None else PasswordVisualTransformation(),
     keyboardOptions = KeyboardOptions(
@@ -107,8 +110,8 @@ private fun NewPassphraseProblem.text(): String = stringResource(
 )
 
 class NewPassphraseActions(
-  val onPassphrase: (String) -> Unit,
-  val onAgain: (String) -> Unit,
+  val onPassphrase: (SecretText) -> Unit,
+  val onAgain: (SecretText) -> Unit,
   val onSubmit: () -> Unit,
 )
 
@@ -134,7 +137,7 @@ fun NewPassphraseFields(
   Column(modifier, verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s16)) {
     LabelledField(label, hint = stringResource(Res.string.passphrase_hint), error = passphraseError) {
       SecretField(
-        entry.passphrase.text,
+        entry.passphrase,
         actions.onPassphrase,
         passphraseLabels(),
         Modifier.focusRequester(passphraseFocus),
@@ -145,7 +148,7 @@ fun NewPassphraseFields(
     }
     LabelledField(stringResource(Res.string.type_it_again), error = againError) {
       SecretField(
-        entry.again.text,
+        entry.again,
         actions.onAgain,
         passphraseLabels(),
         Modifier.focusRequester(againFocus),
@@ -221,11 +224,17 @@ fun PassphraseSheet(
 }
 
 @Composable
-fun StartOverConfirmation(connections: Int, erasing: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
+fun StartOverConfirmation(connections: Int?, erasing: Boolean, onConfirm: () -> Unit, onDismiss: () -> Unit) {
   GlorianaConfirmation(
     Confirmation(
       title = stringResource(Res.string.start_over_title),
-      lines = listOf(pluralStringResource(Res.plurals.start_over_text, connections, connections)),
+      lines = listOfNotNull(
+        when (connections) {
+          null -> null
+          0 -> stringResource(Res.string.no_keys_held)
+          else -> pluralStringResource(Res.plurals.start_over_text, connections, connections)
+        },
+      ),
       confirmLabel = stringResource(if (erasing) Res.string.erasing else Res.string.start_over_confirm),
     ),
     onConfirm = onConfirm,

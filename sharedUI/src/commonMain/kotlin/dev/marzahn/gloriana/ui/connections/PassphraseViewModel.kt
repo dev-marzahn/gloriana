@@ -25,11 +25,11 @@ data class ChangePassphrase(
 )
 
 sealed interface ChangeIntent {
-  data class TypeCurrent(val text: String) : ChangeIntent
+  data class TypeCurrent(val text: SecretText) : ChangeIntent
 
-  data class TypeNew(val text: String) : ChangeIntent
+  data class TypeNew(val text: SecretText) : ChangeIntent
 
-  data class TypeAgain(val text: String) : ChangeIntent
+  data class TypeAgain(val text: SecretText) : ChangeIntent
 
   data object Change : ChangeIntent
 }
@@ -45,7 +45,7 @@ class PassphraseViewModel(private val vault: KeyVault, private val messages: App
   fun on(intent: ChangeIntent) {
     when (intent) {
       is ChangeIntent.TypeCurrent -> mutableState.update {
-        it.copy(current = SecretText(intent.text), currentWrong = false)
+        it.copy(current = intent.text, currentWrong = false)
       }
       is ChangeIntent.TypeNew -> mutableState.update { it.copy(entry = it.entry.typedPassphrase(intent.text)) }
       is ChangeIntent.TypeAgain -> mutableState.update { it.copy(entry = it.entry.typedAgain(intent.text)) }

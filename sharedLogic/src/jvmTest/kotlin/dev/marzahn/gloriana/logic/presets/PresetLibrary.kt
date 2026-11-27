@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.presets
 
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.characters.CorpusFile
 import dev.marzahn.gloriana.logic.characters.MemoryDestination
 import dev.marzahn.gloriana.logic.connection.ConnectionLibrary
@@ -24,7 +25,7 @@ class PresetLibrary(
   directory: Path,
   database: GlorianaDatabase = desktopGlorianaDatabase(directory),
   faults: Faults = Faults.None,
-  chats: PresetChats = PresetChats.NoneYet,
+  chats: ChatsUsing = ChatsUsing.NoneYet,
 ) : AutoCloseable {
   val connections = ConnectionLibrary(directory, database = database)
   private val updatedAt = UpdatedAtClock(connections.clock)

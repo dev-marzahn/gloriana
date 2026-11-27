@@ -4,9 +4,10 @@ import dev.marzahn.gloriana.logic.connection.ConnectionDraft
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.ConnectionSaveResult
+import dev.marzahn.gloriana.logic.connection.HeaderValueInput
 import dev.marzahn.gloriana.logic.connection.HeldSecrets
+import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.api.ConnectionProbe
-import dev.marzahn.gloriana.logic.connection.heldSecrets
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -53,7 +54,14 @@ internal class PageContext(
     errors.firstIn(form.fieldOrder())?.let { events.trySend(PageEvent.Focus(it)) }
   }
 
-  fun held(page: ConnectionPageState.Shown): HeldSecrets = page.saved?.heldSecrets ?: HeldSecrets.KeyAndHeaderValues
+  fun held(page: ConnectionPageState.Shown, draft: ConnectionDraft): HeldSecrets {
+    val saved = page.saved
+    val keptHeaders = draft.headers.mapNotNull { (it.value as? HeaderValueInput.Kept)?.storedName }.toSet()
+    return HeldSecrets.of(
+      key = draft.key == KeyInput.Kept && saved?.key != null,
+      headers = saved?.headers.orEmpty().any { it.name in keptHeaders },
+    ) ?: HeldSecrets.KeyAndHeaderValues
+  }
 
   fun activity(activity: PageActivity) = session.update { it.copy(activity = activity) }
 }
@@ -75,7 +83,7 @@ internal class PageWork(
       is PageIntent.Edit -> edit(intent.field, intent.change)
       is PageIntent.Toggle -> changeForm(intent.change) { it }
       PageIntent.Discard ->
-        session.update { it.copy(form = PageForm.Untouched, errors = FormErrors.None, note = null) }
+        unlessFormLocked { it.copy(form = PageForm.Untouched, errors = FormErrors.None, note = null) }
       PageIntent.Save -> save(route)
       PageIntent.Test -> probing.test()
       PageIntent.OpenModelList -> probing.openModelList()
@@ -106,7 +114,7 @@ internal class PageWork(
 
   private fun changeForm(change: (ConnectionForm) -> ConnectionForm, adjust: (PageSession) -> PageSession) {
     val shown = context.page() ?: return
-    session.update { current ->
+    unlessFormLocked { current ->
       val copy = when (val form = current.form) {
         PageForm.Untouched -> shown.copy
         is PageForm.Edited -> form.copy
@@ -114,6 +122,9 @@ internal class PageWork(
       adjust(current.copy(form = PageForm.Edited(copy.edited(change)), test = null, note = null))
     }
   }
+
+  private fun unlessFormLocked(change: (PageSession) -> PageSession) =
+    session.update { current -> if (current.activity.locksForm) current else change(current) }
 
   private fun save(route: ConnectionRoute) {
     val page = context.idlePage() ?: return

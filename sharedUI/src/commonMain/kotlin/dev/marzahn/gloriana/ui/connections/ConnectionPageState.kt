@@ -108,6 +108,8 @@ sealed interface ModelListNote {
 }
 
 sealed interface PageActivity {
+  val locksForm: Boolean get() = this == Saving || this == Deleting
+
   data object Idle : PageActivity
 
   data object Saving : PageActivity
@@ -156,6 +158,6 @@ sealed interface ConnectionPageState {
 
     val canSave: Boolean get() = activity == PageActivity.Idle && (saved == null || copy.hasChanges)
 
-    val canEdit: Boolean get() = activity != PageActivity.Deleting
+    val canEdit: Boolean get() = !activity.locksForm
   }
 }

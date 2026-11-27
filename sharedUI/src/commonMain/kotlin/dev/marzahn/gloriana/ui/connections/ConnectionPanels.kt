@@ -111,6 +111,7 @@ private fun FormatRow(editing: FormEditing) {
       placeholder = stringResource(Res.string.pick_api_format),
       modifier = Modifier.focusRequester(editing.focus(FormField.Format)),
       error = error,
+      enabled = editing.enabled,
     )
   }
 }
@@ -159,7 +160,12 @@ private fun ModelRow(editing: FormEditing) {
     hint = note,
     placeholder = stringResource(Res.string.model_placeholder),
     trailing = {
-      GlorianaIconButton(Res.drawable.ic_list, stringResource(Res.string.pick_model), editing::openModelList)
+      GlorianaIconButton(
+        Res.drawable.ic_list,
+        stringResource(Res.string.pick_model),
+        editing::openModelList,
+        enabled = editing.enabled,
+      )
     },
   )
 }

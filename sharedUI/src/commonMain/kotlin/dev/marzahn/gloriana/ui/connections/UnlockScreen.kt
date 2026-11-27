@@ -46,13 +46,13 @@ import dev.marzahn.gloriana.ui.resources.keys_not_checked
 import dev.marzahn.gloriana.ui.resources.keys_not_checked_detail
 import dev.marzahn.gloriana.ui.resources.keys_not_erased
 import dev.marzahn.gloriana.ui.resources.new_passphrase
+import dev.marzahn.gloriana.ui.resources.no_keys_held
 import dev.marzahn.gloriana.ui.resources.passphrase
 import dev.marzahn.gloriana.ui.resources.reset
 import dev.marzahn.gloriana.ui.resources.reset_confirm
 import dev.marzahn.gloriana.ui.resources.reset_failed_detail
 import dev.marzahn.gloriana.ui.resources.reset_keys_erased
 import dev.marzahn.gloriana.ui.resources.reset_keys_erased_detail
-import dev.marzahn.gloriana.ui.resources.reset_no_keys
 import dev.marzahn.gloriana.ui.resources.reset_text
 import dev.marzahn.gloriana.ui.resources.reset_title
 import dev.marzahn.gloriana.ui.resources.unlock
@@ -68,7 +68,7 @@ import org.koin.compose.viewmodel.koinViewModel
 private val MarkSize = 56.dp
 private val ColumnWidth = 360.dp
 
-class UnlockActions(val onType: (String) -> Unit, val onUnlock: () -> Unit, val onOpenReset: () -> Unit)
+class UnlockActions(val onType: (SecretText) -> Unit, val onUnlock: () -> Unit, val onOpenReset: () -> Unit)
 
 @Composable
 fun KeysGateBeforeShell(modifier: Modifier = Modifier, shell: @Composable () -> Unit) {
@@ -122,7 +122,7 @@ internal fun resetSheetText(holding: Int): PassphraseSheetText {
   return PassphraseSheetText(
     title = stringResource(Res.string.reset_title),
     text = if (holding == 0) {
-      stringResource(Res.string.reset_no_keys)
+      stringResource(Res.string.no_keys_held)
     } else {
       pluralStringResource(Res.plurals.reset_text, holding, holding)
     },
@@ -231,7 +231,7 @@ internal fun UnlockField(entry: UnlockEntry, actions: UnlockActions, modifier: M
   val error = if (wrong) stringResource(Res.string.error_passphrase_wrong) else null
   LabelledField(stringResource(Res.string.passphrase), modifier, error = error) {
     SecretField(
-      entry.passphrase.text,
+      entry.passphrase,
       actions.onType,
       passphraseLabels(),
       Modifier.focusRequester(focus),

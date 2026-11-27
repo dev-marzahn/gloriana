@@ -117,7 +117,7 @@ private fun CurrentPassphraseRow(state: ChangePassphrase, onIntent: (ChangeInten
   val error = if (state.currentWrong) stringResource(Res.string.error_passphrase_wrong) else null
   LabelledField(stringResource(Res.string.current_passphrase), error = error) {
     SecretField(
-      state.current.text,
+      state.current,
       { onIntent(ChangeIntent.TypeCurrent(it)) },
       passphraseLabels(),
       Modifier.focusRequester(focus),

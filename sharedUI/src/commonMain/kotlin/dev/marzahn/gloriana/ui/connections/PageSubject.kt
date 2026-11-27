@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.ui.connections
 
+import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -30,8 +31,14 @@ internal class PageSubject(private val context: PageContext, private val command
   }
 
   private fun confirmDelete() {
-    val connection = context.page()?.saved ?: return
-    context.activity(PageActivity.Deleting)
+    val saved = context.page()?.saved ?: return
+    val connection = session.updateAndClaim { current ->
+      if (current.activity == PageActivity.ConfirmingDelete) {
+        current.copy(activity = PageActivity.Deleting) to saved
+      } else {
+        current to null
+      }
+    } ?: return
     context.scope.launch {
       when (commands.delete(connection)) {
         CommandResult.Done -> Unit

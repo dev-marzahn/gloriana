@@ -9,6 +9,7 @@ import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.character_invisible
 import dev.marzahn.gloriana.ui.resources.character_line_break
 import dev.marzahn.gloriana.ui.resources.character_space
+import dev.marzahn.gloriana.ui.resources.character_special
 import dev.marzahn.gloriana.ui.resources.delete_failed
 import dev.marzahn.gloriana.ui.resources.delete_failed_detail
 import dev.marzahn.gloriana.ui.resources.error_header_name_character
@@ -103,14 +104,14 @@ private const val SPACE = ' '
 fun FieldError.text(): String = when (this) {
   is FieldError.Fixed -> stringResource(message)
   is FieldError.NameTaken -> stringResource(Res.string.error_name_taken, name)
-  is FieldError.KeyBadCharacter -> stringResource(Res.string.error_key_character, characterName(character))
+  is FieldError.KeyBadCharacter -> stringResource(Res.string.error_key_character, secretCharacterName(character))
   is FieldError.Sampler -> error.text()
   is FieldError.HeaderNameBadCharacter ->
     stringResource(Res.string.error_header_name_character, characterName(character))
   is FieldError.HeaderNameTaken -> stringResource(Res.string.error_header_name_taken, name)
   is FieldError.HeaderNameReserved -> stringResource(Res.string.error_header_reserved, name)
   is FieldError.HeaderValueBadCharacter ->
-    stringResource(Res.string.error_header_value_character, characterName(character))
+    stringResource(Res.string.error_header_value_character, secretCharacterName(character))
   is FieldError.NotJson -> jsonErrorText(this)
 }
 
@@ -134,12 +135,18 @@ private val JsonFault.what: StringResource
   }
 
 @Composable
-private fun characterName(character: Char): String = when {
-  character == SPACE -> stringResource(Res.string.character_space)
-  character == LINE_BREAK || character == RETURN -> stringResource(Res.string.character_line_break)
-  character.isISOControl() || character.isWhitespace() || !character.isDefined() ->
-    stringResource(Res.string.character_invisible)
-  else -> character.toString()
+private fun characterName(character: Char): String =
+  characterClass(character)?.let { stringResource(it) } ?: character.toString()
+
+@Composable
+private fun secretCharacterName(character: Char): String =
+  stringResource(characterClass(character) ?: Res.string.character_special)
+
+private fun characterClass(character: Char): StringResource? = when {
+  character == SPACE -> Res.string.character_space
+  character == LINE_BREAK || character == RETURN -> Res.string.character_line_break
+  character.isISOControl() || character.isWhitespace() || !character.isDefined() -> Res.string.character_invisible
+  else -> null
 }
 
 enum class StepFor { Test, ModelList, ModelField }
@@ -223,15 +230,7 @@ fun HostFailure.details(use: StepFor): String {
 
 @Composable
 fun PageNote.text(name: String): AnnotatedString = when (this) {
-  is PageNote.KeysBlockedSend -> when (problem) {
-    KeysProblem.KeychainUnavailable ->
-      boldThenPlain(stringResource(Res.string.keychain_note_sent), stringResource(Res.string.keychain_note_sent_detail))
-    KeysProblem.Unreadable -> boldThenPlain(
-      stringResource(Res.string.unreadable_note_sent),
-      stringResource(Res.string.unreadable_note_sent_detail, stringResource(held.what)),
-    )
-  }
-  is PageNote.KeysMissing -> missingText(held)
+  is PageNote.BlockedSend -> text()
   is PageNote.KeysBlockedSave -> when (problem) {
     KeysProblem.Unreadable -> boldThenPlain(
       stringResource(Res.string.unreadable_note_saved, name),
@@ -254,6 +253,19 @@ fun PageNote.text(name: String): AnnotatedString = when (this) {
     boldThenPlain(stringResource(Res.string.delete_failed, name), stringResource(Res.string.delete_failed_detail))
   PageNote.NotMadeDefault ->
     boldThenPlain(stringResource(Res.string.not_made_default, name), stringResource(Res.string.not_made_default_detail))
+}
+
+@Composable
+fun PageNote.BlockedSend.text(): AnnotatedString = when (this) {
+  is PageNote.KeysBlockedSend -> when (problem) {
+    KeysProblem.KeychainUnavailable ->
+      boldThenPlain(stringResource(Res.string.keychain_note_sent), stringResource(Res.string.keychain_note_sent_detail))
+    KeysProblem.Unreadable -> boldThenPlain(
+      stringResource(Res.string.unreadable_note_sent),
+      stringResource(Res.string.unreadable_note_sent_detail, stringResource(held.what)),
+    )
+  }
+  is PageNote.KeysMissing -> missingText(held)
 }
 
 @Composable

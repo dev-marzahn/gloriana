@@ -59,6 +59,7 @@ private fun FormatSamplers(page: ConnectionPageState.Shown, editing: FormEditing
         error = (editing.error(field) as? FieldError.Sampler)?.error,
         onChange = { text -> editing.edit(field) { it.copy(samplers = it.samplers.with(sampler, text)) } },
         fieldModifier = Modifier.focusRequester(editing.focus(field)),
+        enabled = editing.enabled,
       )
     }
     Sampler.entries.filter { it !in format.samplerRanges && samplers.isSet(it) }.forEach { sampler ->

@@ -24,7 +24,7 @@ import org.koin.compose.navigation3.koinEntryProvider
 import org.koin.core.annotation.KoinExperimentalAPI
 import dev.marzahn.gloriana.ui.resources.reset
 import dev.marzahn.gloriana.ui.resources.reset_confirm
-import dev.marzahn.gloriana.ui.resources.reset_no_keys
+import dev.marzahn.gloriana.ui.resources.no_keys_held
 import dev.marzahn.gloriana.ui.resources.unlock
 import dev.marzahn.gloriana.ui.resources.unlock_title
 import org.jetbrains.compose.resources.getString
@@ -96,7 +96,7 @@ class KeysGateTest {
 
       waitFor(hasText(getString(Res.string.damaged_no_keys)))
       tap(hasText(getString(Res.string.reset)) and hasClickAction())
-      waitFor(hasText(getString(Res.string.reset_no_keys)))
+      waitFor(hasText(getString(Res.string.no_keys_held)))
       val fields = onAllNodes(hasSetTextAction())
       fields[0].performTextReplacement("a new passphrase")
       fields[1].performTextReplacement("a new passphrase")

@@ -80,7 +80,7 @@ class ModelSettingsViewModel(
       val samplers = draft.toSamplers()
       when (val result = settings.setSamplers(samplers)) {
         GlobalSamplersSave.Saved -> {
-          update { it.copy(copy = EditedCopy.of(SamplerTexts.of(samplers)), saving = false) }
+          update { it.copy(copy = it.copy.copy(stored = SamplerTexts.of(samplers)), saving = false) }
           messages.show(AppMessage(getString(Res.string.snack_model_settings_saved)))
         }
         is GlobalSamplersSave.Refused -> refuse(

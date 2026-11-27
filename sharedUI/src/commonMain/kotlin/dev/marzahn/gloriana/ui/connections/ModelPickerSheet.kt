@@ -92,7 +92,7 @@ fun ModelPickerSheet(
                 refusal.failure.details(StepFor.ModelList),
               ),
             )
-            is Refusal.Keys -> NoteLine(refusal.note.text(host))
+            is Refusal.Keys -> NoteLine(refusal.note.text())
           }
           GlorianaButton(stringResource(Res.string.retry), onRetry, icon = Res.drawable.ic_refresh_20)
         }

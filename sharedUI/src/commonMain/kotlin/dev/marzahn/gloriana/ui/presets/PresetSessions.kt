@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.ui.presets
 
 import dev.marzahn.gloriana.logic.presets.PresetContent
+import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.distinctUntilChanged

@@ -44,7 +44,7 @@ sealed interface KeysGate {
 }
 
 sealed interface GateIntent {
-  data class TypePassphrase(val text: String) : GateIntent
+  data class TypePassphrase(val text: SecretText) : GateIntent
 
   data object Unlock : GateIntent
 
@@ -52,9 +52,9 @@ sealed interface GateIntent {
 
   data object CloseReset : GateIntent
 
-  data class TypeNewPassphrase(val text: String) : GateIntent
+  data class TypeNewPassphrase(val text: SecretText) : GateIntent
 
-  data class TypeNewPassphraseAgain(val text: String) : GateIntent
+  data class TypeNewPassphraseAgain(val text: SecretText) : GateIntent
 
   data object Reset : GateIntent
 

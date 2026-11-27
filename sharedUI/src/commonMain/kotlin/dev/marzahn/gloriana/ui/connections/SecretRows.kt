@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -43,6 +44,7 @@ import dev.marzahn.gloriana.ui.resources.header_unreadable_hint
 import dev.marzahn.gloriana.ui.resources.header_value
 import dev.marzahn.gloriana.ui.resources.headers_hint
 import dev.marzahn.gloriana.ui.resources.hide_key
+import dev.marzahn.gloriana.ui.resources.hide_value
 import dev.marzahn.gloriana.ui.resources.ic_close
 import dev.marzahn.gloriana.ui.resources.ic_undo_20
 import dev.marzahn.gloriana.ui.resources.ic_edit
@@ -66,6 +68,7 @@ import dev.marzahn.gloriana.ui.resources.replace
 import dev.marzahn.gloriana.ui.resources.replace_value
 import dev.marzahn.gloriana.ui.resources.saved_secret
 import dev.marzahn.gloriana.ui.resources.show_key
+import dev.marzahn.gloriana.ui.resources.show_value
 import dev.marzahn.gloriana.ui.resources.undo
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.DrawableResource
@@ -149,8 +152,8 @@ private fun KeyControls(shown: KeyShown, editing: FormEditing, error: String?) {
   when (shown) {
     is KeyShown.Typing -> Row(verticalAlignment = Alignment.CenterVertically) {
       SecretField(
-        (editing.form.key as? KeyEdit.Typed)?.text?.text.orEmpty(),
-        { setKey(KeyEdit.Typed(SecretText(it))) },
+        (editing.form.key as? KeyEdit.Typed)?.text ?: SecretText.Empty,
+        { setKey(KeyEdit.Typed(it)) },
         SecretLabels(stringResource(Res.string.show_key), stringResource(Res.string.hide_key)),
         Modifier.weight(1f).focusRequester(editing.focus(FormField.Key)),
         enabled = editing.enabled,
@@ -274,26 +277,30 @@ private fun HeaderLine(page: ConnectionPageState.Shown, editing: FormEditing, ro
       )
       when (val value = row.value) {
         is ValueEdit.Typed -> Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-          GlorianaTextField(
-            value = value.text.text,
-            onValueChange = { setValue(ValueEdit.Typed(SecretText(it))) },
-            modifier = Modifier.weight(1f).focusRequester(editing.focus(valueField)),
+          SecretField(
+            value.text,
+            { setValue(ValueEdit.Typed(it)) },
+            SecretLabels(stringResource(Res.string.show_value), stringResource(Res.string.hide_value)),
+            Modifier.weight(1f).focusRequester(editing.focus(valueField)),
             enabled = editing.enabled,
-            placeholder = stringResource(Res.string.header_value),
             error = valueError,
-            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+            placeholder = stringResource(Res.string.header_value),
           )
           if (stored != null) {
             GlorianaIconButton(
               Res.drawable.ic_undo_20,
               stringResource(Res.string.cancel_replace_value),
               { setValue(ValueEdit.Kept) },
+              enabled = editing.enabled,
             )
           }
         }
-        ValueEdit.Kept -> KeptHeaderValue(stored ?: StoredSecret.Saved, editing.enabled) {
-          setValue(ValueEdit.Typed(SecretText.Empty))
-        }
+        ValueEdit.Kept -> KeptHeaderValue(
+          stored ?: StoredSecret.Saved,
+          enabled = editing.enabled,
+          onEnter = { setValue(ValueEdit.Typed(SecretText.Empty)) },
+          enterFocus = editing.focus(valueField),
+        )
       }
       GlorianaIconButton(
         Res.drawable.ic_close,
@@ -307,7 +314,12 @@ private fun HeaderLine(page: ConnectionPageState.Shown, editing: FormEditing, ro
 }
 
 @Composable
-private fun RowScope.KeptHeaderValue(secret: StoredSecret, enabled: Boolean, onEnter: () -> Unit) {
+private fun RowScope.KeptHeaderValue(
+  secret: StoredSecret,
+  enabled: Boolean,
+  onEnter: () -> Unit,
+  enterFocus: FocusRequester,
+) {
   Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
     SecretStatus(secret, Res.string.header_missing, Modifier.weight(1f))
     if (secret == StoredSecret.Saved || secret == StoredSecret.Missing) {
@@ -315,6 +327,7 @@ private fun RowScope.KeptHeaderValue(secret: StoredSecret, enabled: Boolean, onE
         Res.drawable.ic_edit,
         stringResource(if (secret == StoredSecret.Missing) Res.string.enter_value else Res.string.replace_value),
         onEnter,
+        Modifier.focusRequester(enterFocus),
         enabled = enabled,
       )
     }

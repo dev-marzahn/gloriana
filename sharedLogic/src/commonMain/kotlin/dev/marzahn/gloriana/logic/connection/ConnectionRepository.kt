@@ -1,5 +1,7 @@
 package dev.marzahn.gloriana.logic.connection
 
+import dev.marzahn.gloriana.logic.storage.ChatSetting
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.assets.isStorageFull
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
@@ -48,7 +50,7 @@ class ConnectionRepository internal constructor(
   private val default: DefaultConnection,
   private val vault: KeyVault,
   private val ids: IdFactory,
-  private val chats: ConnectionChats,
+  private val chats: ChatsUsing,
 ) {
   private val secrets = ConnectionSecrets(vault)
   private val erasure = DataKeyErasure(vault, dao)
@@ -59,7 +61,7 @@ class ConnectionRepository internal constructor(
 
   fun defaultConnection(): Flow<Uuid?> = default.observe()
 
-  suspend fun chatsUsing(id: Uuid): Int = chats.count(id)
+  suspend fun chatsUsing(id: Uuid): Int = chats.count(ChatSetting.Connection, id)
 
   suspend fun create(draft: ConnectionDraft): ConnectionSaveResult = save(SaveRequest.Create(ids.newId()), draft)
 

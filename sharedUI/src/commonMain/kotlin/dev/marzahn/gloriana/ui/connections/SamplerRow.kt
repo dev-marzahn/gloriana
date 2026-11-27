@@ -22,6 +22,7 @@ fun SamplerRow(
   onChange: (String) -> Unit,
   modifier: Modifier = Modifier,
   fieldModifier: Modifier = Modifier,
+  enabled: Boolean = true,
 ) {
   val errorText = error?.text()
   SettingRow(stringResource(sampler.label), hint, errorText, modifier) {
@@ -29,6 +30,7 @@ fun SamplerRow(
       value = text,
       onValueChange = onChange,
       modifier = fieldModifier.width(SamplerFieldWidth),
+      enabled = enabled,
       error = errorText,
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
     )

@@ -65,9 +65,9 @@ sealed interface PageIntent {
 
   sealed interface PassphraseIntent : PageAction
 
-  data class TypePassphrase(val text: String) : PassphraseIntent
+  data class TypePassphrase(val text: SecretText) : PassphraseIntent
 
-  data class TypePassphraseAgain(val text: String) : PassphraseIntent
+  data class TypePassphraseAgain(val text: SecretText) : PassphraseIntent
 
   data object SubmitPassphrase : PassphraseIntent
 

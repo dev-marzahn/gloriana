@@ -132,7 +132,7 @@ fun ConnectionScreen(route: ConnectionRoute, modifier: Modifier = Modifier) {
 
 @Composable
 private fun unsavedPage(page: ConnectionPageState.Shown, discard: () -> Unit): UnsavedPage {
-  val name = page.form.name.trim()
+  val name = page.form.name.trim().ifEmpty { page.saved?.fields?.name.orEmpty() }
   return UnsavedPage(
     leavingMessage = if (name.isEmpty()) {
       stringResource(Res.string.discard_new_connection)

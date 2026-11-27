@@ -21,6 +21,7 @@ import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_keys_erased
+import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -51,21 +52,29 @@ sealed interface ConnectionsList {
   data class Loaded(val rows: List<ConnectionRowState>) : ConnectionsList
 }
 
-sealed interface StartOverStep {
+internal sealed interface StartOverStep {
   data object Idle : StartOverStep
 
-  data object Confirming : StartOverStep
+  data class Confirming(val holding: Int?) : StartOverStep
 
-  data object Erasing : StartOverStep
+  data class Erasing(val holding: Int?) : StartOverStep
 
   data class Failed(val failure: WriteFailure) : StartOverStep
 }
 
 sealed interface KeysNote {
-  data object None : KeysNote
+  val holding: Int?
 
-  data class Unreadable(val holding: Int, val step: StartOverStep) : KeysNote
+  data object None : KeysNote {
+    override val holding: Int? = null
+  }
+
+  data class Unreadable(override val holding: Int) : KeysNote
+
+  data class StartOverFailed(val failure: WriteFailure, override val holding: Int?) : KeysNote
 }
+
+data class StartOverSheet(val holding: Int?, val erasing: Boolean)
 
 sealed interface RowActivity {
   data object Idle : RowActivity
@@ -85,6 +94,7 @@ data class SettingsState(
   val connections: ConnectionsList = ConnectionsList.Loading,
   val showsPassphrase: Boolean = false,
   val keys: KeysNote = KeysNote.None,
+  val startOver: StartOverSheet? = null,
   val rowActivity: RowActivity = RowActivity.Idle,
   val focus: ListFocus = ListFocus.None,
 )
@@ -156,14 +166,15 @@ class SettingsViewModel(
       SettingsState(
         connections = list,
         showsPassphrase = vaultState.hasPassphrase,
-        keys = keysNote(list, vaultState, findings, current.startOver),
+        keys = keysNote(list.holding(findings), vaultState, current.startOver),
+        startOver = current.startOver.sheet(),
         rowActivity = current.rows,
         focus = focus(list, deleted, current.focusFirstRow),
       )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SettingsState())
 
   init {
-    viewModelScope.launch { vault.prepare() }
+    viewModelScope.launch { vault.prepareIfStored() }
     viewModelScope.launch { vault.secretChecks(repository.connections().catch { emit(emptyList()) }).collect() }
   }
 
@@ -174,7 +185,7 @@ class SettingsViewModel(
       is SettingsIntent.AskToDelete -> rows(RowActivity.ConfirmingDelete(intent.row))
       SettingsIntent.CancelDelete -> rows(RowActivity.Idle)
       SettingsIntent.ConfirmDelete -> confirmDelete()
-      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming)
+      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming(state.value.keys.holding))
       SettingsIntent.CancelStartOver -> startOver(StartOverStep.Idle)
       SettingsIntent.ConfirmStartOver -> confirmStartOver()
       SettingsIntent.Focused -> {
@@ -200,8 +211,11 @@ class SettingsViewModel(
   }
 
   private fun confirmDelete() {
-    val row = (session.value.rows as? RowActivity.ConfirmingDelete)?.row ?: return
-    rows(RowActivity.Deleting(row))
+    val row = session.updateAndClaim { current ->
+      (current.rows as? RowActivity.ConfirmingDelete)?.row
+        ?.let { current.copy(rows = RowActivity.Deleting(it)) to it }
+        ?: (current to null)
+    } ?: return
     viewModelScope.launch {
       when (commands.delete(row.connection)) {
         CommandResult.Done -> rows(RowActivity.Idle)
@@ -211,7 +225,11 @@ class SettingsViewModel(
   }
 
   private fun confirmStartOver() {
-    startOver(StartOverStep.Erasing)
+    session.updateAndClaim { current ->
+      (current.startOver as? StartOverStep.Confirming)
+        ?.let { current.copy(startOver = StartOverStep.Erasing(it.holding)) to it }
+        ?: (current to null)
+    } ?: return
     viewModelScope.launch {
       val result = vault.replaceDeviceKeyset()
       when (val failure = result.failure()) {
@@ -219,19 +237,31 @@ class SettingsViewModel(
           session.update { it.copy(startOver = StartOverStep.Idle, focusFirstRow = true) }
           messages.show(AppMessage(getString(Res.string.snack_keys_erased)))
         }
-        else -> startOver(StartOverStep.Failed(failure))
+        WriteFailure.NothingChanged -> startOver(StartOverStep.Failed(failure))
+        WriteFailure.KeysErased -> {
+          vault.prepare()
+          startOver(StartOverStep.Failed(failure))
+        }
       }
     }
   }
 }
 
-private fun keysNote(list: ConnectionsList, vault: VaultState, findings: KeyFindings, step: StartOverStep): KeysNote {
-  val rows = when (list) {
-    is ConnectionsList.Loaded -> list.rows
-    ConnectionsList.Loading, ConnectionsList.CouldNotLoad -> emptyList()
-  }
-  val holding = rows.count { findings.holdsOpenableSecrets(it.connection) }
-  return if (vault.needsStartingOver && holding > 0) KeysNote.Unreadable(holding, step) else KeysNote.None
+private fun ConnectionsList.holding(findings: KeyFindings): Int? = when (this) {
+  is ConnectionsList.Loaded -> rows.count { findings.holdsOpenableSecrets(it.connection) }
+  ConnectionsList.Loading, ConnectionsList.CouldNotLoad -> null
+}
+
+internal fun keysNote(holding: Int?, vault: VaultState, step: StartOverStep): KeysNote = when {
+  step is StartOverStep.Failed -> KeysNote.StartOverFailed(step.failure, holding)
+  vault.needsStartingOver && holding != null -> KeysNote.Unreadable(holding)
+  else -> KeysNote.None
+}
+
+private fun StartOverStep.sheet(): StartOverSheet? = when (this) {
+  is StartOverStep.Confirming -> StartOverSheet(holding, erasing = false)
+  is StartOverStep.Erasing -> StartOverSheet(holding, erasing = true)
+  StartOverStep.Idle, is StartOverStep.Failed -> null
 }
 
 private fun focus(list: ConnectionsList, deleted: Deleted?, focusFirstRow: Boolean): ListFocus {

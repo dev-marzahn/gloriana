@@ -201,7 +201,7 @@ class PresetStorageTest {
 
   @Test
   fun theChatCountComesFromItsSeam() = runTest {
-    PresetLibrary(directory, chats = { 2 }).use { library ->
+    PresetLibrary(directory, chats = { _, _ -> 2 }).use { library ->
       assertEquals(2, library.repository.chatsUsing(library.imported("minimal.json").id))
     }
   }

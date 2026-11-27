@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.presets
+package dev.marzahn.gloriana.ui.state
 
 import kotlinx.coroutines.flow.MutableStateFlow
 

@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.connection
 
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionWrites
 import dev.marzahn.gloriana.logic.connection.storage.DefaultConnection
 import dev.marzahn.gloriana.logic.debug.Faults
@@ -41,7 +42,7 @@ class ConnectionLibrary(
     default = default,
     vault = vaultAround(vault),
     ids = ids,
-    chats = ConnectionChats.NoneYet,
+    chats = ChatsUsing.NoneYet,
   )
 
   suspend fun created(draft: ConnectionDraft): Connection =
