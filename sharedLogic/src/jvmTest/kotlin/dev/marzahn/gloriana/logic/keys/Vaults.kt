@@ -45,10 +45,17 @@ class FakeKeychain : OsKeychain {
 class Vaults(private val library: Path) {
   val keychain = FakeKeychain()
 
-  internal fun start(faults: Faults = Faults.None, cost: Argon2idCost = CheapPassphrase) = TinkKeyVault(
+  val everyFiledConnection = StoredConnections { DataKeyFile(library.resolve("keys/connections.json")).read().keys }
+
+  internal fun start(
+    faults: Faults = Faults.None,
+    cost: Argon2idCost = CheapPassphrase,
+    stored: StoredConnections = everyFiledConnection,
+  ) = TinkKeyVault(
     library = LibraryDirectory { library },
     device = KeychainKeyStore(keychain),
     faults = faults,
+    stored = stored,
     passphraseCost = cost,
   )
 }

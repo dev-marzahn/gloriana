@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.attribute.PosixFilePermissions
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFailsWith
@@ -77,9 +78,8 @@ class TinkKeyVaultTest {
     vaults.keychain.reads = 0
     vaults.keychain.unreachable = true
 
-    val restarted = vaults.start()
+    val restarted = vaults.start(stored = { emptySet() })
     restarted.erase(connection)
-    restarted.sweep(storedConnections = emptySet())
 
     assertEquals(0, vaults.keychain.reads)
     assertEquals(VaultState.Closed, restarted.state.value)
@@ -95,8 +95,8 @@ class TinkKeyVaultTest {
     assertFailsWith<FaultInjected> { dying.erase(connection) }
     assertTrue(connection.toString() in Files.readString(dataKeyFile))
 
-    val restarted = vaults.start()
-    restarted.sweep(storedConnections = setOf(other))
+    val restarted = vaults.start(stored = { setOf(other) })
+    restarted.sweepAtStart()
     assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
     assertFalse(connection.toString() in Files.readString(dataKeyFile))
     assertEquals("sk-kept", restarted.opened(apiKey(other), kept))
@@ -113,15 +113,57 @@ class TinkKeyVaultTest {
   }
 
   @Test
-  fun theSweepKeepsADataKeyMadeThisRunForAConnectionNotSavedYet() = runTest {
-    val vault = vaults.start()
+  fun theSweepRunsOnceBeforeAnySealSoADataKeyMadeThisRunStaysUntilTheNextStart() = runTest {
+    val vault = vaults.start(stored = { emptySet() })
     val key = vault.sealed(apiKey(connection), "sk-saving")
 
-    vault.sweep(storedConnections = emptySet())
-
     assertEquals("sk-saving", vault.opened(apiKey(connection), key))
-    vaults.start().sweep(storedConnections = emptySet())
-    assertEquals(OpenResult.Missing, vaults.start().open(apiKey(connection), key))
+    assertEquals(OpenResult.Missing, vaults.start(stored = { emptySet() }).open(apiKey(connection), key))
+  }
+
+  @Test
+  fun aSweepThatCannotReadTheStoredConnectionsFailsNothingAndRunsAtTheNextCall() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-orphan")
+    var storageOpen = false
+    val vault = vaults.start(stored = { if (storageOpen) emptySet() else throw IllegalStateException("closed") })
+
+    vault.sweepAtStart()
+    assertEquals(VaultState.Unlocked, vault.prepare())
+    assertTrue(connection.toString() in Files.readString(dataKeyFile))
+
+    storageOpen = true
+    assertEquals(OpenResult.Missing, vault.open(apiKey(connection), key))
+    assertFalse(connection.toString() in Files.readString(dataKeyFile))
+  }
+
+  @Test
+  fun aSweepWhoseWriteFailsFailsNothingAndRunsAtTheNextCall() = runTest {
+    val orphan = vaults.start().sealed(apiKey(other), "sk-orphan")
+    val vault = vaults.start(stored = { emptySet() })
+    val keys = dataKeyFile.parent
+    Files.setPosixFilePermissions(keys, PosixFilePermissions.fromString("r-x------"))
+    try {
+      vault.sweepAtStart()
+      assertTrue(other.toString() in Files.readString(dataKeyFile))
+    } finally {
+      Files.setPosixFilePermissions(keys, PosixFilePermissions.fromString("rwx------"))
+    }
+
+    assertEquals(OpenResult.Missing, vault.open(apiKey(other), orphan))
+    assertFalse(other.toString() in Files.readString(dataKeyFile))
+  }
+
+  @Test
+  fun aSweepStillDueIsDroppedForTheRunOnceAKeyIsSealed() = runTest {
+    vaults.start().sealed(apiKey(other), "sk-orphan")
+    var storageOpen = false
+    val vault = vaults.start(stored = { if (storageOpen) emptySet() else throw IllegalStateException("closed") })
+
+    val key = vault.sealed(apiKey(connection), "sk-new")
+    storageOpen = true
+
+    assertEquals("sk-new", vault.opened(apiKey(connection), key))
+    assertTrue(other.toString() in Files.readString(dataKeyFile), "no sweep after a key was sealed this run")
   }
 
   @Test

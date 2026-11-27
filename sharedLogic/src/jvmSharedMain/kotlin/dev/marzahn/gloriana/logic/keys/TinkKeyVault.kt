@@ -17,47 +17,57 @@ internal class TinkKeyVault(
   library: LibraryDirectory,
   device: DeviceKeyStore,
   private val faults: Faults,
+  stored: StoredConnections,
   passphraseCost: Argon2idCost = Argon2idCost.Default,
 ) : KeyVault {
   private val directory = library.path().resolve(KEYS_DIRECTORY)
   private val dataKeys = DataKeys(directory.resolve(DATA_KEYS_FILE))
   private val keyring = Keyring(directory, device, dataKeys, faults, passphraseCost)
   private val holder = KeysetHolder(keyring)
+  private val sweep = StartSweep(dataKeys, stored)
 
   override val state: StateFlow<VaultState> = holder.state
 
-  override suspend fun prepare(): VaultState = holder.withKeyset { it.state }
+  override suspend fun prepare(): VaultState = swept { holder.withKeyset { it.state } }
 
-  override suspend fun seal(slot: SecretSlot, value: String): SealResult = holder.withKeyset { keyset ->
-    when (val aead = keyset.aead()) {
-      null -> if (keyset.asksForPassphrase()) SealResult.Locked else SealResult.Unavailable
-      else -> unlessFilesFail(SealResult.Unavailable) {
-        SealResult.Sealed(dataKeys.findOrMake(slot.connectionId, aead).sealSecret(slot, value))
+  suspend fun sweepAtStart() = sweep.runIfDue(holder)
+
+  override suspend fun seal(slot: SecretSlot, value: String): SealResult = swept {
+    holder.withKeyset { keyset ->
+      when (val aead = keyset.aead()) {
+        null -> if (keyset.asksForPassphrase()) SealResult.Locked else SealResult.Unavailable
+        else -> unlessFilesFail(SealResult.Unavailable) {
+          val dataKey = dataKeys.findOrMake(slot.connectionId, aead)
+          sweep.giveUpForThisRun()
+          SealResult.Sealed(dataKey.sealSecret(slot, value))
+        }
       }
     }
   }
 
-  override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = holder.withKeyset { keyset ->
-    when (val aead = keyset.aead()) {
-      null -> if (keyset.asksForPassphrase()) OpenResult.Locked else OpenResult.Unavailable
-      else -> unlessFilesFail(OpenResult.Unavailable) {
-        dataKeys.find(slot.connectionId, aead)?.openSecret(slot, secret) ?: OpenResult.Missing
+  override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = swept {
+    holder.withKeyset { keyset ->
+      when (val aead = keyset.aead()) {
+        null -> if (keyset.asksForPassphrase()) OpenResult.Locked else OpenResult.Unavailable
+        else -> unlessFilesFail(OpenResult.Unavailable) {
+          dataKeys.find(slot.connectionId, aead)?.openSecret(slot, secret) ?: OpenResult.Missing
+        }
       }
     }
   }
 
-  override suspend fun erase(connectionId: Uuid): KeyFileResult = holder.withFiles {
-    faults.reached(KeyWritePoint.BeforeDataKeyRemoved)
-    unlessFilesFail(KeyFileResult.Unavailable) {
-      dataKeys.erase(connectionId)
-      KeyFileResult.Done
-    }
+  private suspend fun <T> swept(action: suspend () -> T): T {
+    sweep.runIfDue(holder)
+    return action()
   }
 
-  override suspend fun sweep(storedConnections: Set<Uuid>): KeyFileResult = holder.withFiles {
-    unlessFilesFail(KeyFileResult.Unavailable) {
-      dataKeys.sweep(storedConnections)
-      KeyFileResult.Done
+  override suspend fun erase(connectionId: Uuid): KeyFileResult = swept {
+    holder.withFiles {
+      faults.reached(KeyWritePoint.BeforeDataKeyRemoved)
+      unlessFilesFail(KeyFileResult.Unavailable) {
+        dataKeys.erase(connectionId)
+        KeyFileResult.Done
+      }
     }
   }
 

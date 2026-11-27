@@ -11,11 +11,15 @@ import dev.marzahn.gloriana.logic.characters.storage.CharacterChildDao
 import dev.marzahn.gloriana.logic.characters.storage.CharacterDao
 import dev.marzahn.gloriana.logic.characters.storage.CharacterEntity
 import dev.marzahn.gloriana.logic.characters.storage.CharacterGreetingEntity
+import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
+import dev.marzahn.gloriana.logic.connection.storage.ConnectionEntity
+import dev.marzahn.gloriana.logic.settings.storage.LibrarySettingDao
+import dev.marzahn.gloriana.logic.settings.storage.LibrarySettingEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 internal const val DATABASE_FILE_NAME = "library.db"
-internal const val DATABASE_VERSION = 2
+internal const val DATABASE_VERSION = 3
 
 @Database(
   entities = [
@@ -23,6 +27,8 @@ internal const val DATABASE_VERSION = 2
     CharacterEntity::class,
     CharacterGreetingEntity::class,
     CharacterAssetEntity::class,
+    ConnectionEntity::class,
+    LibrarySettingEntity::class,
   ],
   version = DATABASE_VERSION,
 )
@@ -33,9 +39,13 @@ abstract class GlorianaDatabase : RoomDatabase() {
   internal abstract fun characterDao(): CharacterDao
 
   internal abstract fun characterChildDao(): CharacterChildDao
+
+  internal abstract fun connectionDao(): ConnectionDao
+
+  internal abstract fun librarySettingDao(): LibrarySettingDao
 }
 
-internal val migrations: List<Migration> = listOf(AddCharacters)
+internal val migrations: List<Migration> = listOf(AddCharacters, AddConnectionsAndLibrarySettings)
 
 internal fun RoomDatabase.Builder<GlorianaDatabase>.buildGlorianaDatabase(): GlorianaDatabase =
   setDriver(BundledSQLiteDriver())

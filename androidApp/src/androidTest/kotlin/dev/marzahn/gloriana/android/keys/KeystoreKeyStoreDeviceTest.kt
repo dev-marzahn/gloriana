@@ -87,7 +87,8 @@ class KeystoreKeyStoreDeviceTest {
   private suspend fun sealed(vault: dev.marzahn.gloriana.logic.keys.KeyVault) =
     assertIs<SealResult.Sealed>(vault.seal(SecretSlot.ApiKey(connection), "sk-device")).secret
 
-  private fun vault(device: DeviceKeyStore) = keyVault(LibraryDirectory { library }, device, Faults.None)
+  private fun vault(device: DeviceKeyStore) =
+    keyVault(LibraryDirectory { library }, device, Faults.None, stored = { setOf(connection) })
 
   private fun appAliases(): List<String> = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
     .aliases().toList().filter { it.startsWith(APP_KEYSTORE_ALIAS_PREFIX) }

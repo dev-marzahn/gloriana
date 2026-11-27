@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.characters
 
+import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.assets.AssetWriteLock
 import dev.marzahn.gloriana.logic.assets.isStorageFull
 import dev.marzahn.gloriana.logic.characters.storage.CharacterDao
@@ -133,15 +134,4 @@ private class PickAnswers(private val question: AlreadyInLibraryQuestion) {
       if (answer.forTheRestOfThePick) standing = answer.choice
       answer.choice
     }
-}
-
-private suspend fun <T> failingAs(failed: T, work: suspend () -> T): T = failingAs({ failed }, work)
-
-@Suppress("TooGenericExceptionCaught")
-private suspend fun <T> failingAs(failed: (Exception) -> T, work: suspend () -> T): T = try {
-  work()
-} catch (cancelled: CancellationException) {
-  throw cancelled
-} catch (error: Exception) {
-  failed(error)
 }

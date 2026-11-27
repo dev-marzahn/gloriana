@@ -15,8 +15,6 @@ interface KeyVault {
 
   suspend fun erase(connectionId: Uuid): KeyFileResult
 
-  suspend fun sweep(storedConnections: Set<Uuid>): KeyFileResult
-
   suspend fun setPassphrase(passphrase: CharArray): PassphraseResult
 
   suspend fun unlock(passphrase: CharArray): PassphraseResult

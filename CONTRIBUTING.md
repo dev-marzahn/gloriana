@@ -169,10 +169,18 @@ Keys and custom header values go through `KeyVault` (`logic.keys`) and nothing e
   the ciphertext, so renaming a header means sealing its value again. Store the `SealedSecret` bytes; never keep the
   opened value in state. The vault clears every passphrase array it is given.
 - Each Connection has its own data key in `keys/connections.json`, made on its first `seal`. Call `erase` right after a
-  Connection's delete commits, and after a save that fails. Until the start-up sweep is wired with the stored
-  Connections, `sweep` is called with their ids; it keeps a data key made in this run. Neither opens the keyset, and
-  both answer `KeyFileResult.Unavailable` when the file can't be written. `open` answers `Missing` for a value whose
-  data key is gone or can't be read, `Locked` until a passphrase is set or entered, and `Unavailable` otherwise.
+  Connection's delete commits, and after a failed save when the Connection's row, read again, holds no key or header
+  value (a new Connection, or one that had none); never erase a data key that stored values still need. A row this
+  version can't read counts as needing its key. Saves and deletes run one at a time inside `DataKeyErasure.oneAtATime`,
+  the only place the erase can be called, so no other save commits between that read and the erase.
+- At start (`DataKeysSweptAtStart`) the vault removes every data key whose Connection `StoredConnections` (bound in
+  `connectionsModule`) doesn't list, so a crash between a delete and its `erase` still erases the key. If the ids or
+  the file can't be read or written, the sweep fails nothing and runs again at the vault's next call, until the first
+  `seal` of the run, after which it waits for the next start. Neither `erase` nor the sweep opens the keyset; `erase`
+  answers `KeyFileResult.Unavailable` when the file can't be written. `open` answers `Missing` for a value whose data
+  key is gone or can't be read, `Locked` until a passphrase is set or entered, and `Unavailable` otherwise.
+- One app instance per library. A second desktop instance on the same library can sweep the data key of a Connection
+  the first is still saving, so that value reads as missing.
 - The vault owns the keyset file and opens it only when a key is needed (`prepare` opens it at once). The file's name
   records what wraps it (`keys/keyset-device.json` or `keys/keyset-passphrase.json`), so even a damaged file keeps its
   protection. The platform's `DeviceKeyStore` holds named keys: an AES-GCM key in the Android Keystore, or a secret in

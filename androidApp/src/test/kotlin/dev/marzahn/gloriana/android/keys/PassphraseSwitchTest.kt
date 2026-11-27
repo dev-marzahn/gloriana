@@ -56,7 +56,8 @@ class PassphraseSwitchTest {
     assertEquals(VaultState.Unavailable, vault().prepare())
   }
 
-  private fun vault() = keyVault(LibraryDirectory { library }, switch(debuggable = true), Faults.None)
+  private fun vault() =
+    keyVault(LibraryDirectory { library }, switch(debuggable = true), Faults.None, stored = { emptySet() })
 
   private fun switch(debuggable: Boolean) =
     PassphraseSwitch(keystore, DebugHooks(LibraryDirectory { library }, { debuggable }))
