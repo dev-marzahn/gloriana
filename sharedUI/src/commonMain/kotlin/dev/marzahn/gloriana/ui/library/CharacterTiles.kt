@@ -6,7 +6,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
@@ -36,11 +35,11 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.characters.CharacterPicture
 import dev.marzahn.gloriana.ui.characters.RunningFile
-import dev.marzahn.gloriana.ui.characters.RunningLine
 import dev.marzahn.gloriana.ui.characters.RunningStatus
-import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.components.ButtonSize
 import dev.marzahn.gloriana.ui.components.GlorianaButton
+import dev.marzahn.gloriana.ui.components.RunningLine
+import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.create
 import dev.marzahn.gloriana.ui.resources.ic_add

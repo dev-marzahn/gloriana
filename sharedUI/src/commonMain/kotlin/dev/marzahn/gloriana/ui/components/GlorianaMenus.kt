@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.ui.components
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.DropdownMenu
@@ -22,12 +23,19 @@ import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.ic_arrow_drop_down
 import dev.marzahn.gloriana.ui.resources.ic_more_horiz
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
+import dev.marzahn.gloriana.ui.theme.disabled
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 private val MenuIconSize = 20.dp
 
-class MenuItem(val label: String, val icon: DrawableResource, val onClick: () -> Unit)
+class MenuItem(
+  val label: String,
+  val icon: DrawableResource,
+  val onClick: () -> Unit,
+  val enabled: Boolean = true,
+  val detail: String? = null,
+)
 
 @Composable
 fun GlorianaMoreMenu(contentDescription: String, items: List<MenuItem>, modifier: Modifier = Modifier) {
@@ -44,13 +52,24 @@ fun GlorianaMenu(expanded: Boolean, onDismiss: () -> Unit, items: List<MenuItem>
   DropdownMenu(expanded, onDismiss, containerColor = colors.raised) {
     items.forEach { item ->
       DropdownMenuItem(
-        text = { Text(item.label, style = GlorianaTheme.type.material.bodyLarge) },
+        text = {
+          Column {
+            Text(item.label, style = GlorianaTheme.type.material.bodyLarge)
+            item.detail?.let { Text(it, style = GlorianaTheme.type.material.bodySmall, color = colors.textSubtle) }
+          }
+        },
         onClick = {
           onDismiss()
           item.onClick()
         },
+        enabled = item.enabled,
         leadingIcon = { Icon(painterResource(item.icon), null, Modifier.size(MenuIconSize)) },
-        colors = MenuDefaults.itemColors(textColor = colors.text, leadingIconColor = colors.textMuted),
+        colors = MenuDefaults.itemColors(
+          textColor = colors.text,
+          leadingIconColor = colors.textMuted,
+          disabledTextColor = colors.text.disabled(),
+          disabledLeadingIconColor = colors.textMuted.disabled(),
+        ),
       )
     }
   }
@@ -66,14 +85,17 @@ fun <T> GlorianaDropdownField(
   placeholder: String,
   modifier: Modifier = Modifier,
   error: String? = null,
+  enabled: Boolean = true,
+  detail: (@Composable (T) -> String)? = null,
 ) {
   var expanded by rememberSaveable { mutableStateOf(false) }
   val colors = GlorianaTheme.colors
-  ExposedDropdownMenuBox(expanded, { expanded = it }, modifier) {
+  ExposedDropdownMenuBox(expanded, { expanded = it && enabled }, modifier) {
     GlorianaTextField(
       value = selected?.let { label(it) }.orEmpty(),
       onValueChange = {},
-      modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+      modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable, enabled),
+      enabled = enabled,
       readOnly = true,
       placeholder = placeholder,
       error = error,
@@ -82,7 +104,12 @@ fun <T> GlorianaDropdownField(
     ExposedDropdownMenu(expanded, { expanded = false }, containerColor = colors.raised) {
       options.forEach { option ->
         DropdownMenuItem(
-          text = { Text(label(option), style = GlorianaTheme.type.material.bodyLarge) },
+          text = {
+            Column {
+              Text(label(option), style = GlorianaTheme.type.material.bodyLarge)
+              detail?.let { Text(it(option), style = GlorianaTheme.type.material.bodySmall, color = colors.textSubtle) }
+            }
+          },
           onClick = {
             expanded = false
             onSelect(option)

@@ -56,7 +56,7 @@ class PresetImport internal constructor(private val writes: PresetWrites, ids: I
   private fun failed(reason: PresetImportFailure) = PresetImportResult.Failed(reason)
 }
 
-internal fun presetName(fileName: String): String {
+fun presetName(fileName: String): String {
   val trimmed = fileName.trim()
   val withoutExtension = if (trimmed.endsWith(JSON_EXTENSION, ignoreCase = true)) {
     trimmed.dropLast(JSON_EXTENSION.length).trim()

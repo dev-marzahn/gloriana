@@ -24,8 +24,8 @@ import dev.marzahn.gloriana.ui.library.LibraryRoute
 import dev.marzahn.gloriana.ui.library.LibraryScreen
 import dev.marzahn.gloriana.ui.library.LibraryViewModel
 import dev.marzahn.gloriana.ui.messages.AppMessages
+import dev.marzahn.gloriana.ui.navigation.LibraryKinds
 import dev.marzahn.gloriana.ui.navigation.QuitRequests
-import dev.marzahn.gloriana.ui.navigation.presetDestination
 import dev.marzahn.gloriana.ui.presets.presetsUiModule
 import dev.marzahn.gloriana.ui.settings.SettingsRoute
 import dev.marzahn.gloriana.ui.settings.SettingsScreen
@@ -39,8 +39,9 @@ import org.koin.plugin.module.dsl.viewModel
 
 @OptIn(KoinExperimentalAPI::class)
 val uiModule = module {
-  includes(presetsUiModule, presetDestination)
+  includes(presetsUiModule)
   single<AppMessages>()
+  single<LibraryKinds>()
   single<QuitRequests>()
   single<ConnectionCommands>()
   single<RepositoryCardImporter>() bind CardImporter::class

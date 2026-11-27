@@ -4,33 +4,23 @@ import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionDeleteResult
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.MakeDefaultResult
+import dev.marzahn.gloriana.ui.lists.Deleted
+import dev.marzahn.gloriana.ui.lists.LastDeleted
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_deleted
 import dev.marzahn.gloriana.ui.resources.snack_made_default
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.getString
-import kotlin.uuid.Uuid
 
 fun List<Connection>.inListOrder(): List<Connection> = sortedBy { it.fields.name.lowercase() }
-
-data class Deleted(val id: Uuid, val index: Int)
 
 enum class CommandResult { Done, Failed }
 
 class ConnectionCommands(private val repository: ConnectionRepository, private val messages: AppMessages) {
-  private val deleted = MutableStateFlow<Deleted?>(null)
-
-  val lastDeleted: StateFlow<Deleted?> = deleted.asStateFlow()
-
-  fun handled(delete: Deleted) {
-    deleted.compareAndSet(delete, null)
-  }
+  val deletions = LastDeleted()
 
   suspend fun makeDefault(connection: Connection): CommandResult = when (repository.makeDefault(connection.id)) {
     MakeDefaultResult.Made -> CommandResult.Done.also {
@@ -47,7 +37,7 @@ class ConnectionCommands(private val repository: ConnectionRepository, private v
       ConnectionDeleteResult.DeletedKeyLeftForNextStart,
       ConnectionDeleteResult.Gone,
       -> {
-        deleted.value = Deleted(connection.id, index.coerceAtLeast(0))
+        deletions.record(Deleted(connection.id, index.coerceAtLeast(0)))
         messages.show(AppMessage(getString(Res.string.snack_deleted, connection.fields.name)))
         CommandResult.Done
       }

@@ -19,7 +19,8 @@ class PresetRepository internal constructor(
   private val ids: IdFactory,
   private val chats: PresetChats,
 ) {
-  fun presets(): Flow<List<PresetSummary>> = dao.summaries().map { rows -> rows.map { PresetSummary(it.id, it.name) } }
+  fun presets(): Flow<List<PresetSummary>> =
+    dao.summaries().map { rows -> rows.map { PresetSummary(it.id, it.name, it.entries, it.entriesOn) } }
 
   fun preset(id: Uuid): Flow<StoredPreset?> = dao.observeRows(id).map { it?.decoded()?.stored }
 

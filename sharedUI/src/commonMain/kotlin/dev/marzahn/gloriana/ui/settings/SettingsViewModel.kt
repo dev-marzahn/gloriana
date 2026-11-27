@@ -11,10 +11,10 @@ import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.VaultState
 import dev.marzahn.gloriana.ui.connections.CommandResult
 import dev.marzahn.gloriana.ui.connections.ConnectionCommands
-import dev.marzahn.gloriana.ui.connections.Deleted
 import dev.marzahn.gloriana.ui.connections.WriteFailure
 import dev.marzahn.gloriana.ui.connections.failure
 import dev.marzahn.gloriana.ui.connections.inListOrder
+import dev.marzahn.gloriana.ui.lists.Deleted
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
@@ -138,7 +138,7 @@ class SettingsViewModel(
   }
 
   val state: StateFlow<SettingsState> =
-    combine(stored, vault.state, vault.findings, session, commands.lastDeleted) { loaded, vaultState, findings,
+    combine(stored, vault.state, vault.findings, session, commands.deletions.latest) { loaded, vaultState, findings,
                                                                                     current, deleted ->
       val list = loaded.fold(
         onSuccess = { stored ->
@@ -176,7 +176,7 @@ class SettingsViewModel(
       SettingsIntent.CancelStartOver -> startOver(StartOverStep.Idle)
       SettingsIntent.ConfirmStartOver -> confirmStartOver()
       SettingsIntent.Focused -> {
-        commands.lastDeleted.value?.let(commands::handled)
+        commands.deletions.latest.value?.let(commands.deletions::handled)
         session.update { it.copy(focusFirstRow = false) }
       }
     }

@@ -25,6 +25,7 @@ import dev.marzahn.gloriana.ui.di.uiModule
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.koin.compose.KoinIsolatedContext
+import org.koin.core.Koin
 import org.koin.core.KoinApplication
 import org.koin.dsl.koinApplication
 import org.koin.dsl.module
@@ -63,6 +64,8 @@ object NoKeychain : OsKeychain {
 
 class LiveLibrary private constructor(private val directory: Path, private val device: DeviceKeyStore) {
   private var application = startApplication()
+
+  val koin: Koin get() = application.koin
 
   private val repository: ConnectionRepository get() = application.koin.get()
 

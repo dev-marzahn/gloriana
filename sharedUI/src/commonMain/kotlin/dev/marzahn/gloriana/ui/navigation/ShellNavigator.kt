@@ -36,26 +36,24 @@ class ShellNavigator(
   val unsavedPages: List<UnsavedPage> get() = guards.values.mapNotNull { it() }
 
   fun select(destination: Destination) {
-    if (destination == current) leaving(current) { stacks.getValue(current).popToRoot() } else current = destination
+    if (destination == current) returnToRoot(current) else current = destination
   }
 
-  fun push(key: NavKey) {
-    stacks.getValue(current).add(key)
+  fun push(key: NavKey, destination: Destination = current) {
+    stacks.getValue(destination).add(key)
+  }
+
+  fun returnToRoot(destination: Destination, then: () -> Unit = {}) {
+    leaving(destination) {
+      stacks.getValue(destination).popToRoot()
+      then()
+    }
   }
 
   fun pop(destination: Destination) {
-    leaving(destination) {
-      val stack = stacks.getValue(destination)
-      if (stack.size > 1) stack.removeAt(stack.lastIndex)
-    }
-  }
-
-  fun replaceTop(destination: Destination, key: NavKey) {
-    leaving(destination) {
-      val stack = stacks.getValue(destination)
-      stack.popToRoot()
-      stack.add(key)
-    }
+    val stack = stacks.getValue(destination)
+    if (stack.size <= 1) return
+    leaving(destination, dropping = listOf(stack.last())) { stack.removeAt(stack.lastIndex) }
   }
 
   fun swap(destination: Destination, shown: NavKey, with: NavKey) {
@@ -66,8 +64,8 @@ class ShellNavigator(
     }
   }
 
-  fun leaving(destination: Destination, leave: () -> Unit) {
-    val page = stack(destination).drop(1).firstNotNullOfOrNull { guards[it]?.invoke() }
+  fun leaving(destination: Destination, dropping: List<NavKey> = stack(destination).drop(1), leave: () -> Unit) {
+    val page = dropping.firstNotNullOfOrNull { guards[it]?.invoke() }
     pendingLeave = page?.let {
       PendingLeave(
         page = it,
@@ -104,6 +102,9 @@ class ShellNavigator(
     guards.keys.retainAll(shown)
   }
 }
+
+fun ShellNavigator.replaceTop(destination: Destination, key: NavKey) =
+  returnToRoot(destination) { push(key, destination) }
 
 private fun MutableList<NavKey>.popToRoot() {
   while (size > 1) removeAt(lastIndex)

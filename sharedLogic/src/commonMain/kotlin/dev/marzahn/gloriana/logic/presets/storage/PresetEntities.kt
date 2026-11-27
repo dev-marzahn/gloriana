@@ -136,7 +136,7 @@ private fun decodedSource(stored: String): JsonObject? = try {
   null
 }
 
-internal data class PresetSummaryRow(val id: Uuid, val name: String)
+internal data class PresetSummaryRow(val id: Uuid, val name: String, val entries: Int, val entriesOn: Int)
 
 internal fun storedWrappers(wrappers: WrapperPrompts): String =
   StoredJson.encodeToString(wrappers.changes.mapKeys { (prompt) -> prompt.key })

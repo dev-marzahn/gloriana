@@ -30,6 +30,7 @@ import dev.marzahn.gloriana.logic.characters.KeptCardFields
 import dev.marzahn.gloriana.logic.characters.Pronouns
 import dev.marzahn.gloriana.logic.files.ExportFailure
 import dev.marzahn.gloriana.logic.files.ExportProblem
+import dev.marzahn.gloriana.ui.files.ExportState
 import dev.marzahn.gloriana.ui.library.CharacterTile
 import dev.marzahn.gloriana.ui.library.LibraryActions
 import dev.marzahn.gloriana.ui.library.LibraryContent

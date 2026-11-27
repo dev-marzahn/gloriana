@@ -41,7 +41,12 @@ class QuitRequests {
 
 @Composable
 fun GuardUnsavedChanges(route: NavKey, page: UnsavedPage?) {
+  GuardUnsavedChanges(route) { page }
+}
+
+@Composable
+fun GuardUnsavedChanges(route: NavKey, page: () -> UnsavedPage?) {
   val navigator = LocalShellNavigator.current
   val current by rememberUpdatedState(page)
-  LaunchedEffect(navigator, route) { navigator.guard(route) { current } }
+  LaunchedEffect(navigator, route) { navigator.guard(route) { current() } }
 }

@@ -11,7 +11,12 @@ import kotlin.uuid.Uuid
 
 @Dao
 internal interface PresetDao {
-  @Query("SELECT id, name FROM $PRESETS_TABLE ORDER BY nameKey, name")
+  @Query(
+    "SELECT id, name, " +
+      "(SELECT COUNT(*) FROM $PRESET_ENTRIES_TABLE WHERE presetId = p.id) AS entries, " +
+      "(SELECT COUNT(*) FROM $PRESET_ENTRIES_TABLE WHERE presetId = p.id AND enabled) AS entriesOn " +
+      "FROM $PRESETS_TABLE p ORDER BY nameKey, name",
+  )
   fun summaries(): Flow<List<PresetSummaryRow>>
 
   @Transaction

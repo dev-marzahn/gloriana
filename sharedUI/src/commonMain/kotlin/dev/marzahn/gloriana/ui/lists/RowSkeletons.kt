@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.settings
+package dev.marzahn.gloriana.ui.lists
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -20,7 +20,7 @@ private val SkeletonName = 140.dp
 private val SkeletonDetail = 180.dp
 
 @Composable
-internal fun RowSkeletons(modifier: Modifier = Modifier) {
+fun RowSkeletons(modifier: Modifier = Modifier) {
   val spacing = GlorianaTheme.spacing
   Column(verticalArrangement = Arrangement.spacedBy(spacing.s12), modifier = modifier.padding(spacing.s8)) {
     repeat(SKELETON_ROWS) {

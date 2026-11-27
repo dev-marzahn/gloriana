@@ -13,15 +13,11 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
@@ -32,26 +28,28 @@ import dev.marzahn.gloriana.ui.components.EmptyBlock
 import dev.marzahn.gloriana.ui.components.EmptyState
 import dev.marzahn.gloriana.ui.components.ListDensity
 import dev.marzahn.gloriana.ui.components.ListRow
+import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.components.RowLine
 import dev.marzahn.gloriana.ui.components.RowSelection
 import dev.marzahn.gloriana.ui.components.RowTile
 import dev.marzahn.gloriana.ui.components.Skeleton
 import dev.marzahn.gloriana.ui.connections.ConnectionMoreMenu
 import dev.marzahn.gloriana.ui.connections.ConnectionRoute
-import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.connections.CreateConnectionSheet
-import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.DefaultMark
-import dev.marzahn.gloriana.ui.connections.DeleteConnectionConfirmation
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
+import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
-import dev.marzahn.gloriana.ui.connections.StartOverConfirmation
 import dev.marzahn.gloriana.ui.connections.label
 import dev.marzahn.gloriana.ui.connections.secretsLine
+import dev.marzahn.gloriana.ui.lists.RowFocus
+import dev.marzahn.gloriana.ui.lists.RowSkeletons
+import dev.marzahn.gloriana.ui.lists.rememberRowFocus
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
+import dev.marzahn.gloriana.ui.navigation.replaceTop
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.connections_empty
 import dev.marzahn.gloriana.ui.resources.connections_empty_text
@@ -85,7 +83,6 @@ import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
-import kotlin.uuid.Uuid
 
 private val ChevronSize = 24.dp
 
@@ -216,8 +213,7 @@ private class ListScope(
   val actions: SettingsActions,
   val selected: NavKey?,
   val density: ListDensity,
-  val focusTarget: FocusRequester,
-  val focusedKey: String?,
+  val focus: (String) -> Modifier,
 )
 
 @Composable
@@ -231,19 +227,14 @@ private fun SettingsList(
   val spacing = GlorianaTheme.spacing
   val items = state.items(inPane)
   val listState = rememberLazyListState()
-  val focusTarget = remember { FocusRequester() }
   val focusedKey = (state.focus as? ListFocus.Row)?.let { focus ->
     val rows = items.filterIsInstance<SettingsItem.Connection>()
     (rows.getOrNull(focus.index) ?: items.firstOrNull { it == SettingsItem.Add || it == SettingsItem.Empty })?.key
   }
-  LaunchedEffect(focusedKey) {
-    val key = focusedKey ?: return@LaunchedEffect
-    listState.scrollToItem(items.indexOfFirst { it.key == key } + 1)
-    focusTarget.requestFocus()
-    actions.onIntent(SettingsIntent.Focused)
-  }
+  val focusTarget = focusedKey?.let { key -> RowFocus(key, items.indexOfFirst { it.key == key } + 1) }
+  val focus = rememberRowFocus(listState, focusTarget) { actions.onIntent(SettingsIntent.Focused) }
   val density = if (inPane) ListDensity.Pane else ListDensity.Screen
-  val scope = ListScope(state, actions, selected, density, focusTarget, focusedKey)
+  val scope = ListScope(state, actions, selected, density, focus)
   LazyColumn(
     Modifier.fillMaxSize(),
     state = listState,
@@ -265,8 +256,7 @@ private fun LazyItemScope.listMotion(): Modifier {
 }
 
 @Composable
-private fun ListScope.focusModifier(item: SettingsItem): Modifier =
-  if (item.key == focusedKey) Modifier.focusRequester(focusTarget) else Modifier
+private fun ListScope.focusModifier(item: SettingsItem): Modifier = focus(item.key)
 
 @Composable
 private fun LazyItemScope.Item(scope: ListScope, item: SettingsItem) = with(scope) {

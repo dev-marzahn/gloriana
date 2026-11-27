@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.characters
+package dev.marzahn.gloriana.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
