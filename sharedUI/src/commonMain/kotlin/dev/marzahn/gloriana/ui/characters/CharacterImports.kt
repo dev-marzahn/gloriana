@@ -25,9 +25,7 @@ import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
@@ -51,7 +49,6 @@ class CharacterImports(
   private val mutableState = MutableStateFlow(ImportState())
   private val pages = MutableSharedFlow<Uuid>(extraBufferCapacity = 1)
   private val announcer = ImportAnnouncer(messages, importer, pages)
-  private val viewers = MutableStateFlow(0)
   private val pendingAnswer = MutableStateFlow<CompletableDeferred<AlreadyInLibraryAnswer>?>(null)
   private val active = MutableStateFlow<ActiveImport?>(null)
   private val oneAtATime = Mutex()
@@ -59,14 +56,9 @@ class CharacterImports(
 
   val state: StateFlow<ImportState> = mutableState.asStateFlow()
 
-  val pagesToOpen: SharedFlow<Uuid> = pages.asSharedFlow()
+  private val inLibrary: Boolean get() = pages.subscriptionCount.value > 0
 
-  private val inLibrary: Boolean get() = viewers.value > 0
-
-  fun libraryShown(): () -> Unit {
-    viewers.update { it + 1 }
-    return { viewers.update { it - 1 } }
-  }
+  suspend fun openPagesWhileShown(open: (Uuid) -> Unit): Nothing = pages.collect(open)
 
   fun start(files: List<PickedFile>) {
     if (files.isEmpty()) return

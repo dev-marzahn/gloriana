@@ -12,7 +12,6 @@ import dev.marzahn.gloriana.ui.characters.ImportState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
@@ -63,7 +62,7 @@ class LibraryViewModel(
   val state: StateFlow<LibraryState> = combine(listing, imports.state, ::libraryState)
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), LibraryState.Loading)
 
-  val pagesToOpen: SharedFlow<Uuid> = imports.pagesToOpen
+  suspend fun openPagesWhileShown(open: (Uuid) -> Unit): Nothing = imports.openPagesWhileShown(open)
 
   fun preview(id: Uuid): Flow<CharacterPreview?> = repository.character(id).map { character ->
     character?.let {
@@ -89,8 +88,6 @@ class LibraryViewModel(
   fun showQuestion() = imports.showQuestion()
 
   fun dismissNote() = imports.dismissNote()
-
-  fun libraryShown(): () -> Unit = imports.libraryShown()
 
   private fun libraryState(listing: Listing, imports: ImportState): LibraryState = when (listing) {
     Listing.Loading -> LibraryState.Loading

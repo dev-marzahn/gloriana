@@ -10,7 +10,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -70,11 +69,7 @@ fun LibraryScreen(modifier: Modifier = Modifier, viewModel: LibraryViewModel = k
   var creating by rememberSaveable { mutableStateOf(false) }
   var previewing by rememberSaveable { mutableStateOf<String?>(null) }
   var enlarged by rememberSaveable { mutableStateOf(false) }
-  DisposableEffect(viewModel) {
-    val release = viewModel.libraryShown()
-    onDispose { release() }
-  }
-  LaunchedEffect(viewModel, navigator) { viewModel.pagesToOpen.collect { navigator.pickCharacter(it) } }
+  LaunchedEffect(viewModel, navigator) { viewModel.openPagesWhileShown { navigator.pickCharacter(it) } }
   val actions = LibraryActions(
     onCreate = { creating = true },
     onTile = { id -> if (onWorkbench) navigator.pickCharacter(id) else previewing = id.toString() },

@@ -20,11 +20,18 @@ import dev.marzahn.gloriana.ui.resources.snack_imported_one
 import dev.marzahn.gloriana.ui.resources.snack_needs_answer
 import dev.marzahn.gloriana.ui.resources.snack_timed_out
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
-import kotlinx.coroutines.withTimeout
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.TestScope
+import kotlinx.coroutines.test.advanceUntilIdle
+import kotlinx.coroutines.test.runTest
 import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import kotlin.test.AfterTest
@@ -32,8 +39,6 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
 import kotlin.uuid.Uuid
-
-private const val WAIT_MILLIS = 5_000L
 
 private class NamedFile(override val name: String) : PickedFile {
   override fun open(): OpenedFile = OpenedFile.Unavailable
@@ -80,11 +85,14 @@ private class ScriptedImporter(
     AlreadyInLibrary(file, CharacterSummary(Uuid.random(), existing, null), left, false, false)
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class CharacterImportsTest {
-  private val scope = ApplicationScope { throw it }
+  private val importDispatcher = StandardTestDispatcher()
+  private val scope = ApplicationScope(importDispatcher) { throw it }
   private val messages = AppMessages()
   private val oren = Uuid.random()
   private val wren = Uuid.random()
+  private val opened = mutableListOf<Uuid>()
 
   @AfterTest
   fun stop() = scope.cancel()
@@ -94,50 +102,63 @@ class CharacterImportsTest {
 
   private fun imported(id: Uuid) = Step.Result(FileImportResult.Imported(id))
 
-  private suspend fun nextMessage() = withTimeout(WAIT_MILLIS) { messages.messages.first() }
+  private fun showLibrary(imports: CharacterImports): Job =
+    scope.launch(start = CoroutineStart.UNDISPATCHED) { imports.openPagesWhileShown { opened += it } }
 
-  private fun run(block: suspend () -> Unit) = runBlocking { withTimeout(WAIT_MILLIS) { block() } }
+  private fun runImportTest(block: suspend TestScope.() -> Unit) = runTest(importDispatcher, testBody = block)
 
   @Test
-  fun `one file imported in Library opens its page`() = run {
+  fun `one file imported in Library opens its page`() = runImportTest {
     val imports = imports("oren.png" to imported(oren))
-    imports.libraryShown()
+    showLibrary(imports)
     imports.start(listOf(NamedFile("oren.png")))
-    assertEquals(oren, imports.pagesToOpen.first())
-    assertEquals(emptyList(), imports.state.first { it.running.isEmpty() }.running)
+    advanceUntilIdle()
+    assertEquals(listOf(oren), opened)
+    assertEquals(emptyList(), imports.state.value.running)
   }
 
   @Test
-  fun `one file imported outside Library says so, with Open`() = run {
+  fun `one file imported after Library closed says so and opens no page later`() = runImportTest {
+    val imports = imports("oren.png" to imported(oren))
+    showLibrary(imports).cancelAndJoin()
+    imports.start(listOf(NamedFile("oren.png")))
+    assertEquals(getString(Res.string.snack_imported_one, "Oren"), messages.messages.first().text)
+    showLibrary(imports)
+    advanceUntilIdle()
+    assertEquals(emptyList(), opened)
+  }
+
+  @Test
+  fun `one file imported outside Library says so, with Open`() = runImportTest {
     val imports = imports("oren.png" to imported(oren))
     imports.start(listOf(NamedFile("oren.png")))
-    val message = nextMessage()
+    val message = messages.messages.first()
     assertEquals(getString(Res.string.snack_imported_one, "Oren"), message.text)
     assertIs<Any>(message.action)
   }
 
   @Test
-  fun `several files imported say how many, without an action`() = run {
+  fun `several files imported say how many, without an action`() = runImportTest {
     val imports = imports("oren.png" to imported(oren), "wren.json" to imported(wren))
-    imports.libraryShown()
+    showLibrary(imports)
     imports.start(listOf(NamedFile("oren.png"), NamedFile("wren.json")))
-    val message = nextMessage()
+    val message = messages.messages.first()
     assertEquals(getPluralString(Res.plurals.snack_imported, 2, 2), message.text)
     assertEquals(null, message.action)
   }
 
   @Test
-  fun `failures in Library leave the note and no Snackbar`() = run {
+  fun `failures in Library leave the note and no Snackbar`() = runImportTest {
     val broken = Step.Result(FileImportResult.Failed(ImportFailure.Damaged(DamagedAs.Png)))
     val imports = imports("oren.png" to imported(oren), "broken.png" to broken)
-    imports.libraryShown()
+    showLibrary(imports)
     imports.start(listOf(NamedFile("oren.png"), NamedFile("broken.png")))
     val note = imports.state.first { it.note != null }.note
     assertEquals(listOf("broken.png"), (note as ImportNote.Failed).failures.map { it.name })
   }
 
   @Test
-  fun `a question outside Library waits at its file and asks through a Snackbar`() = run {
+  fun `a question outside Library waits at its file and asks through a Snackbar`() = runImportTest {
     var answered: AlreadyInLibraryChoice? = null
     val ask = Step.Ask("Oren") { answer ->
       answered = answer.choice
@@ -145,7 +166,7 @@ class CharacterImportsTest {
     }
     val imports = imports("oren.png" to ask)
     imports.start(listOf(NamedFile("oren.png")))
-    assertEquals(getString(Res.string.snack_needs_answer), nextMessage().text)
+    assertEquals(getString(Res.string.snack_needs_answer), messages.messages.first().text)
     val waiting = imports.state.first { it.question != null }
     assertEquals(false, waiting.question?.showing)
     assertEquals(RunningStatus.NeedsAnswer, waiting.running.single().status)
@@ -156,7 +177,7 @@ class CharacterImportsTest {
   }
 
   @Test
-  fun `background time running out reports the files cut off`() = run {
+  fun `background time running out reports the files cut off`() = runImportTest {
     val steps = mapOf("oren.png" to imported(oren), "slow.png" to Step.Hang, "wren.json" to imported(wren))
     val importer = ScriptedImporter(steps, emptyMap())
     val imports = CharacterImports(importer, scope, messages)
@@ -165,7 +186,7 @@ class CharacterImportsTest {
     imports.backgroundTimeRanOut()
     val note = imports.state.first { it.note != null }.note as ImportNote.TimedOut
     assertEquals(listOf("slow.png", "wren.json"), note.cutOff)
-    assertEquals(getPluralString(Res.plurals.snack_timed_out, 2, 2, 3), nextMessage().text)
+    assertEquals(getPluralString(Res.plurals.snack_timed_out, 2, 2, 3), messages.messages.first().text)
     assertEquals(emptyList(), imports.state.value.running)
   }
 }
