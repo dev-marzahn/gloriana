@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
@@ -151,18 +150,17 @@ class DeleteFocus(val deleted: Deleted?, val onFocus: (Deleted) -> Unit)
 private const val ADD_ROW_KEY = "add"
 
 private fun LazyListScope.importRows(imports: PresetImportState, actions: PresetsActions, density: ListDensity) {
-  itemsIndexed(imports.failures, key = { index, _ -> "failure-$index" }) { _, failure ->
+  items(imports.failures, key = { "failure-${it.importId}" }) { failure ->
     FailureNote(failure, actions, listMotion())
   }
-  val running = listOfNotNull(imports.running?.let { it to true }) + imports.waiting.map { it.name to false }
-  itemsIndexed(running, key = { index, _ -> "import-$index" }) { _, (fileName, importing) ->
-    val line = if (importing) {
+  items(listOfNotNull(imports.running) + imports.waiting, key = { "import-${it.id}" }) { queued ->
+    val line = if (queued == imports.running) {
       RowLine.Running(stringResource(Res.string.import_importing))
     } else {
       RowLine.Plain(stringResource(Res.string.import_waiting))
     }
     ListRow(
-      fileName,
+      queued.fileName,
       line,
       onClick = {},
       modifier = listMotion(),

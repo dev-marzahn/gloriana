@@ -101,7 +101,7 @@ sealed interface PresetPageState {
     val session: PresetSession,
     val export: ExportState?,
   ) : PresetPageState {
-    val content: PresetContent get() = session.draft ?: stored.content
+    val content: PresetContent get() = session.content(stored.content)
 
     val hasChanges: Boolean get() = session.draft != null
 
@@ -130,6 +130,11 @@ class PresetViewModel(
 
   fun show(id: Uuid) {
     if (inputs.value?.id != id) inputs.value = PageInputs(id, attempt = 0)
+  }
+
+  fun contentNow(): PresetContent? {
+    val page = state.value as? PresetPageState.Shown ?: return null
+    return sessions.current(page.stored.id).content(page.stored.content)
   }
 
   fun on(intent: PresetIntent) {
@@ -173,11 +178,12 @@ class PresetViewModel(
     repository.preset(id).map { Result.success(it) }.catch { emit(Result.failure(it)) },
     sessions.session(id),
     exports.runs.state(id),
-  ) { stored, session, export ->
+  ) { stored, _, export ->
     when (val read = stored.getOrElse { return@combine PresetPageState.CouldNotLoad }) {
       null -> PresetPageState.Gone
       StoredPreset.Unreadable -> PresetPageState.CouldNotLoad
-      is StoredPreset.Readable -> PresetPageState.Shown(read.preset, session, export)
+      is StoredPreset.Readable ->
+        PresetPageState.Shown(read.preset, sessions.pageSession(id, read.preset.content), export)
     }
   }
 }

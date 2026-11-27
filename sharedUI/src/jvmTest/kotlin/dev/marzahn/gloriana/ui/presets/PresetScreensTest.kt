@@ -9,28 +9,36 @@ import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.click
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.isToggleable
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performCustomAccessibilityActionWithLabel
+import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.v2.runComposeUiTest
 import dev.marzahn.gloriana.logic.characters.DesktopExportDestination
 import dev.marzahn.gloriana.logic.characters.DesktopPickedFile
 import dev.marzahn.gloriana.logic.files.OpenedFile
 import dev.marzahn.gloriana.logic.files.PickedFile
+import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.PresetEntry
+import dev.marzahn.gloriana.logic.presets.PresetGroup
 import dev.marzahn.gloriana.logic.presets.PresetImportFailure
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.StoredPreset
+import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.ui.App
 import dev.marzahn.gloriana.ui.connections.LiveLibrary
 import dev.marzahn.gloriana.ui.files.SaveTarget
 import dev.marzahn.gloriana.ui.navigation.QuitRequests
 import dev.marzahn.gloriana.ui.resources.Res
+import dev.marzahn.gloriana.ui.resources.add_group
+import dev.marzahn.gloriana.ui.resources.add_group_confirm
 import dev.marzahn.gloriana.ui.resources.changes_not_saved
+import dev.marzahn.gloriana.ui.resources.depth_error
 import dev.marzahn.gloriana.ui.resources.destination_library
 import dev.marzahn.gloriana.ui.resources.discard
 import dev.marzahn.gloriana.ui.resources.export
@@ -235,7 +243,7 @@ class PresetScreensTest {
 
       waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
       val failures = library.koin.get<PresetImports>().state.value.failures
-      assertEquals(listOf(ImportFailureNote("Broken.json", PresetImportFailure.CantBeOpened)), failures)
+      assertEquals(listOf("Broken.json" to PresetImportFailure.CantBeOpened), failures.map { it.fileName to it.reason })
     }
   }
 
@@ -280,6 +288,92 @@ class PresetScreensTest {
       assertFalse(quit)
       tap(Res.string.discard)
       waitUntil(timeoutMillis = WAIT_MILLIS) { quit }
+    }
+  }
+
+  @Test
+  fun wrapperTextFollowsTheDraftWhenItIsDiscarded() = runComposeUiTest {
+    LiveLibrary.use { library ->
+      openPresets(library)
+      library.imported(presetFile("Plain.json"))
+      val id = waitForPreset(library)
+      val sessions = library.koin.get<PresetSessions>()
+      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      tap(hasText(getString(WrapperPrompt.entries.first().title)) and hasClickAction())
+      waitFor(hasSetTextAction())
+
+      onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("Write in second person.")
+      onAllNodes(hasText(getString(Res.string.save)) and hasClickAction()).onFirst().assertIsEnabled()
+      sessions.discard(id)
+
+      waitUntil(timeoutMillis = WAIT_MILLIS) {
+        onAllNodes(hasText("Write in second person.")).fetchSemanticsNodes().isEmpty()
+      }
+    }
+  }
+
+  private fun deepFile(): DesktopPickedFile {
+    val file = directory.resolve("Deep.json")
+    file.writeText(
+      """{"prompts": [
+        {"identifier": "main", "name": "Main Prompt", "role": "system", "content": "Be vivid."},
+        {"identifier": "nsfw", "name": "Auxiliary Prompt", "role": "system", "content": "Stay in character.",
+         "injection_position": 1, "injection_depth": 4}
+      ],
+      "prompt_order": [{"character_id": 100001, "order": [
+        {"identifier": "main", "enabled": true}, {"identifier": "nsfw", "enabled": true}
+      ]}]}""",
+    )
+    return DesktopPickedFile(file)
+  }
+
+  private fun inChatDepths(library: LiveLibrary, id: Uuid): List<Int?> =
+    library.koin.get<PresetSessions>().current(id).draft?.entries.orEmpty()
+      .map { (it.placement as? EntryPlacement.InChat)?.depth }
+
+  @Test
+  fun anEmptyDepthBlocksSaveWithItsErrorAndAWholeNumberClearsIt() = runComposeUiTest {
+    LiveLibrary.use { library ->
+      openPresets(library)
+      library.imported(deepFile())
+      val id = waitForPreset(library)
+      waitFor(hasContentDescription(getString(Res.string.preset_more, "Deep")))
+      tap(hasText("Auxiliary Prompt") and hasClickAction())
+      val depthField = hasSetTextAction() and hasText("4")
+      waitFor(depthField)
+
+      onAllNodes(depthField).onFirst().performTextReplacement("5")
+      onAllNodes(hasSetTextAction() and hasText("5")).onFirst().performTextReplacement("")
+      tap(Res.string.save)
+
+      waitFor(hasText(getString(Res.string.depth_error)))
+      assertEquals(listOf(null, 5), inChatDepths(library, id))
+      assertEquals(4, (library.entries(id).last().placement as EntryPlacement.InChat).depth)
+
+      onAllNodes(hasSetTextAction() and hasText("")).onFirst().performTextReplacement("7")
+      val error = hasText(getString(Res.string.depth_error))
+      waitUntil(timeoutMillis = WAIT_MILLIS) { onAllNodes(error).fetchSemanticsNodes().isEmpty() }
+      assertEquals(listOf(null, 7), inChatDepths(library, id))
+    }
+  }
+
+  @Test
+  fun theAddGroupSheetAddsANamedGroupToTheDraft() = runComposeUiTest {
+    LiveLibrary.use { library ->
+      openPresets(library)
+      library.imported(presetFile("Plain.json"))
+      val id = waitForPreset(library)
+      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+
+      tap(Res.string.add_group)
+      waitFor(hasSetTextAction())
+      onAllNodes(hasSetTextAction()).onFirst().performTextReplacement("Extras")
+      tap(Res.string.add_group_confirm)
+
+      waitUntil(timeoutMillis = WAIT_MILLIS) {
+        library.koin.get<PresetSessions>().current(id).draft?.rows.orEmpty()
+          .filterIsInstance<PresetGroup>().map { it.name } == listOf("Extras")
+      }
     }
   }
 

@@ -13,10 +13,10 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.listSaver
-import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,6 +30,7 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.EntryRole
+import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
 import dev.marzahn.gloriana.ui.components.FieldNote
 import dev.marzahn.gloriana.ui.components.GlorianaButton
@@ -74,6 +75,7 @@ import dev.marzahn.gloriana.ui.resources.move_up
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import kotlin.uuid.Uuid
 
 private val DepthFieldWidth = 120.dp
 private val RadioIndent = 56.dp
@@ -82,24 +84,25 @@ private val SkeletonLine = 180.dp
 
 internal fun depthOf(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it >= 0 }
 
-private class DepthEntry(text: String, showError: Boolean = false) {
-  var text by mutableStateOf(text)
-    private set
-  var showError by mutableStateOf(showError)
+private class DepthEntry(private val typed: MutableState<String>) {
+  val text: String get() = typed.value
+  private var errorAsked by mutableStateOf(false)
+  val showError: Boolean get() = errorAsked && depthOf(text) == null
   val focus = FocusRequester()
 
   fun type(value: String) {
-    text = value
-    showError = false
+    typed.value = value
+    errorAsked = false
   }
 
-  companion object {
-    val Saver = listSaver<DepthEntry, Any>(
-      save = { listOf(it.text, it.showError) },
-      restore = { DepthEntry(it[0] as String, it[1] as Boolean) },
-    )
+  fun askToFix() {
+    errorAsked = true
+    focus.requestFocus()
   }
 }
+
+private fun PresetContent.inChatDepth(entryId: Uuid): Int? =
+  (entries.firstOrNull { it.id == entryId }?.placement as? EntryPlacement.InChat)?.depth
 
 @Composable
 fun PresetEntryScreen(route: PresetEntryRoute, modifier: Modifier = Modifier) {
@@ -109,21 +112,22 @@ fun PresetEntryScreen(route: PresetEntryRoute, modifier: Modifier = Modifier) {
   val page = state as? PresetPageState.Shown
   val entry = page?.entry(route.entryUuid)
   LaunchedEffect(page != null, entry == null) {
-    if (page != null && entry == null) navigator.close(Destination.Library, route)
+    if (page != null && entry == null) navigator.closeWithoutAsking(Destination.Library, route)
   }
-  val storedEntry = page?.stored?.content?.entries?.firstOrNull { it.id == route.entryUuid }
-  val shownDepth = (entry?.placement as? EntryPlacement.InChat)?.depth
-    ?: (storedEntry?.placement as? EntryPlacement.InChat)?.depth
+  val lastInChatDepth = page?.content?.inChatDepth(route.entryUuid)
+    ?: page?.session?.baseline(page.stored.content)?.inChatDepth(route.entryUuid)
     ?: 0
-  val loaded = entry != null
-  val depth = rememberSaveable(route, loaded, saver = DepthEntry.Saver) { DepthEntry(shownDepth.toString()) }
+  val depthText = rememberDraftText(
+    route,
+    shown = lastInChatDepth.toString(),
+    draftNow = { viewModel.contentNow()?.inChatDepth(route.entryUuid)?.toString() },
+    sameValue = { typed, draft -> depthOf(typed) == depthOf(draft) },
+  )
+  val depth = remember(depthText) { DepthEntry(depthText) }
   val inChat = entry?.placement is EntryPlacement.InChat
   val depthBad = inChat && depthOf(depth.text) == null
   val checkDepth = {
-    if (depthBad) {
-      depth.showError = true
-      depth.focus.requestFocus()
-    }
+    if (depthBad) depth.askToFix()
     !depthBad
   }
   val leave = { if (checkDepth()) navigator.pop(Destination.Library) }
@@ -144,7 +148,7 @@ fun PresetEntryScreen(route: PresetEntryRoute, modifier: Modifier = Modifier) {
           depth.type(text)
           depthOf(text)?.let { viewModel.on(PresetIntent.SetPlacement(entry.id, EntryPlacement.InChat(it))) }
         },
-        inChatDepth = { depthOf(depth.text) ?: shownDepth },
+        inChatDepth = { depthOf(depth.text) ?: lastInChatDepth },
         checkDepth = checkDepth,
         onIntent = viewModel::on,
       )

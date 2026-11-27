@@ -12,20 +12,23 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberNavBackStack
 
-internal typealias UnsavedPageGuard = () -> UnsavedPage?
-
 @Stable
 class ShellNavigator(
   private val stacks: Map<Destination, MutableList<NavKey>>,
   currentState: MutableState<Destination>,
+  libraryKindState: MutableState<LibraryKind>,
 ) {
-  private val guards = mutableMapOf<NavKey, UnsavedPageGuard>()
+  internal val unsaved = UnsavedGuards()
 
   var current: Destination by currentState
     private set
 
-  var pendingLeave: PendingLeave? by mutableStateOf(null)
+  var libraryKind: LibraryKind by libraryKindState
     private set
+
+  val pendingLeave: PendingLeave? get() = unsaved.pending
+
+  val unsavedPages: List<UnsavedPage> get() = unsaved.pages
 
   fun stack(destination: Destination): List<NavKey> = stacks.getValue(destination)
 
@@ -33,10 +36,16 @@ class ShellNavigator(
 
   val canLeaveToHome: Boolean get() = atRoot && current != Destination.Home
 
-  val unsavedPages: List<UnsavedPage> get() = guards.values.mapNotNull { it() }
-
   fun select(destination: Destination) {
     if (destination == current) returnToRoot(current) else current = destination
+  }
+
+  fun showLibraryKind(kind: LibraryKind, then: () -> Unit = {}) {
+    current = Destination.Library
+    returnToRoot(Destination.Library) {
+      libraryKind = kind
+      then()
+    }
   }
 
   fun push(key: NavKey, destination: Destination = current) {
@@ -56,7 +65,11 @@ class ShellNavigator(
     leaving(destination, dropping = listOf(stack.last())) { stack.removeAt(stack.lastIndex) }
   }
 
-  fun swap(destination: Destination, shown: NavKey, with: NavKey) {
+  fun leaving(destination: Destination, dropping: List<NavKey> = stack(destination).drop(1), leave: () -> Unit) {
+    unsaved.askAbout(dropping) { leaveAndForget(leave) }
+  }
+
+  fun replaceWithoutAsking(destination: Destination, shown: NavKey, with: NavKey) {
     leaveAndForget {
       val stack = stacks.getValue(destination)
       val index = stack.indexOf(shown)
@@ -64,23 +77,7 @@ class ShellNavigator(
     }
   }
 
-  fun leaving(destination: Destination, dropping: List<NavKey> = stack(destination).drop(1), leave: () -> Unit) {
-    val page = dropping.firstNotNullOfOrNull { guards[it]?.invoke() }
-    pendingLeave = page?.let {
-      PendingLeave(
-        page = it,
-        discardAndLeave = {
-          pendingLeave = null
-          it.discard()
-          leaveAndForget(leave)
-        },
-        keepEditing = { pendingLeave = null },
-      )
-    }
-    if (page == null) leaveAndForget(leave)
-  }
-
-  fun close(destination: Destination, shown: NavKey) {
+  fun closeWithoutAsking(destination: Destination, shown: NavKey) {
     leaveAndForget {
       val stack = stacks.getValue(destination)
       val index = stack.indexOf(shown)
@@ -92,14 +89,9 @@ class ShellNavigator(
     if (canLeaveToHome) current = Destination.Home
   }
 
-  internal fun guard(key: NavKey, guard: UnsavedPageGuard) {
-    guards[key] = guard
-  }
-
   private fun leaveAndForget(leave: () -> Unit) {
     leave()
-    val shown = stacks.values.flatten().toSet()
-    guards.keys.retainAll(shown)
+    unsaved.keepOnly(stacks.values.flatten().toSet())
   }
 }
 
@@ -116,5 +108,6 @@ val LocalShellNavigator = staticCompositionLocalOf<ShellNavigator> { error("No S
 internal fun rememberShellNavigator(): ShellNavigator {
   val stacks = Destination.entries.associateWith { rememberNavBackStack(backStackConfiguration, it.root) }
   val current = rememberSaveable { mutableStateOf(Destination.Start) }
-  return remember(stacks, current) { ShellNavigator(stacks, current) }
+  val libraryKind = rememberSaveable { mutableStateOf(LibraryKind.Characters) }
+  return remember(stacks, current, libraryKind) { ShellNavigator(stacks, current, libraryKind) }
 }

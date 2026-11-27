@@ -31,13 +31,10 @@ import dev.marzahn.gloriana.ui.components.SegmentedControl
 import dev.marzahn.gloriana.ui.files.rememberFilePicker
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LibraryKind
-import dev.marzahn.gloriana.ui.navigation.LibraryKinds
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
-import dev.marzahn.gloriana.ui.navigation.showLibraryKind
 import dev.marzahn.gloriana.ui.presets.PresetsLibrary
-import dev.marzahn.gloriana.ui.presets.shownPreset
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.characters_error
 import dev.marzahn.gloriana.ui.resources.characters_nothing_picked
@@ -72,19 +69,9 @@ class LibraryActions(
 
 @Composable
 fun LibraryScreen(modifier: Modifier = Modifier) {
-  val kinds: LibraryKinds = koinInject()
-  val request by kinds.request.collectAsState()
   val navigator = LocalShellNavigator.current
-  var picked by rememberSaveable { mutableStateOf(LibraryKind.Characters) }
-  LaunchedEffect(request) {
-    request?.let {
-      picked = it
-      kinds.handled(it)
-    }
-  }
-  val kind = if (navigator.shownPreset() != null) LibraryKind.Presets else picked
-  val kindPicker = @Composable { LibraryKindPicker(kind) { navigator.showLibraryKind(it, kinds) } }
-  when (kind) {
+  val kindPicker = @Composable { LibraryKindPicker(navigator.libraryKind) { navigator.showLibraryKind(it) } }
+  when (navigator.libraryKind) {
     LibraryKind.Characters -> CharactersLibrary(kindPicker, modifier)
     LibraryKind.Presets -> PresetsLibrary(kindPicker, modifier)
   }

@@ -38,8 +38,15 @@ class PresetCommands(
         PresetSaveResult.Gone, PresetSaveResult.Failed, is PresetSaveResult.Refused -> PresetNote.NotSaved
       }
       sessions.update(stored.id) { session ->
-        val saved = note == null && session.draft == draft
-        session.copy(activity = PresetActivity.Idle, note = note, draft = session.draft.takeUnless { saved })
+        if (note != null) {
+          session.copy(activity = PresetActivity.Idle, note = note)
+        } else {
+          session.copy(
+            activity = PresetActivity.Idle,
+            draft = session.draft.takeUnless { it == draft },
+            savedAhead = draft,
+          )
+        }
       }
       if (note == null) messages.show(AppMessage(getString(Res.string.preset_saved, stored.name)))
     }

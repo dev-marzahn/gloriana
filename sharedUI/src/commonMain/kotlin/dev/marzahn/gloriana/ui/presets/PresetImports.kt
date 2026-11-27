@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.ui.presets
 
 import dev.marzahn.gloriana.logic.app.ApplicationScope
+import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
@@ -17,9 +18,6 @@ import dev.marzahn.gloriana.logic.presets.presetName
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.messages.MessageAction
-import dev.marzahn.gloriana.ui.navigation.LibraryKind
-import dev.marzahn.gloriana.ui.navigation.LibraryKinds
-import dev.marzahn.gloriana.ui.navigation.showLibraryKind
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.open
 import dev.marzahn.gloriana.ui.resources.preset_imported
@@ -53,13 +51,18 @@ data class SamplerOfferState(
   val copying: Boolean = false,
 )
 
-data class ImportFailureNote(val fileName: String, val reason: PresetImportFailure)
+data class QueuedImport(val id: Long, val file: PickedFile) {
+  val fileName: String get() = file.name
+}
+
+data class ImportFailureNote(val importId: Long, val fileName: String, val reason: PresetImportFailure)
 
 data class PresetImportState(
-  val running: String? = null,
+  val running: QueuedImport? = null,
   val failures: List<ImportFailureNote> = emptyList(),
   val offer: SamplerOfferState? = null,
-  val waiting: List<PickedFile> = emptyList(),
+  val waiting: List<QueuedImport> = emptyList(),
+  val nextImportId: Long = 0,
 ) {
   val busy: Boolean get() = running != null || offer != null
 }
@@ -77,7 +80,6 @@ class PresetImports(
   private val sessions: PresetSessions,
   private val scope: ApplicationScope,
   private val messages: AppMessages,
-  private val kinds: LibraryKinds,
 ) {
   private val mutableState = MutableStateFlow(PresetImportState())
   private val pages = Channel<Uuid>(Channel.BUFFERED)
@@ -97,25 +99,29 @@ class PresetImports(
 
   fun start(file: PickedFile) {
     mutableState.update { state ->
-      state.copy(waiting = state.waiting + file, failures = if (state.busy) state.failures else emptyList())
+      state.copy(
+        waiting = state.waiting + QueuedImport(state.nextImportId, file),
+        failures = if (state.busy) state.failures else emptyList(),
+        nextImportId = state.nextImportId + 1,
+      )
     }
     next()
   }
 
   private fun next() {
-    val file = mutableState.claimNext() ?: return
+    val queued = mutableState.claimNext() ?: return
     scope.launch {
-      when (val result = import.import(file)) {
+      when (val result = import.import(queued.file)) {
         is PresetImportResult.Failed -> {
-          val note = ImportFailureNote(file.name, result.reason)
+          val note = ImportFailureNote(queued.id, queued.fileName, result.reason)
           mutableState.update { it.copy(running = null, failures = it.failures + note) }
           next()
           if (listsShown.value == 0) {
-            val open = MessageAction(getString(Res.string.open)) { it.showLibraryKind(LibraryKind.Presets, kinds) }
+            val open = MessageAction(getString(Res.string.open)) { it.showPresets() }
             messages.show(AppMessage(getString(Res.string.preset_not_imported, note.fileName), open))
           }
         }
-        is PresetImportResult.Imported -> imported(file.name, result)
+        is PresetImportResult.Imported -> imported(queued.fileName, result)
       }
     }
   }
@@ -123,9 +129,9 @@ class PresetImports(
   fun dismissFailure(note: ImportFailureNote) = mutableState.update { it.copy(failures = it.failures - note) }
 
   fun pick(choice: OfferChoice) {
-    val offer = mutableState.value.offer?.takeUnless { it.copying } ?: return
+    if (mutableState.value.offer?.takeUnless { it.copying } == null) return
     mutableState.updateOffer { it.copy(picked = choice, difference = null) }
-    scope.launch { findDifference(offer.copy(picked = choice)) }
+    scope.launch { findDifference(choice) }
   }
 
   fun decline() {
@@ -139,7 +145,8 @@ class PresetImports(
     val difference = offer.difference ?: return
     mutableState.updateOffer { it.copy(copying = true) }
     scope.launch {
-      val failure = when (offers.copy(offer.picked.id, difference.changes)) {
+      val result = offers.copy(difference.connectionId, difference.changes)
+      val failure = when (result) {
         SamplersUpdateResult.Updated, SamplersUpdateResult.Unchanged -> null
         SamplersUpdateResult.StorageFull -> CopyFailure.Storage
         SamplersUpdateResult.Gone -> CopyFailure.ConnectionDeleted
@@ -147,7 +154,7 @@ class PresetImports(
           CopyFailure.Other
       }
       mutableState.update { it.copy(offer = null) }
-      if (failure == null) {
+      if (result == SamplersUpdateResult.Updated) {
         val count = difference.changes.size
         messages.show(AppMessage(getPluralString(Res.plurals.samplers_copied, count, count, offer.picked.name)))
       }
@@ -165,10 +172,10 @@ class PresetImports(
       offer != null -> {
         mutableState.update { it.copy(running = null, offer = offer) }
         if (listsShown.value == 0) {
-          val open = MessageAction(getString(Res.string.open)) { it.showLibraryKind(LibraryKind.Presets, kinds) }
+          val open = MessageAction(getString(Res.string.open)) { it.showPresets() }
           messages.show(AppMessage(getString(Res.string.preset_imported, name), open))
         }
-        findDifference(offer)
+        findDifference(offer.picked)
       }
       read == null -> opened(result.id, name, notes)
       read == OfferChoices.Unreadable ->
@@ -177,27 +184,40 @@ class PresetImports(
     }
   }
 
-  private suspend fun findDifference(offer: SamplerOfferState) {
-    when (val found = offers.difference(offer.samplers, offer.picked.id)) {
-      is DifferenceResult.Found -> mutableState.updateOffer { current ->
-        current.takeIf { it.picked == offer.picked }?.copy(difference = found.difference) ?: current
+  private suspend fun findDifference(choice: OfferChoice) {
+    val samplers = mutableState.value.offer?.samplers ?: return
+    val found = failingAs(DifferenceResult.Unreadable) { offers.difference(samplers, choice.id) }
+    when (found) {
+      is DifferenceResult.Found -> mutableState.updateOffer { offer ->
+        if (offer.picked == choice && !offer.copying) offer.copy(difference = found.difference) else offer
       }
-      DifferenceResult.ConnectionGone, DifferenceResult.Unreadable -> withoutChoice(offer.picked)
+      DifferenceResult.ConnectionGone -> withoutChoice(choice)
+      DifferenceResult.Unreadable -> mutableState.closeOffer { it.picked == choice }?.let { offer ->
+        val copyFailed = CopyFailed.OnConnection(CopyFailure.Other, offer.picked.name)
+        opened(offer.presetId, offer.presetName, offer.notes(copyFailed))
+      }
     }
   }
 
   private suspend fun withoutChoice(gone: OfferChoice) {
-    val offer = mutableState.value.offer ?: return
-    val left = offer.choices - gone
-    val next = left.firstOrNull { it.isDefault } ?: left.firstOrNull()
-    if (next == null) {
-      mutableState.update { it.copy(offer = null) }
-      opened(offer.presetId, offer.presetName, offer.notes().copy(samplersDroppedNoConnection = true))
-      return
+    val dropped = mutableState.updateAndClaim { state ->
+      val offer = state.offer?.takeUnless { it.copying } ?: return@updateAndClaim state to ChoiceDropped.Kept
+      val left = offer.choices - gone
+      val next = if (offer.picked == gone) left.firstOrNull { it.isDefault } ?: left.firstOrNull() else offer.picked
+      when (next) {
+        null -> state.copy(offer = null) to ChoiceDropped.LastOne(offer)
+        offer.picked -> state.copy(offer = offer.copy(choices = left)) to ChoiceDropped.Kept
+        else -> state.copy(offer = offer.copy(choices = left, picked = next, difference = null)) to
+          ChoiceDropped.Repicked(next)
+      }
     }
-    val changed = offer.copy(choices = left, picked = next, difference = null)
-    mutableState.updateOffer { changed }
-    findDifference(changed)
+    when (dropped) {
+      is ChoiceDropped.LastOne -> with(dropped.offer) {
+        opened(presetId, presetName, notes().copy(samplersDroppedNoConnection = true))
+      }
+      is ChoiceDropped.Repicked -> findDifference(dropped.choice)
+      ChoiceDropped.Kept -> Unit
+    }
   }
 
   private suspend fun opened(id: Uuid, name: String, notes: ImportNotes) {
@@ -207,7 +227,7 @@ class PresetImports(
     if (listsShown.value > 0) {
       pages.send(id)
     } else {
-      val open = MessageAction(getString(Res.string.open)) { it.openPreset(id, kinds) }
+      val open = MessageAction(getString(Res.string.open)) { it.openPreset(id) }
       messages.show(AppMessage(getString(Res.string.preset_imported, name), open))
     }
   }
@@ -215,6 +235,20 @@ class PresetImports(
 
 private fun MutableStateFlow<PresetImportState>.updateOffer(change: (SamplerOfferState) -> SamplerOfferState) =
   update { state -> state.copy(offer = state.offer?.let(change)) }
+
+private sealed interface ChoiceDropped {
+  data class LastOne(val offer: SamplerOfferState) : ChoiceDropped
+
+  data class Repicked(val choice: OfferChoice) : ChoiceDropped
+
+  data object Kept : ChoiceDropped
+}
+
+private fun MutableStateFlow<PresetImportState>.closeOffer(where: (SamplerOfferState) -> Boolean) =
+  updateAndClaim { state ->
+    val closed = state.offer?.takeIf { !it.copying && where(it) }
+    (if (closed == null) state else state.copy(offer = null)) to closed
+  }
 
 private fun SamplerOfferState.notes(copyFailed: CopyFailed? = null) =
   ImportNotes(fileName, credentialsSkipped, samplersDroppedNoConnection = false, copyFailed = copyFailed)
@@ -230,13 +264,9 @@ private suspend fun ConnectionRepository.offerChoices(): OfferChoices {
   return read.catch { emit(OfferChoices.Unreadable) }.first()
 }
 
-private fun MutableStateFlow<PresetImportState>.claimNext(): PickedFile? {
-  var claimed: PickedFile? = null
-  update { state ->
-    claimed = state.waiting.firstOrNull()?.takeUnless { state.busy }
-    claimed?.let { state.copy(running = it.name, waiting = state.waiting.drop(1)) } ?: state
-  }
-  return claimed
+private fun MutableStateFlow<PresetImportState>.claimNext(): QueuedImport? = updateAndClaim { state ->
+  val claimed = state.waiting.firstOrNull()?.takeUnless { state.busy }
+  (claimed?.let { state.copy(running = it, waiting = state.waiting.drop(1)) } ?: state) to claimed
 }
 
 private fun offerOf(

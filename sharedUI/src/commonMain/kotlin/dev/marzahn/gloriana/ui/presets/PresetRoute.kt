@@ -4,10 +4,8 @@ import androidx.navigation3.runtime.NavKey
 import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LibraryKind
-import dev.marzahn.gloriana.ui.navigation.LibraryKinds
 import dev.marzahn.gloriana.ui.navigation.ShellNavigator
 import dev.marzahn.gloriana.ui.navigation.replaceTop
-import dev.marzahn.gloriana.ui.navigation.showLibraryKind
 import kotlinx.serialization.Serializable
 import kotlin.uuid.Uuid
 
@@ -34,8 +32,10 @@ data class PresetWrapperRoute(override val presetId: String, val prompt: Wrapper
   constructor(presetId: Uuid, prompt: WrapperPrompt) : this(presetId.toString(), prompt)
 }
 
-fun ShellNavigator.openPreset(id: Uuid, kinds: LibraryKinds) {
-  showLibraryKind(LibraryKind.Presets, kinds) { push(PresetRoute(id)) }
+fun ShellNavigator.showPresets() = showLibraryKind(LibraryKind.Presets)
+
+fun ShellNavigator.openPreset(id: Uuid) {
+  showLibraryKind(LibraryKind.Presets) { push(PresetRoute(id), Destination.Library) }
 }
 
 fun ShellNavigator.pickPreset(id: Uuid) {

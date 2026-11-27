@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,7 +67,33 @@ sealed interface GroupPrompt {
   data object Add : GroupPrompt
 
   data class Rename(val groupId: Uuid, val name: String) : GroupPrompt
+
+  companion object {
+    private const val ADD = "add"
+    private const val RENAME = "rename"
+
+    val Saver: Saver<GroupPrompt?, List<String>> = Saver(
+      save = { prompt ->
+        when (prompt) {
+          null -> null
+          Add -> listOf(ADD)
+          is Rename -> listOf(RENAME, prompt.groupId.toString(), prompt.name)
+        }
+      },
+      restore = { saved ->
+        when (saved.firstOrNull()) {
+          ADD -> Add
+          RENAME -> saved.takeIf { it.size == 3 }?.let { Rename(Uuid.parse(it[1]), it[2]) }
+          else -> null
+        }
+      },
+    )
+  }
 }
+
+@Composable
+internal fun rememberGroupPrompt(): MutableState<GroupPrompt?> =
+  rememberSaveable(stateSaver = GroupPrompt.Saver) { mutableStateOf(null) }
 
 @Composable
 fun GroupPromptSheet(

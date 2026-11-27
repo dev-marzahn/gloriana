@@ -109,12 +109,14 @@ fun ConnectionScreen(route: ConnectionRoute, modifier: Modifier = Modifier) {
     viewModel.events.collect { event ->
       when (event) {
         is PageEvent.Focus -> focus.of(event.field).requestFocus()
-        is PageEvent.Saved -> navigator.swap(Destination.Settings, shown = route, with = event.route)
+        is PageEvent.Saved -> navigator.replaceWithoutAsking(Destination.Settings, shown = route, with = event.route)
       }
     }
   }
   val state by viewModel.state.collectAsStateWithLifecycle()
-  LaunchedEffect(state) { if (state == ConnectionPageState.Gone) navigator.close(Destination.Settings, route) }
+  LaunchedEffect(state) {
+    if (state == ConnectionPageState.Gone) navigator.closeWithoutAsking(Destination.Settings, route)
+  }
   val shown = when (val current = state) {
     is ConnectionPageState.Shown -> current
     ConnectionPageState.Loading, ConnectionPageState.CouldNotLoad, ConnectionPageState.Gone -> null

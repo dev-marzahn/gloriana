@@ -2,17 +2,26 @@ package dev.marzahn.gloriana.ui.navigation
 
 import androidx.compose.runtime.mutableStateOf
 import androidx.navigation3.runtime.NavKey
+import dev.marzahn.gloriana.ui.characters.CharacterRoute
+import dev.marzahn.gloriana.ui.characters.openCharacter
+import dev.marzahn.gloriana.ui.characters.pickCharacter
+import dev.marzahn.gloriana.ui.characters.showLibrary
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.uuid.Uuid
 
 class ShellNavigatorTest {
   private data class Item(val name: String) : NavKey
 
   private fun navigator(start: Destination = Destination.Library) =
-    ShellNavigator(Destination.entries.associateWith { mutableListOf(it.root) }, mutableStateOf(start))
+    ShellNavigator(
+      Destination.entries.associateWith { mutableListOf(it.root) },
+      mutableStateOf(start),
+      mutableStateOf(LibraryKind.Characters),
+    )
 
   @Test
   fun opensAtTheStartDestinationsRoot() {
@@ -107,12 +116,20 @@ class ShellNavigatorTest {
   private class Unsaved {
     var changed = true
     var discards = 0
-    val page get() = UnsavedPage("leave?", "page", discard = { discards++ }).takeIf { changed }
+    val page
+      get() = UnsavedPage(
+        "leave?",
+        "page",
+        discard = {
+          discards++
+          changed = false
+        },
+      ).takeIf { changed }
   }
 
   private fun guarded(unsaved: Unsaved, key: NavKey = Item("page")) = navigator(Destination.Settings).apply {
     push(key)
-    guard(key) { unsaved.page }
+    this.unsaved.guard(key) { unsaved.page }
   }
 
   @Test
@@ -178,7 +195,7 @@ class ShellNavigatorTest {
   fun closeLeavesWithoutAskingAndForgetsTheGuard() {
     val navigator = guarded(Unsaved())
 
-    navigator.close(Destination.Settings, Item("page"))
+    navigator.closeWithoutAsking(Destination.Settings, Item("page"))
 
     assertNull(navigator.pendingLeave)
     assertTrue(navigator.atRoot)
@@ -189,7 +206,7 @@ class ShellNavigatorTest {
   fun swappingTheShownPageForItsSavedRouteNeverAsks() {
     val navigator = guarded(Unsaved())
 
-    navigator.swap(Destination.Settings, shown = Item("page"), with = Item("saved"))
+    navigator.replaceWithoutAsking(Destination.Settings, shown = Item("page"), with = Item("saved"))
 
     assertNull(navigator.pendingLeave)
     assertEquals(listOf(Destination.Settings.root, Item("saved")), navigator.stack(Destination.Settings))
@@ -199,7 +216,7 @@ class ShellNavigatorTest {
   fun closingARouteThatIsNotShownChangesNothing() {
     val navigator = guarded(Unsaved())
 
-    navigator.close(Destination.Settings, Item("elsewhere"))
+    navigator.closeWithoutAsking(Destination.Settings, Item("elsewhere"))
 
     assertEquals(listOf(Destination.Settings.root, Item("page")), navigator.stack(Destination.Settings))
   }
@@ -209,8 +226,118 @@ class ShellNavigatorTest {
     val navigator = guarded(Unsaved())
     navigator.select(Destination.Library)
     navigator.push(Item("clean"))
-    navigator.guard(Item("clean")) { null }
+    navigator.unsaved.guard(Item("clean")) { null }
 
     assertEquals(listOf("page"), navigator.unsavedPages.map { it.quittingName })
+  }
+
+  private fun editedPresetPage(unsaved: Unsaved): ShellNavigator = navigator(Destination.Chats).apply {
+    showLibraryKind(LibraryKind.Presets) { push(Item("preset"), Destination.Library) }
+    this.unsaved.guard(Item("preset")) { unsaved.page }
+    select(Destination.Chats)
+  }
+
+  @Test
+  fun aCharacterSnackbarsOpenOverAnEditedPresetAsksAndThenOpensTheCharacter() {
+    val unsaved = Unsaved()
+    val navigator = editedPresetPage(unsaved)
+    val character = Uuid.random()
+
+    navigator.openCharacter(character)
+
+    assertEquals(Destination.Library, navigator.current)
+    assertEquals(LibraryKind.Presets, navigator.libraryKind)
+    assertEquals(listOf(Destination.Library.root, Item("preset")), navigator.stack(Destination.Library))
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+    assertEquals(1, unsaved.discards)
+    assertEquals(LibraryKind.Characters, navigator.libraryKind)
+    assertEquals(listOf(Destination.Library.root, CharacterRoute(character)), navigator.stack(Destination.Library))
+  }
+
+  @Test
+  fun keepEditingOverAnEditedPresetLeavesTheLibraryKindAndStack() {
+    val navigator = editedPresetPage(Unsaved())
+
+    navigator.showLibrary()
+    checkNotNull(navigator.pendingLeave).keepEditing()
+
+    assertNull(navigator.pendingLeave)
+    assertEquals(LibraryKind.Presets, navigator.libraryKind)
+    assertEquals(listOf(Destination.Library.root, Item("preset")), navigator.stack(Destination.Library))
+  }
+
+  @Test
+  fun showingTheLibraryWithoutChangesSwitchesBackToCharacters() {
+    val navigator = editedPresetPage(Unsaved().apply { changed = false })
+
+    navigator.showLibrary()
+
+    assertNull(navigator.pendingLeave)
+    assertEquals(LibraryKind.Characters, navigator.libraryKind)
+    assertTrue(navigator.atRoot)
+  }
+
+  @Test
+  fun pickingACharacterAsksAboutTheEditedPageItReplaces() {
+    val navigator = editedPresetPage(Unsaved())
+    navigator.select(Destination.Library)
+    val character = Uuid.random()
+
+    navigator.pickCharacter(character)
+    assertEquals(listOf(Destination.Library.root, Item("preset")), navigator.stack(Destination.Library))
+
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+    assertEquals(listOf(Destination.Library.root, CharacterRoute(character)), navigator.stack(Destination.Library))
+  }
+
+  @Test
+  fun leavingAsksAboutEveryUnsavedPageItDrops() {
+    val first = Unsaved()
+    val second = Unsaved()
+    val navigator = guarded(first, Item("first")).apply {
+      push(Item("second"))
+      unsaved.guard(Item("second")) { second.page }
+    }
+
+    navigator.returnToRoot(Destination.Settings)
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+
+    assertEquals(1, first.discards)
+    assertEquals(3, navigator.stack(Destination.Settings).size)
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+    assertEquals(1, second.discards)
+    assertNull(navigator.pendingLeave)
+    assertTrue(navigator.atRoot)
+  }
+
+  @Test
+  fun keepEditingOnALaterPageStaysWithEveryPage() {
+    val second = Unsaved()
+    val navigator = guarded(Unsaved(), Item("first")).apply {
+      push(Item("second"))
+      unsaved.guard(Item("second")) { second.page }
+    }
+
+    navigator.returnToRoot(Destination.Settings)
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+    checkNotNull(navigator.pendingLeave).keepEditing()
+
+    assertEquals(0, second.discards)
+    assertEquals(3, navigator.stack(Destination.Settings).size)
+  }
+
+  @Test
+  fun aPageClearedByAnEarlierDiscardIsNotAskedAgain() {
+    val shared = Unsaved()
+    val navigator = guarded(shared, Item("first")).apply {
+      push(Item("second"))
+      unsaved.guard(Item("second")) { shared.page }
+    }
+
+    navigator.returnToRoot(Destination.Settings)
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+
+    assertNull(navigator.pendingLeave)
+    assertTrue(navigator.atRoot)
   }
 }

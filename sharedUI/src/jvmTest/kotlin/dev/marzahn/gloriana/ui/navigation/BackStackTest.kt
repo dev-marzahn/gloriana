@@ -9,7 +9,10 @@ import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
 import dev.marzahn.gloriana.ui.connections.NewConnectionStart
 import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
+import dev.marzahn.gloriana.logic.presets.WrapperPrompt
+import dev.marzahn.gloriana.ui.presets.PresetEntryRoute
 import dev.marzahn.gloriana.ui.presets.PresetRoute
+import dev.marzahn.gloriana.ui.presets.PresetWrapperRoute
 import kotlinx.serialization.PolymorphicSerializer
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -38,7 +41,9 @@ class BackStackTest {
       ModelSettingsRoute,
       PassphraseRoute,
       PresetRoute(Uuid.random().toString()),
+      PresetEntryRoute(Uuid.random(), Uuid.random()),
     ).forEach(::assertSurvives)
+    WrapperPrompt.entries.forEach { assertSurvives(PresetWrapperRoute(Uuid.random(), it)) }
     NewConnectionStart.choices.forEach { assertSurvives(ConnectionRoute.New(it, opening)) }
   }
 }

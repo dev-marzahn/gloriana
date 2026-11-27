@@ -104,7 +104,7 @@ internal fun rememberPresetPage(part: PresetPart): PresetViewModel {
   val sessions: PresetSessions = koinInject()
   LaunchedEffect(viewModel, part.presetUuid) { viewModel.show(part.presetUuid) }
   val state by viewModel.state.collectAsStateWithLifecycle()
-  LaunchedEffect(state) { if (state == PresetPageState.Gone) navigator.close(Destination.Library, part) }
+  LaunchedEffect(state) { if (state == PresetPageState.Gone) navigator.closeWithoutAsking(Destination.Library, part) }
   if (part is PresetRoute) {
     val name = (state as? PresetPageState.Shown)?.name
     val leavingMessage = name?.let { stringResource(Res.string.changes_not_saved, it) }
@@ -130,7 +130,7 @@ fun PresetScreen(route: PresetRoute, modifier: Modifier = Modifier) {
   val viewModel = rememberPresetPage(route)
   val navigator = LocalShellNavigator.current
   val state by viewModel.state.collectAsStateWithLifecycle()
-  var asking by rememberSaveable { mutableStateOf<GroupPrompt?>(null) }
+  var asking by rememberGroupPrompt()
   val exports: PresetExports = koinInject()
   DisposableEffect(exports, route) {
     exports.runs.pageShown(route.presetUuid)

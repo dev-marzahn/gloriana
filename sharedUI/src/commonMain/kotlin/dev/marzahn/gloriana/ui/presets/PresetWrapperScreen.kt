@@ -9,12 +9,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.ui.components.FieldNote
 import dev.marzahn.gloriana.ui.components.GlorianaTextField
 import dev.marzahn.gloriana.ui.components.Panel
@@ -44,7 +43,7 @@ fun PresetWrapperScreen(route: PresetWrapperRoute, modifier: Modifier = Modifier
     if (page == null) {
       Skeleton { SkeletonBlock(Modifier.size(width = SkeletonLine, height = GlorianaTheme.spacing.s20)) }
     } else {
-      WrapperPage(page, route, viewModel::on)
+      WrapperPage(page, route, viewModel::on, viewModel::contentNow)
     }
   }
 }
@@ -54,6 +53,7 @@ private fun WrapperPage(
   page: PresetPageState.Shown,
   route: PresetWrapperRoute,
   onIntent: (PresetIntent) -> Unit,
+  contentNow: () -> PresetContent?,
   modifier: Modifier = Modifier,
 ) {
   val colors = GlorianaTheme.colors
@@ -67,16 +67,22 @@ private fun WrapperPage(
     }
     Box(Modifier.padding(top = spacing.s16, bottom = spacing.s8)) { SaveButton(page, onIntent) }
     SaveNote(page)
-    WrapperText(page, route, onIntent)
+    WrapperText(page, route, onIntent, contentNow)
   }
 }
 
 @Composable
-private fun WrapperText(page: PresetPageState.Shown, route: PresetWrapperRoute, onIntent: (PresetIntent) -> Unit) {
+private fun WrapperText(
+  page: PresetPageState.Shown,
+  route: PresetWrapperRoute,
+  onIntent: (PresetIntent) -> Unit,
+  contentNow: () -> PresetContent?,
+) {
   val type = GlorianaTheme.type
   val spacing = GlorianaTheme.spacing
   val prompt = route.prompt
-  var text by rememberSaveable(route) { mutableStateOf(page.content.wrappers[prompt]) }
+  val shown = page.content.wrappers[prompt]
+  var text by rememberDraftText(route, shown, draftNow = { contentNow()?.wrappers?.get(prompt) })
   Panel(
     Res.drawable.ic_notes,
     stringResource(Res.string.entry_text),

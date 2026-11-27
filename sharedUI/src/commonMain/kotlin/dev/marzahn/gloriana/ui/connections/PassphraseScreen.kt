@@ -49,7 +49,7 @@ fun PassphraseScreen(modifier: Modifier = Modifier) {
   val navigator = LocalShellNavigator.current
   val state by viewModel.state.collectAsStateWithLifecycle()
   LaunchedEffect(viewModel) {
-    viewModel.closeRequests.collect { navigator.close(Destination.Settings, PassphraseRoute) }
+    viewModel.closeRequests.collect { navigator.closeWithoutAsking(Destination.Settings, PassphraseRoute) }
   }
   PassphraseContent(state, { navigator.pop(Destination.Settings) }, viewModel::on, modifier)
 }
