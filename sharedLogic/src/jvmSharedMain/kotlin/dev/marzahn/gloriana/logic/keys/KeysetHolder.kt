@@ -38,6 +38,14 @@ internal class KeysetHolder(private val keyring: Keyring) {
         PassphraseResult.NotAvailable
       }
     }
+
+  suspend fun erasing(rewrite: (Keyset) -> Rewrite?): ErasingResult = withKeyset { current ->
+    when (val result = rewrite(current)) {
+      is Rewrite.Written -> ErasingResult.Done.also { keyset = result.keyset }
+      Rewrite.NothingErased, null -> ErasingResult.NothingChanged
+      Rewrite.ErasedNotWritten -> ErasingResult.KeysErasedKeysetKept.also { keyset = Keyset.Closed }
+    }
+  }
 }
 
 private fun Keyset.isRetried(): Boolean =

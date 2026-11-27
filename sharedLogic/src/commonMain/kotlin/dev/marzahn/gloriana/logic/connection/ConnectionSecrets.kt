@@ -79,9 +79,13 @@ internal sealed interface Sealing {
 
   class Refused(val problems: Set<ConnectionProblem>) : Sealing
 
+  data object NeedsPassphrase : Sealing
+
   data object Locked : Sealing
 
   data object Unavailable : Sealing
+
+  data object Unreadable : Sealing
 }
 
 private sealed interface Step {
@@ -123,12 +127,15 @@ internal class ConnectionSecrets(private val vault: KeyVault) {
       OpenResult.Missing -> Step.Stop(Sealing.Refused(setOf(refusedAs)))
       OpenResult.Locked -> Step.Stop(Sealing.Locked)
       OpenResult.Unavailable -> Step.Stop(Sealing.Unavailable)
+      OpenResult.Unreadable -> Step.Stop(Sealing.Unreadable)
     }
   }
 
   private suspend fun sealed(slot: SecretSlot, value: String): Step = when (val sealed = vault.seal(slot, value)) {
     is SealResult.Sealed -> Step.Value(sealed.secret)
+    SealResult.NeedsPassphrase -> Step.Stop(Sealing.NeedsPassphrase)
     SealResult.Locked -> Step.Stop(Sealing.Locked)
     SealResult.Unavailable -> Step.Stop(Sealing.Unavailable)
+    SealResult.Unreadable -> Step.Stop(Sealing.Unreadable)
   }
 }

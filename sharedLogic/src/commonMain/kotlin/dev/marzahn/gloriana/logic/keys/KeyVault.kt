@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.keys
 
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlin.jvm.JvmInline
 import kotlin.uuid.Uuid
@@ -7,7 +8,11 @@ import kotlin.uuid.Uuid
 interface KeyVault {
   val state: StateFlow<VaultState>
 
+  val findings: Flow<KeyFindings>
+
   suspend fun prepare(): VaultState
+
+  suspend fun prepareIfPassphraseProtected(): VaultState
 
   suspend fun seal(slot: SecretSlot, value: String): SealResult
 
@@ -21,9 +26,9 @@ interface KeyVault {
 
   suspend fun changePassphrase(current: CharArray, new: CharArray): PassphraseResult
 
-  suspend fun reset(newPassphrase: CharArray): PassphraseResult
+  suspend fun reset(newPassphrase: CharArray): ErasingResult
 
-  suspend fun replaceDeviceKeyset(): PassphraseResult
+  suspend fun replaceDeviceKeyset(): ErasingResult
 }
 
 @JvmInline
@@ -51,9 +56,13 @@ class SealedSecret(val bytes: ByteArray)
 sealed interface SealResult {
   class Sealed(val secret: SealedSecret) : SealResult
 
+  data object NeedsPassphrase : SealResult
+
   data object Locked : SealResult
 
   data object Unavailable : SealResult
+
+  data object Unreadable : SealResult
 }
 
 sealed interface OpenResult {
@@ -64,22 +73,30 @@ sealed interface OpenResult {
   data object Locked : OpenResult
 
   data object Unavailable : OpenResult
+
+  data object Unreadable : OpenResult
 }
 
-enum class VaultState {
+enum class VaultState(val hasPassphrase: Boolean = false, val needsStartingOver: Boolean = false) {
   Closed,
   Unlocked,
-  PassphraseUnlocked,
-  Locked,
+  PassphraseUnlocked(hasPassphrase = true),
+  Locked(hasPassphrase = true),
   NoKeychain,
   Unavailable,
-  PassphraseDamaged,
-  DeviceDamaged,
-  DeviceKeyNotFound,
+  PassphraseDamaged(hasPassphrase = true),
+  DeviceDamaged(needsStartingOver = true),
+  DeviceKeyNotFound(needsStartingOver = true),
 }
 
 enum class PassphraseResult {
   Accepted,
   WrongPassphrase,
   NotAvailable,
+}
+
+enum class ErasingResult {
+  Done,
+  NothingChanged,
+  KeysErasedKeysetKept,
 }

@@ -5,6 +5,7 @@ import dev.marzahn.gloriana.logic.debug.DebugHooks
 import dev.marzahn.gloriana.logic.debug.FaultInjected
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.attribute.PosixFilePermissions
@@ -96,7 +97,7 @@ class TinkKeyVaultTest {
     assertTrue(connection.toString() in Files.readString(dataKeyFile))
 
     val restarted = vaults.start(stored = { setOf(other) })
-    restarted.sweepAtStart()
+    restarted.prepareIfPassphraseProtected()
     assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
     assertFalse(connection.toString() in Files.readString(dataKeyFile))
     assertEquals("sk-kept", restarted.opened(apiKey(other), kept))
@@ -127,7 +128,7 @@ class TinkKeyVaultTest {
     var storageOpen = false
     val vault = vaults.start(stored = { if (storageOpen) emptySet() else throw IllegalStateException("closed") })
 
-    vault.sweepAtStart()
+    vault.prepareIfPassphraseProtected()
     assertEquals(VaultState.Unlocked, vault.prepare())
     assertTrue(connection.toString() in Files.readString(dataKeyFile))
 
@@ -143,7 +144,7 @@ class TinkKeyVaultTest {
     val keys = dataKeyFile.parent
     Files.setPosixFilePermissions(keys, PosixFilePermissions.fromString("r-x------"))
     try {
-      vault.sweepAtStart()
+      vault.prepareIfPassphraseProtected()
       assertTrue(other.toString() in Files.readString(dataKeyFile))
     } finally {
       Files.setPosixFilePermissions(keys, PosixFilePermissions.fromString("rwx------"))
@@ -240,11 +241,11 @@ class TinkKeyVaultTest {
 
     val restarted = vaults.start()
     assertEquals(VaultState.DeviceDamaged, restarted.prepare())
-    assertEquals(OpenResult.Unavailable, restarted.open(apiKey(connection), key))
+    assertEquals(OpenResult.Unreadable, restarted.open(apiKey(connection), key))
     assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
-    assertEquals(PassphraseResult.NotAvailable, restarted.reset("x".passphrase()))
+    assertEquals(ErasingResult.NothingChanged, restarted.reset("x".passphrase()))
 
-    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+    assertEquals(ErasingResult.Done, restarted.replaceDeviceKeyset())
     assertEquals(VaultState.Unlocked, restarted.state.value)
     assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
     assertTrue(Files.readString(keysetFile).startsWith("{\"type\":\"device\""))
@@ -275,7 +276,7 @@ class TinkKeyVaultTest {
 
     val restarted = vaults.start()
     assertEquals(VaultState.DeviceKeyNotFound, restarted.prepare())
-    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+    assertEquals(ErasingResult.Done, restarted.replaceDeviceKeyset())
     assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
   }
 
@@ -296,13 +297,30 @@ class TinkKeyVaultTest {
   }
 
   @Test
+  fun aStartOverWhoseNewKeysetCantBeWrittenSaysTheKeysWereErasedAndStaysDamaged() = runTest {
+    val key = vaults.start().sealed(apiKey(connection), "sk-erased")
+    vaults.keychain.replaceEverySecret(ByteArray(32) { 7 })
+    val oldKeys = vaults.keychain.secrets.keys.toSet()
+    val failing = vaults.start(faults = { if (it == KeyWritePoint.NewKeysetStaged) throw IOException("disk full") })
+    failing.prepare()
+
+    assertEquals(ErasingResult.KeysErasedKeysetKept, failing.replaceDeviceKeyset())
+
+    assertEquals(oldKeys, vaults.keychain.secrets.keys.toSet())
+    val restarted = vaults.start()
+    assertEquals(VaultState.DeviceDamaged, restarted.prepare())
+    assertEquals(ErasingResult.Done, restarted.replaceDeviceKeyset())
+    assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
+  }
+
+  @Test
   fun aMalformedKeychainEntryIsDamagedAndCanBeStartedOver() = runTest {
     vaults.start().sealed(apiKey(connection), "sk-kept")
     vaults.keychain.malformed += vaults.keychain.secrets.keys
 
     val restarted = vaults.start()
     assertEquals(VaultState.DeviceDamaged, restarted.prepare())
-    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+    assertEquals(ErasingResult.Done, restarted.replaceDeviceKeyset())
   }
 
   @Test
@@ -337,12 +355,12 @@ class TinkKeyVaultTest {
 
     val restarted = vaults.start()
     assertEquals(VaultState.DeviceDamaged, restarted.prepare())
-    assertEquals(PassphraseResult.Accepted, restarted.replaceDeviceKeyset())
+    assertEquals(ErasingResult.Done, restarted.replaceDeviceKeyset())
     assertEquals(VaultState.Unlocked, vaults.start().prepare())
   }
 
   @Test
-  fun aWriteThatFailsDropsTheKeysetAndReadsTheFileAgain() = runTest {
+  fun aStartOverWhoseEraseFailsChangesNothing() = runTest {
     vaults.start().sealed(apiKey(connection), "sk-kept")
     vaults.keychain.replaceEverySecret(ByteArray(32) { 7 })
     val restarted = vaults.start()
@@ -350,8 +368,8 @@ class TinkKeyVaultTest {
     val directory = keysetFile.parent.toFile()
     directory.setWritable(false)
     try {
-      assertEquals(PassphraseResult.NotAvailable, restarted.replaceDeviceKeyset())
-      assertEquals(VaultState.Closed, restarted.state.value)
+      assertEquals(ErasingResult.NothingChanged, restarted.replaceDeviceKeyset())
+      assertEquals(VaultState.DeviceDamaged, restarted.state.value)
       assertEquals(KeyFileResult.Unavailable, restarted.erase(connection))
     } finally {
       directory.setWritable(true)

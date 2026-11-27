@@ -33,12 +33,17 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.files.ExportFailure
+import dev.marzahn.gloriana.ui.components.BackButton
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaIconButton
+import dev.marzahn.gloriana.ui.components.NoteCard
+import dev.marzahn.gloriana.ui.components.NoteLine
 import dev.marzahn.gloriana.ui.components.Skeleton
 import dev.marzahn.gloriana.ui.components.SkeletonBlock
 import dev.marzahn.gloriana.ui.components.SkeletonSurface
+import dev.marzahn.gloriana.ui.components.boldThenPlain
+import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.library.StartChatButton
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
@@ -77,8 +82,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import kotlin.uuid.Uuid
 
 private val HeaderAvatar = 56.dp
-private val BackIconSize = 16.dp
-private val BackButtonHeight = 40.dp
 private val SkeletonName = 160.dp
 private val SkeletonMeta = 100.dp
 private val SkeletonActions = 40.dp
@@ -136,7 +139,9 @@ fun CharacterScreen(id: Uuid, modifier: Modifier = Modifier, viewModel: Characte
 internal fun CharacterContent(state: CharacterPageState, actions: PageActions, modifier: Modifier = Modifier) {
   val spacing = GlorianaTheme.spacing
   Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(spacing.s16)) {
-    if (GlorianaTheme.widthClass.navigation != Navigation.Workbench) BackToCharacters(actions.onBack)
+    if (GlorianaTheme.widthClass.navigation != Navigation.Workbench) {
+      BackButton(stringResource(Res.string.all_characters), actions.onBack)
+    }
     when (state) {
       CharacterPageState.Loading -> Skeleton { PageSkeleton() }
       CharacterPageState.CouldNotLoad -> NoteCard {
@@ -146,24 +151,6 @@ internal fun CharacterContent(state: CharacterPageState, actions: PageActions, m
       CharacterPageState.Gone -> Unit
       is CharacterPageState.Shown -> ShownPage(state, actions)
     }
-  }
-}
-
-@Composable
-private fun BackToCharacters(onBack: () -> Unit) {
-  val colors = GlorianaTheme.colors
-  val spacing = GlorianaTheme.spacing
-  Row(
-    Modifier
-      .heightIn(min = BackButtonHeight)
-      .tappable(GlorianaTheme.shapes.control, onClick = onBack)
-      .padding(horizontal = spacing.s8),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(spacing.s6),
-  ) {
-    Icon(painterResource(Res.drawable.ic_arrow_back), null, Modifier.size(BackIconSize), tint = colors.textMuted)
-    val label = stringResource(Res.string.all_characters)
-    Text(label, style = GlorianaTheme.type.material.labelLarge, color = colors.textMuted)
   }
 }
 

@@ -100,8 +100,10 @@ class ConnectionRepository internal constructor(
 
 private suspend fun ConnectionWrites.sealAndWrite(secrets: ConnectionSecrets, ready: Prepared.Ready) =
   when (val sealing = secrets.seal(ready.plan)) {
+    Sealing.NeedsPassphrase -> ConnectionSaveResult.NeedsPassphrase
     Sealing.Locked -> ConnectionSaveResult.Locked
-    Sealing.Unavailable -> ConnectionSaveResult.Failed
+    Sealing.Unavailable -> ConnectionSaveResult.KeysUnavailable
+    Sealing.Unreadable -> ConnectionSaveResult.KeysUnreadable
     is Sealing.Refused -> ConnectionSaveResult.Refused(sealing.problems)
     is Sealing.Sealed -> Connection(ready.target.id, ready.fields, sealing.key, sealing.headers).let { connection ->
       when (ready.target) {

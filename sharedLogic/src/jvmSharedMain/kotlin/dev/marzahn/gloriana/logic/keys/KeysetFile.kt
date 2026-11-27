@@ -7,7 +7,9 @@ import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import java.nio.file.Files
+import java.nio.file.NoSuchFileException
 import java.nio.file.Path
+import java.nio.file.attribute.BasicFileAttributes
 import java.util.Base64
 
 private const val LINE_BREAK = '\n'
@@ -62,10 +64,16 @@ private inline fun <T> decodedOrNull(decode: () -> T): T? = try {
 }
 
 internal class KeysetFiles(private val directory: Path) {
-  fun read(): StoredKeyset? = KeysetKind.entries.reversed().firstNotNullOfOrNull { kind ->
-    directory.resolve(kind.fileName).takeIf(Files::isRegularFile)
-      ?.let { parse(kind, Files.readAllBytes(it).decodeToString()) }
+  fun storedKind(): KeysetKind? = KeysetKind.entries.reversed().firstOrNull { isStored(directory.resolve(it.fileName)) }
+
+  private fun isStored(file: Path): Boolean = try {
+    Files.readAttributes(file, BasicFileAttributes::class.java).isRegularFile
+  } catch (_: NoSuchFileException) {
+    false
   }
+
+  fun read(): StoredKeyset? =
+    storedKind()?.let { kind -> parse(kind, Files.readAllBytes(directory.resolve(kind.fileName)).decodeToString()) }
 
   fun write(protection: KeysetProtection, keyset: KeysetHandle, wrapping: WrappingKey, staged: () -> Unit = {}) {
     val header = Json.encodeToString(protection)

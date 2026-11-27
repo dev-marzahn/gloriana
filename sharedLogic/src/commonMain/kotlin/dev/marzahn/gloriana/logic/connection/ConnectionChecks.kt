@@ -5,20 +5,29 @@ import dev.marzahn.gloriana.logic.keys.HeaderName
 internal fun ConnectionFields.normalised(): ConnectionFields =
   copy(name = name.trim(), model = model.trim(), baseUrl = withoutTrailingSlash(baseUrl.trim()))
 
-internal fun ConnectionFields.problems(): Set<ConnectionProblem> = buildSet {
-  if (name.isEmpty()) add(ConnectionProblem.NameEmpty)
-  if (model.isEmpty()) add(ConnectionProblem.ModelEmpty)
-  addAll(baseUrlProblems(baseUrl))
-  if (contextSize <= 0) add(ConnectionProblem.ContextSizeNotPositive)
-  if (maxReplyTokens <= 0) add(ConnectionProblem.MaxReplyTokensNotPositive)
-  if (contextSize > 0 && maxReplyTokens > 0 && maxReplyTokens >= contextSize) {
-    add(ConnectionProblem.MaxReplyTokensNotBelowContextSize)
-  }
-  if (timeoutSeconds <= 0) add(ConnectionProblem.TimeoutNotPositive)
-  addAll(samplerProblems(samplers, format.samplerRanges))
+internal fun ConnectionFields.problems(): Set<ConnectionProblem> =
+  textProblems(name, model, baseUrl) + numberProblems(contextSize, maxReplyTokens, timeoutSeconds) +
+    samplerProblems(samplers, format.samplerRanges)
+
+fun textProblems(name: String, model: String, baseUrl: String): Set<ConnectionProblem> = buildSet {
+  if (name.trim().isEmpty()) add(ConnectionProblem.NameEmpty)
+  if (model.trim().isEmpty()) add(ConnectionProblem.ModelEmpty)
+  addAll(baseUrlProblems(withoutTrailingSlash(baseUrl.trim())))
 }
 
-internal fun samplerProblems(samplers: Samplers, ranges: Map<Sampler, SamplerRange>): List<ConnectionProblem> =
+fun numberProblems(contextSize: Int?, maxReplyTokens: Int?, timeoutSeconds: Int?): Set<ConnectionProblem> = buildSet {
+  if (contextSize != null && contextSize <= 0) add(ConnectionProblem.ContextSizeNotPositive)
+  if (maxReplyTokens != null && maxReplyTokens <= 0) add(ConnectionProblem.MaxReplyTokensNotPositive)
+  if (contextSize != null && maxReplyTokens != null && !replyFitsIn(contextSize, maxReplyTokens)) {
+    add(ConnectionProblem.MaxReplyTokensNotBelowContextSize)
+  }
+  if (timeoutSeconds != null && timeoutSeconds <= 0) add(ConnectionProblem.TimeoutNotPositive)
+}
+
+private fun replyFitsIn(contextSize: Int, maxReplyTokens: Int): Boolean =
+  contextSize <= 0 || maxReplyTokens < contextSize
+
+fun samplerProblems(samplers: Samplers, ranges: Map<Sampler, SamplerRange>): List<ConnectionProblem> =
   Sampler.entries.mapNotNull { sampler ->
     val value = sampler.valueIn(samplers) ?: return@mapNotNull null
     val range = ranges[sampler]
@@ -47,26 +56,25 @@ internal fun ConnectionDraft.check(
   return if (problems.isEmpty()) DraftCheck.Ready(normalised, lookup.sources) else DraftCheck.Refused(problems)
 }
 
-internal fun KeyInput.problems(): Set<ConnectionProblem> =
-  setOfNotNull(ConnectionProblem.KeyBadCharacter.takeIf { this is KeyInput.Entered && !isSendableHeaderValue(value) })
+fun KeyInput.problems(): Set<ConnectionProblem> = setOfNotNull(
+  (this as? KeyInput.Entered)?.value?.let(::firstUnsendableCharacter)?.let(ConnectionProblem::KeyBadCharacter),
+)
 
-internal fun List<HeaderDraft>.problems(): Set<ConnectionProblem> = buildSet {
+fun List<HeaderDraft>.problems(): Set<ConnectionProblem> = buildSet {
   val seen = mutableSetOf<HeaderName>()
   this@problems.forEachIndexed { index, header ->
     val entered = (header.value as? HeaderValueInput.Entered)?.value
     val faults = headerFaults(header.name, entered)
     faults.forEach { add(it.problem(index)) }
-    val nameIsUsable = faults.none { it in nameFaults }
+    val nameIsUsable = faults.none { it is HeaderFault.OfName }
     if (nameIsUsable && !seen.add(HeaderName.of(header.name))) add(ConnectionProblem.HeaderNameRepeated(index))
   }
 }
 
-private val nameFaults = setOf(HeaderFault.NameEmpty, HeaderFault.NameNotToken, HeaderFault.NameReserved)
-
 private fun HeaderFault.problem(index: Int): ConnectionProblem = when (this) {
   HeaderFault.NameEmpty -> ConnectionProblem.HeaderNameEmpty(index)
-  HeaderFault.NameNotToken -> ConnectionProblem.HeaderNameNotToken(index)
+  is HeaderFault.NameNotToken -> ConnectionProblem.HeaderNameNotToken(index, character)
   HeaderFault.NameReserved -> ConnectionProblem.HeaderNameReserved(index)
-  HeaderFault.ValueBadCharacter -> ConnectionProblem.HeaderValueBadCharacter(index)
+  is HeaderFault.ValueBadCharacter -> ConnectionProblem.HeaderValueBadCharacter(index, character)
   HeaderFault.ContentTypeInvalid -> ConnectionProblem.HeaderContentTypeInvalid(index)
 }

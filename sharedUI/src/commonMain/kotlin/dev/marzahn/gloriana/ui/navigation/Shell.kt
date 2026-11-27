@@ -53,6 +53,7 @@ internal fun Shell(
   messages: AppMessages,
   modifier: Modifier = Modifier,
 ) {
+  LeaveQuestion(navigator)
   CompositionLocalProvider(LocalShellNavigator provides navigator) {
     val navigation = GlorianaTheme.widthClass.navigation
     val shellModifier = modifier.fillMaxSize().background(GlorianaTheme.colors.canvas)

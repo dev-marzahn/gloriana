@@ -149,6 +149,13 @@ Android resource; `LauncherLabelTest` keeps it equal to the Compose `app_name`.
   Create pushes). Screens navigate through `LocalShellNavigator`; each `Destination` keeps its own back stack there.
 - **Back and Escape.** A pushed screen pops on system Back, on Escape (desktop) and with the predictive gesture. System
   Back on a destination's root goes to Chats; Escape on a root does nothing.
+- **Unsaved changes.** A page that edits a copy calls `GuardUnsavedChanges(route, page)` with an `UnsavedPage` while
+  something differs from what is stored. `ShellNavigator` asks before any pop, return to the root or `replaceTop` that
+  would drop it, and Discard runs the page's `discard` first. Two moves never ask: `close(destination, route)`, for a
+  page whose subject is gone (a deleted Connection), and `swap(destination, shown, with)`, for a page whose route
+  changes under it (a new Connection's first Save turns its route into the saved one). On desktop, closing the window and the system quit go through `QuitRequests`, which
+  ask once for every page still holding changes and quit at once when none does. The question sits above the keys
+  gate, so quitting works at the unlock screen too.
 - **Fonts and icons** are bundled resources: Literata and Inter as static TTF files in `composeResources/font`, and
   Material Symbols Outlined (weight 400, grade 0) as vector drawables in `composeResources/drawable`, copied one by
   one as screens need them. Licence texts live in `composeResources/files/licenses` and `THIRD_PARTY_NOTICES.md`.
@@ -173,12 +180,20 @@ Keys and custom header values go through `KeyVault` (`logic.keys`) and nothing e
   value (a new Connection, or one that had none); never erase a data key that stored values still need. A row this
   version can't read counts as needing its key. Saves and deletes run one at a time inside `DataKeyErasure.oneAtATime`,
   the only place the erase can be called, so no other save commits between that read and the erase.
-- At start (`DataKeysSweptAtStart`) the vault removes every data key whose Connection `StoredConnections` (bound in
+- `findings` tells the screens which values can't be opened: a Connection with no data key on file, or a value `open`
+  found missing. A screen that shows held values collects `KeyVault.secretChecks(connections)` (`logic.connection`):
+  it opens each held value when the keyset opens and again when the held values change, so a value sealed under a data
+  key a reset or Start over erased reads as missing after a restart too, without a send failing first. `Connection.secretsState` turns the findings and the vault state into what a row or page shows.
+  `prepareIfPassphraseProtected` opens only a passphrase keyset (no keychain is asked) and leaves a device keyset
+  closed; the keys gate calls it at launch and asks for the passphrase whenever the keys are passphrase-protected.
+- At start (`DataKeysSweptAtStart`, through `prepareIfPassphraseProtected`) the vault removes every data key whose
+  Connection `StoredConnections` (bound in
   `connectionsModule`) doesn't list, so a crash between a delete and its `erase` still erases the key. If the ids or
   the file can't be read or written, the sweep fails nothing and runs again at the vault's next call, until the first
   `seal` of the run, after which it waits for the next start. Neither `erase` nor the sweep opens the keyset; `erase`
   answers `KeyFileResult.Unavailable` when the file can't be written. `open` answers `Missing` for a value whose data
-  key is gone or can't be read, `Locked` until a passphrase is set or entered, and `Unavailable` otherwise.
+  key is gone or can't be read, `Locked` until a passphrase is set or entered, `Unreadable` when the keyset is damaged
+  or its device key is gone (only a reset or Start over helps), and `Unavailable` otherwise.
 - One app instance per library. A second desktop instance on the same library can sweep the data key of a Connection
   the first is still saving, so that value reads as missing.
 - The vault owns the keyset file and opens it only when a key is needed (`prepare` opens it at once). The file's name
@@ -194,22 +209,25 @@ Keys and custom header values go through `KeyVault` (`logic.keys`) and nothing e
   key and file; data keys are erased first, as `reset` does. A desktop key is read back before a keyset is written
   under it.
 - Which store wraps the keyset is recorded in the file name, so a device that starts on the passphrase stays on it. Where no
-  store exists the state is `NoKeychain` and `setPassphrase` sets one (Argon2id, at most the shipped cost); after a
-  restart it is `Locked` until `unlock`. `changePassphrase` wraps the same keyset under a new passphrase in one file
-  replace, and `reset` replaces a forgotten or damaged (`PassphraseDamaged`) one and erases every data key. Each
-  answers `NotAvailable` in a state it doesn't apply to, and after a write that fails the vault reads the file again.
+  store exists the state is `NoKeychain`, `seal` answers `NeedsPassphrase` and `setPassphrase` sets one (Argon2id, at
+  most the shipped cost); after a restart it is `Locked`, `seal` answers `Locked`, until `unlock`. `changePassphrase`
+  wraps the same keyset under a new passphrase in one file replace and answers `NotAvailable` in a state it doesn't
+  apply to or when the write fails; a failed write leaves the old file and keeps the vault as it was, so an unlocked
+  vault stays unlocked and nothing asks for the passphrase again before the next launch. `reset` (a forgotten or damaged passphrase) and
+  `replaceDeviceKeyset` (Start over) erase every data key first, then write the new keyset, and say which part
+  happened: `Done`, `NothingChanged` (it doesn't apply, or the erase failed) or `KeysErasedKeysetKept` (the keys are
+  gone but the old keyset is still the one on file, so the same step is offered again).
   In the debuggable Android build, `keys.passphrase=on` skips the Keystore for a fresh library; turned on over a
   Keystore keyset it leaves the vault `Unavailable`, so clear the app's data first.
 - Files the vault keeps are written with `writeAtomically` (`logic.storage`): a temporary file, synced, renamed over
   the old one, then the directory synced where the file system allows it; new directories come from
   `createDirectoriesDurably`. A `.part` file a kill leaves in `keys/` is removed the next time the keyset is opened.
-- `desktopApp/proguard-rules.pro` keeps what Tink, JNA and the keychain backends reach by reflection. That isn't
-  verifiable through shipped code until shipped code seals a key (the Connection screens). Until then, check a change
-  to the rules or those libraries by adding a temporary `seal` call after Koin starts in `Main.kt`, running
-  `./gradlew :desktopApp:proguardReleaseJars` and
+- `desktopApp/proguard-rules.pro` keeps what Tink, JNA and the keychain backends reach by reflection. Check a change to
+  the rules or those libraries in the release build: run `./gradlew :desktopApp:proguardReleaseJars` and
   `java -Duser.home=<empty temp dir> -Dgloriana.debuggable=true -cp "desktopApp/build/compose/tmp/main-release/proguard/*"
-  dev.marzahn.gloriana.desktop.MainKt` twice: the seal succeeds and the second launch opens
-  `keys/keyset-device.json` unchanged. Remove the call and the `Gloriana Debug` keychain entries afterwards.
+  dev.marzahn.gloriana.desktop.MainKt`, save a Connection with a made-up key, quit and launch again: the page shows
+  the key as saved and `keys/keyset-device.json` is unchanged. For a run without the window, a temporary `seal` and
+  `open` call after Koin starts in `Main.kt` does the same. Remove the `Gloriana Debug` keychain entries afterwards.
 
 ## Calling a model
 

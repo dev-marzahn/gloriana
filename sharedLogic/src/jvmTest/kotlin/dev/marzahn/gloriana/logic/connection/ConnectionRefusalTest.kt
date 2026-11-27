@@ -85,18 +85,18 @@ class ConnectionRefusalTest {
     Refusal("an empty model", draft(model = " "), ModelEmpty),
     Refusal("an empty header name", draft(headers = listOf(HeaderDraft("", entered("v")))), HeaderNameEmpty(0)),
     Refusal("a header name outside token characters", draft(headers = listOf(HeaderDraft("X Org", entered("v")))),
-      HeaderNameNotToken(0)),
+      HeaderNameNotToken(0, ' ')),
     Refusal("two header names alike but for case",
       draft(headers = listOf(HeaderDraft("X-Org", entered("a")), HeaderDraft("x-org", entered("b")))),
       HeaderNameRepeated(1)),
     Refusal("CR in a header value", draft(headers = listOf(HeaderDraft("X-Org", entered("a\rb")))),
-      HeaderValueBadCharacter(0)),
+      HeaderValueBadCharacter(0, '\r')),
     Refusal("LF in a header value", draft(headers = listOf(HeaderDraft("X-Org", entered("a\nb")))),
-      HeaderValueBadCharacter(0)),
+      HeaderValueBadCharacter(0, '\n')),
     Refusal("a non-ASCII header value", draft(headers = listOf(HeaderDraft("X-Org", entered("café")))),
-      HeaderValueBadCharacter(0)),
+      HeaderValueBadCharacter(0, 'é')),
     Refusal("a control character in a header value", draft(headers = listOf(HeaderDraft("X-Org", entered("a\u0000")))),
-      HeaderValueBadCharacter(0)),
+      HeaderValueBadCharacter(0, '\u0000')),
     Refusal("a header the app sets itself", draft(headers = listOf(HeaderDraft("Accept-Encoding", entered("br")))),
       HeaderNameReserved(0)),
     Refusal("a Host header", draft(headers = listOf(HeaderDraft("host", entered("example.com")))),
@@ -140,10 +140,10 @@ class ConnectionRefusalTest {
 
   @Test
   fun aKeyHttpCannotCarryIsRefused() = runTest {
-    listOf("café", "sk-1\n", "sk\u0000").forEach { key ->
+    mapOf("café" to 'é', "sk-1\n" to '\n', "sk\u0000" to '\u0000').forEach { (key, character) ->
       val result = library.repository.create(draft(key = KeyInput.Entered(key)))
 
-      assertEquals(setOf(KeyBadCharacter), assertIs<ConnectionSaveResult.Refused>(result).problems, key)
+      assertEquals(setOf(KeyBadCharacter(character)), assertIs<ConnectionSaveResult.Refused>(result).problems, key)
     }
     assertEquals(emptyList(), library.list())
   }
@@ -188,7 +188,10 @@ class ConnectionRefusalTest {
   @Test
   fun customBodyTextMustBeAJsonObject() {
     assertEquals(CustomBodyText.NotAnObject, CustomBodyText.parse("[1]"))
-    assertEquals(CustomBodyText.NotJson(offset = 6), CustomBodyText.parse("""{"a": }"""))
+    assertEquals(
+      CustomBodyText.NotJson(TextPosition(1, 7), JsonFault.ValueMissing),
+      CustomBodyText.parse("""{"a": }"""),
+    )
     assertEquals(CustomBodyText.Object(JsonObject(emptyMap())), CustomBodyText.parse(" "))
     assertIs<CustomBodyText.Object>(CustomBodyText.parse("""{"top_a": 0.2, "thinking": null}"""))
   }

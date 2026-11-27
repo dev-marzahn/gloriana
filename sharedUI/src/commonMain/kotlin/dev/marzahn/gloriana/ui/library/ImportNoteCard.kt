@@ -8,9 +8,9 @@ import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.SizeLimit
 import dev.marzahn.gloriana.ui.characters.FailedFile
 import dev.marzahn.gloriana.ui.characters.ImportNote
-import dev.marzahn.gloriana.ui.characters.NoteCard
-import dev.marzahn.gloriana.ui.characters.NoteLine
-import dev.marzahn.gloriana.ui.characters.boldThenPlain
+import dev.marzahn.gloriana.ui.components.NoteCard
+import dev.marzahn.gloriana.ui.components.NoteLine
+import dev.marzahn.gloriana.ui.components.boldThenPlain
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.import_choose_again

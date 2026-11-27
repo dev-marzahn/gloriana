@@ -38,7 +38,7 @@ import dev.marzahn.gloriana.ui.characters.CharacterPicture
 import dev.marzahn.gloriana.ui.characters.RunningFile
 import dev.marzahn.gloriana.ui.characters.RunningLine
 import dev.marzahn.gloriana.ui.characters.RunningStatus
-import dev.marzahn.gloriana.ui.characters.tappable
+import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.components.ButtonSize
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.resources.Res

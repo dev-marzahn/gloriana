@@ -26,6 +26,8 @@ sealed interface ModelApiError {
   data object KeysLocked : ModelApiError
 
   data object KeysUnavailable : ModelApiError
+
+  data object KeysUnreadable : ModelApiError
 }
 
 internal fun statusError(status: HttpStatusCode, body: String, retryAfter: String?): ModelApiError = when (status) {

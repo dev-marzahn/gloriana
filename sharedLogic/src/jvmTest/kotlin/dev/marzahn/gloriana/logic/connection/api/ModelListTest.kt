@@ -115,7 +115,7 @@ class ModelListTest {
         ConnectionProblem.BaseUrlNotHttp,
       harness.draftFor(format, "normal", headers = listOf(HeaderDraft("Host", entered("x")))) to
         ConnectionProblem.HeaderNameReserved(0),
-      harness.draftFor(format, "normal", key = KeyInput.Entered("sk\nnew")) to ConnectionProblem.KeyBadCharacter,
+      harness.draftFor(format, "normal", key = KeyInput.Entered("sk\nnew")) to ConnectionProblem.KeyBadCharacter('\n'),
       harness.draftFor(format, "normal") { it.copy(timeoutSeconds = 0) } to ConnectionProblem.TimeoutNotPositive,
     )
     refusals.forEach { (draft, problem) ->

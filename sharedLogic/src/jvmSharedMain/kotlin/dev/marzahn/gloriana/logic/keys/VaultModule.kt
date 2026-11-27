@@ -18,6 +18,6 @@ fun keyVault(library: LibraryDirectory, device: DeviceKeyStore, faults: Faults, 
 
 internal class DataKeysSweptAtStart(vault: TinkKeyVault, scope: ApplicationScope) {
   init {
-    scope.launch { vault.sweepAtStart() }
+    scope.launch { vault.prepareIfPassphraseProtected() }
   }
 }

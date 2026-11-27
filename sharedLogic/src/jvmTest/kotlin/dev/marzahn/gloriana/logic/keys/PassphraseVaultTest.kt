@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.logic.keys
 import dev.marzahn.gloriana.logic.debug.FaultInjected
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
@@ -26,7 +27,7 @@ class PassphraseVaultTest {
   fun withNoKeychainTheVaultAsksForANewPassphraseAndSealsNothingUntilThen() = runTest {
     val vault = vaults.start()
 
-    assertEquals(SealResult.Locked, vault.seal(apiKey(connection), "sk-early"))
+    assertEquals(SealResult.NeedsPassphrase, vault.seal(apiKey(connection), "sk-early"))
     assertEquals(VaultState.NoKeychain, vault.state.value)
     assertEquals(PassphraseResult.NotAvailable, vault.unlock("correct horse".passphrase()))
     assertEquals(PassphraseResult.Accepted, vault.setPassphrase("correct horse".passphrase()))
@@ -83,7 +84,7 @@ class PassphraseVaultTest {
     assertEquals(PassphraseResult.NotAvailable, restarted.unlock("correct horse".passphrase()))
     val change = restarted.changePassphrase("correct horse".passphrase(), "x".passphrase())
     assertEquals(PassphraseResult.NotAvailable, change)
-    assertEquals(PassphraseResult.Accepted, restarted.reset("new passphrase".passphrase()))
+    assertEquals(ErasingResult.Done, restarted.reset("new passphrase".passphrase()))
     assertEquals(VaultState.PassphraseUnlocked, restarted.state.value)
   }
 
@@ -114,7 +115,7 @@ class PassphraseVaultTest {
     val restarted = vaults.start()
     assertEquals(VaultState.PassphraseDamaged, restarted.prepare())
     assertEquals(0, vaults.keychain.reads)
-    assertEquals(PassphraseResult.NotAvailable, restarted.replaceDeviceKeyset())
+    assertEquals(ErasingResult.NothingChanged, restarted.replaceDeviceKeyset())
   }
 
   @Test
@@ -122,7 +123,7 @@ class PassphraseVaultTest {
     val key = passphraseSet("forgotten").sealed(apiKey(connection), "sk-before-reset")
 
     val restarted = vaults.start()
-    assertEquals(PassphraseResult.Accepted, restarted.reset("new passphrase".passphrase()))
+    assertEquals(ErasingResult.Done, restarted.reset("new passphrase".passphrase()))
 
     assertEquals(VaultState.PassphraseUnlocked, restarted.state.value)
     assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
@@ -146,6 +147,26 @@ class PassphraseVaultTest {
   }
 
   @Test
+  fun aResetWhoseNewKeysetCantBeWrittenSaysTheKeysWereErasedAndKeepsTheOldPassphrase() = runTest {
+    val key = passphraseSet("forgotten").sealed(apiKey(connection), "sk-before-reset")
+    val failing = vaults.start(faults = { if (it == KeyWritePoint.NewKeysetStaged) throw IOException("disk full") })
+
+    assertEquals(ErasingResult.KeysErasedKeysetKept, failing.reset("new passphrase".passphrase()))
+    assertEquals(VaultState.Locked, failing.prepare())
+
+    val restarted = vaults.start()
+    assertEquals(PassphraseResult.Accepted, restarted.unlock("forgotten".passphrase()))
+    assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
+  }
+
+  @Test
+  fun aLockedVaultAsksForThePassphraseNotANewOne() = runTest {
+    passphraseSet()
+
+    assertEquals(SealResult.Locked, vaults.start().seal(apiKey(connection), "sk-later"))
+  }
+
+  @Test
   fun aFallbackDeviceWithAnUnreadableHeaderCanBeReset() = runTest {
     passphraseSet()
     Files.writeString(keysetFile, "garbage")
@@ -153,7 +174,7 @@ class PassphraseVaultTest {
 
     val restarted = vaults.start()
     assertEquals(VaultState.PassphraseDamaged, restarted.prepare())
-    assertEquals(PassphraseResult.Accepted, restarted.reset("new passphrase".passphrase()))
+    assertEquals(ErasingResult.Done, restarted.reset("new passphrase".passphrase()))
     assertEquals(VaultState.PassphraseUnlocked, restarted.state.value)
   }
 
@@ -177,7 +198,7 @@ class PassphraseVaultTest {
 
   @Test
   fun onlyALockedVaultIsReset() = runTest {
-    assertEquals(PassphraseResult.NotAvailable, passphraseSet().reset("other".passphrase()))
+    assertEquals(ErasingResult.NothingChanged, passphraseSet().reset("other".passphrase()))
   }
 
   @Test
@@ -193,6 +214,21 @@ class PassphraseVaultTest {
     assertEquals(PassphraseResult.WrongPassphrase, restarted.unlock("correct horse".passphrase()))
     assertEquals(PassphraseResult.Accepted, restarted.unlock("new horse".passphrase()))
     assertEquals("sk-kept", restarted.opened(apiKey(connection), key))
+  }
+
+  @Test
+  fun aChangeWhoseWriteFailsKeepsTheVaultUnlockedAndTheOldPassphrase() = runTest {
+    passphraseSet()
+    val unlocked = vaults.start(faults = { if (it == KeyWritePoint.NewKeysetStaged) throw IOException("disk full") })
+    assertEquals(PassphraseResult.Accepted, unlocked.unlock("correct horse".passphrase()))
+    val key = unlocked.sealed(apiKey(connection), "sk-kept")
+
+    val changed = unlocked.changePassphrase("correct horse".passphrase(), "new horse".passphrase())
+
+    assertEquals(PassphraseResult.NotAvailable, changed)
+    assertEquals(VaultState.PassphraseUnlocked, unlocked.state.value)
+    assertEquals("sk-kept", unlocked.opened(apiKey(connection), key))
+    assertEquals(PassphraseResult.Accepted, vaults.start().unlock("correct horse".passphrase()))
   }
 
   @Test

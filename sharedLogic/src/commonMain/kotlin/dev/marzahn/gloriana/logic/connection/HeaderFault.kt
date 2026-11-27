@@ -5,12 +5,18 @@ import io.ktor.http.BadContentTypeFormatException
 import io.ktor.http.ContentType
 import io.ktor.http.HttpHeaders
 
-enum class HeaderFault {
-  NameEmpty,
-  NameNotToken,
-  NameReserved,
-  ValueBadCharacter,
-  ContentTypeInvalid,
+sealed interface HeaderFault {
+  sealed interface OfName : HeaderFault
+
+  data object NameEmpty : OfName
+
+  data class NameNotToken(val character: Char) : OfName
+
+  data object NameReserved : OfName
+
+  data class ValueBadCharacter(val character: Char) : HeaderFault
+
+  data object ContentTypeInvalid : HeaderFault
 }
 
 val ContentTypeHeader: HeaderName = HeaderName.of(HttpHeaders.ContentType)
@@ -38,19 +44,22 @@ fun headerFaults(name: String, value: String?): Set<HeaderFault> = setOfNotNull(
   value?.let { valueFault(HeaderName.of(name), it) },
 )
 
-fun isSendableHeaderValue(value: String): Boolean = value.all { it == TAB || it in visibleAsciiAndSpace }
+internal fun firstUnsendableCharacter(value: String): Char? =
+  value.firstOrNull { it != TAB && it !in visibleAsciiAndSpace }
 
-private fun nameFault(name: String): HeaderFault? = when {
-  name.isEmpty() -> HeaderFault.NameEmpty
-  !name.all(::isTokenCharacter) -> HeaderFault.NameNotToken
-  HeaderName.of(name) in reservedHeaders -> HeaderFault.NameReserved
-  else -> null
+private fun nameFault(name: String): HeaderFault? {
+  val notToken = name.firstOrNull { !isTokenCharacter(it) }
+  return when {
+    name.isEmpty() -> HeaderFault.NameEmpty
+    notToken != null -> HeaderFault.NameNotToken(notToken)
+    HeaderName.of(name) in reservedHeaders -> HeaderFault.NameReserved
+    else -> null
+  }
 }
 
-private fun valueFault(name: HeaderName, value: String): HeaderFault? = when {
-  !isSendableHeaderValue(value) -> HeaderFault.ValueBadCharacter
-  name == ContentTypeHeader && contentTypeOrNull(value) == null -> HeaderFault.ContentTypeInvalid
-  else -> null
+private fun valueFault(name: HeaderName, value: String): HeaderFault? {
+  firstUnsendableCharacter(value)?.let { return HeaderFault.ValueBadCharacter(it) }
+  return HeaderFault.ContentTypeInvalid.takeIf { name == ContentTypeHeader && contentTypeOrNull(value) == null }
 }
 
 private fun isTokenCharacter(character: Char): Boolean =

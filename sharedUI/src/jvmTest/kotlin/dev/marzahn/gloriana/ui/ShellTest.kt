@@ -47,8 +47,11 @@ import dev.marzahn.gloriana.ui.resources.destination_library
 import dev.marzahn.gloriana.ui.resources.destination_settings
 import dev.marzahn.gloriana.ui.resources.ic_person_add
 import dev.marzahn.gloriana.ui.resources.library_empty
+import dev.marzahn.gloriana.ui.settings.ConnectionsList
+import dev.marzahn.gloriana.ui.settings.SettingsActions
+import dev.marzahn.gloriana.ui.settings.SettingsContent
 import dev.marzahn.gloriana.ui.settings.SettingsRoute
-import dev.marzahn.gloriana.ui.settings.SettingsScreen
+import dev.marzahn.gloriana.ui.settings.SettingsState
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -81,7 +84,13 @@ class ShellTest {
           entryProvider<NavKey> {
             entry<ChatsRoute> { ChatsScreen() }
             entry<LibraryRoute> { library() }
-            entry<SettingsRoute> { SettingsScreen() }
+            entry<SettingsRoute> {
+              SettingsContent(
+                SettingsState(ConnectionsList.Loaded(emptyList())),
+                SettingsActions(onOpen = {}, onCreate = {}, onIntent = {}),
+                selected = null,
+              )
+            }
             entry<Pushed> { Text(PUSHED) }
           },
           navigator = harness.navigator,

@@ -44,7 +44,7 @@ internal fun hostRequest(
 ): HostRequest? {
   val adapter = connection.fields.format.adapter
   val ownHeaders = adapter.fixedHeaders + listOfNotNull(connection.key?.let { adapter.keyHeader(it) })
-  val url = parseUrl("${connection.fields.baseUrl}/$target") ?: return null
+  val url = parseUrl(addressOf(connection.fields.baseUrl, target)) ?: return null
   return HostRequest(
     method = method,
     url = url,

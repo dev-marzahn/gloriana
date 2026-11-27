@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.characters
+package dev.marzahn.gloriana.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -19,14 +19,24 @@ import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
-import dev.marzahn.gloriana.ui.components.GlorianaIconButton
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.dismiss
 import dev.marzahn.gloriana.ui.resources.ic_close
 import dev.marzahn.gloriana.ui.resources.ic_error
+import dev.marzahn.gloriana.ui.resources.ic_refresh_20
+import dev.marzahn.gloriana.ui.resources.retry
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+
+@Composable
+fun RetryNote(headline: String, detail: StringResource, modifier: Modifier = Modifier, onRetry: () -> Unit) {
+  NoteCard(modifier) {
+    NoteLine(boldThenPlain(headline, stringResource(detail)))
+    GlorianaButton(stringResource(Res.string.retry), onRetry, icon = Res.drawable.ic_refresh_20)
+  }
+}
 
 fun boldThenPlain(bold: String, plain: String?): AnnotatedString = buildAnnotatedString {
   withStyle(SpanStyle(fontWeight = FontWeight.Medium)) { append(bold) }

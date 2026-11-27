@@ -4,9 +4,9 @@ import dev.marzahn.gloriana.logic.keys.SealedSecret
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
 
-enum class ApiFormat(val samplerRanges: Map<Sampler, SamplerRange>) {
+enum class ApiFormat(val samplerRanges: Map<Sampler, SamplerRange>, val reportsUsageOnRequest: Boolean = false) {
   AnthropicMessages(anthropicSamplerRanges),
-  OpenAiChatCompletions(chatCompletionsSamplerRanges),
+  OpenAiChatCompletions(chatCompletionsSamplerRanges, reportsUsageOnRequest = true),
   OpenAiResponses(responsesSamplerRanges),
 }
 

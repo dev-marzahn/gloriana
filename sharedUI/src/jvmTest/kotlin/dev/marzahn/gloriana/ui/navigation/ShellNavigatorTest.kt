@@ -5,6 +5,7 @@ import androidx.navigation3.runtime.NavKey
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class ShellNavigatorTest {
@@ -101,5 +102,115 @@ class ShellNavigatorTest {
     pushed.leaveToHome()
     assertEquals(Destination.Library, pushed.current)
     assertEquals(listOf(Destination.Library.root, Item("a")), pushed.stack(Destination.Library))
+  }
+
+  private class Unsaved {
+    var changed = true
+    var discards = 0
+    val page get() = UnsavedPage("leave?", "page", discard = { discards++ }).takeIf { changed }
+  }
+
+  private fun guarded(unsaved: Unsaved, key: NavKey = Item("page")) = navigator(Destination.Settings).apply {
+    push(key)
+    guard(key) { unsaved.page }
+  }
+
+  @Test
+  fun leavingAPageWithUnsavedChangesAsksFirst() {
+    val unsaved = Unsaved()
+    val navigator = guarded(unsaved)
+
+    navigator.pop(Destination.Settings)
+
+    assertEquals(unsaved.page?.leavingMessage, navigator.pendingLeave?.page?.leavingMessage)
+    assertEquals(2, navigator.stack(Destination.Settings).size)
+  }
+
+  @Test
+  fun keepEditingStaysOnThePage() {
+    val unsaved = Unsaved()
+    val navigator = guarded(unsaved)
+    navigator.pop(Destination.Settings)
+
+    checkNotNull(navigator.pendingLeave).keepEditing()
+
+    assertNull(navigator.pendingLeave)
+    assertEquals(0, unsaved.discards)
+    assertEquals(2, navigator.stack(Destination.Settings).size)
+  }
+
+  @Test
+  fun discardAndLeaveDropsTheChangesAndLeaves() {
+    val unsaved = Unsaved()
+    val navigator = guarded(unsaved)
+    navigator.pop(Destination.Settings)
+
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+
+    assertNull(navigator.pendingLeave)
+    assertEquals(1, unsaved.discards)
+    assertTrue(navigator.atRoot)
+    assertTrue(navigator.unsavedPages.isEmpty())
+  }
+
+  @Test
+  fun aPageWithoutChangesLeavesWithoutAsking() {
+    val navigator = guarded(Unsaved().apply { changed = false })
+
+    navigator.replaceTop(Destination.Settings, Item("other"))
+
+    assertNull(navigator.pendingLeave)
+    assertEquals(listOf(Destination.Settings.root, Item("other")), navigator.stack(Destination.Settings))
+  }
+
+  @Test
+  fun replacingTheTopAsksAboutTheUnsavedPageItReplaces() {
+    val navigator = guarded(Unsaved())
+
+    navigator.replaceTop(Destination.Settings, Item("other"))
+    assertEquals(listOf(Destination.Settings.root, Item("page")), navigator.stack(Destination.Settings))
+
+    checkNotNull(navigator.pendingLeave).discardAndLeave()
+    assertEquals(listOf(Destination.Settings.root, Item("other")), navigator.stack(Destination.Settings))
+  }
+
+  @Test
+  fun closeLeavesWithoutAskingAndForgetsTheGuard() {
+    val navigator = guarded(Unsaved())
+
+    navigator.close(Destination.Settings, Item("page"))
+
+    assertNull(navigator.pendingLeave)
+    assertTrue(navigator.atRoot)
+    assertTrue(navigator.unsavedPages.isEmpty())
+  }
+
+  @Test
+  fun swappingTheShownPageForItsSavedRouteNeverAsks() {
+    val navigator = guarded(Unsaved())
+
+    navigator.swap(Destination.Settings, shown = Item("page"), with = Item("saved"))
+
+    assertNull(navigator.pendingLeave)
+    assertEquals(listOf(Destination.Settings.root, Item("saved")), navigator.stack(Destination.Settings))
+  }
+
+  @Test
+  fun closingARouteThatIsNotShownChangesNothing() {
+    val navigator = guarded(Unsaved())
+
+    navigator.close(Destination.Settings, Item("elsewhere"))
+
+    assertEquals(listOf(Destination.Settings.root, Item("page")), navigator.stack(Destination.Settings))
+  }
+
+  @Test
+  fun quittingListsEveryUnsavedPageAcrossDestinations() {
+    val navigator = guarded(Unsaved())
+    navigator.select(Destination.Library)
+    navigator.push(Item("clean"))
+    navigator.guard(Item("clean")) { null }
+
+    assertEquals(listOf("page"), navigator.unsavedPages.map { it.quittingName })
   }
 }

@@ -37,21 +37,46 @@ sealed interface HeaderValueInput {
 sealed interface CustomBodyText {
   data class Object(val body: JsonObject) : CustomBodyText
 
-  data class NotJson(val offset: Int?) : CustomBodyText
+  data class NotJson(val position: TextPosition?, val fault: JsonFault) : CustomBodyText
 
   data object NotAnObject : CustomBodyText
 
   companion object {
+    val Empty = Object(JsonObject(emptyMap()))
+
     fun parse(text: String): CustomBodyText = if (text.isBlank()) {
-      Object(JsonObject(emptyMap()))
+      Empty
     } else {
       try {
         Json.parseToJsonElement(text).asBody()
       } catch (error: SerializationException) {
-        NotJson(KotlinxJsonErrorOffset.of(error))
+        NotJson(
+          KotlinxJsonFailure.offset(error)?.let { TextPosition.of(text, it) },
+          KotlinxJsonFailure.fault(error, text),
+        )
       }
     }
 
-    private fun JsonElement.asBody(): CustomBodyText = if (this is JsonObject) Object(this) else NotAnObject
+    private fun JsonElement.asBody(): CustomBodyText = when {
+      KotlinxJsonFailure.holdsBareWord(this) -> NotJson(position = null, JsonFault.CharacterNotAllowed)
+      this is JsonObject -> Object(this)
+      else -> NotAnObject
+    }
+  }
+}
+
+private val PrettyJson = Json { prettyPrint = true }
+
+val ConnectionFields.customBodyText: String
+  get() = if (customBody.isEmpty()) "" else PrettyJson.encodeToString(JsonObject.serializer(), customBody)
+
+fun ConnectionFields.withCustomBody(body: CustomBodyText.Object): ConnectionFields = copy(customBody = body.body)
+
+data class TextPosition(val line: Int, val column: Int) {
+  companion object {
+    fun of(text: String, offset: Int): TextPosition {
+      val before = text.take(offset)
+      return TextPosition(line = before.count { it == '\n' } + 1, column = offset - (before.lastIndexOf('\n') + 1) + 1)
+    }
   }
 }

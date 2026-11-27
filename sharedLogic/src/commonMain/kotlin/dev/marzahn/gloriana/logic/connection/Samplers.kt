@@ -41,6 +41,15 @@ sealed interface SamplerRange {
   }
 }
 
+fun Samplers.with(sampler: Sampler, value: Number?): Samplers = when (sampler) {
+  Sampler.Temperature -> copy(temperature = value?.toDouble())
+  Sampler.TopP -> copy(topP = value?.toDouble())
+  Sampler.TopK -> copy(topK = value?.toLong())
+  Sampler.FrequencyPenalty -> copy(frequencyPenalty = value?.toDouble())
+  Sampler.PresencePenalty -> copy(presencePenalty = value?.toDouble())
+  Sampler.Seed -> copy(seed = value?.toLong())
+}
+
 private fun Sampler.within(least: Number, most: Number): Pair<Sampler, SamplerRange> = this to when (kind) {
   SamplerKind.Decimal -> SamplerRange.Decimal(least.toDouble()..most.toDouble())
   SamplerKind.Whole -> SamplerRange.Whole(least.toLong()..most.toLong())

@@ -37,6 +37,7 @@ import dev.marzahn.gloriana.ui.resources.ic_add
 import dev.marzahn.gloriana.ui.theme.GlorianaIndication
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Spacing
+import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
 enum class ListDensity { Screen, Pane }
@@ -47,7 +48,13 @@ sealed interface RowLine {
   data class Plain(val text: String) : RowLine
 
   data class Running(val text: String) : RowLine
+
+  data class Flagged(val icon: DrawableResource, val text: String, val tone: LineTone) : RowLine
 }
+
+enum class LineTone { Muted, Danger }
+
+private val FlagIconSize = 16.dp
 
 private val ListDensity.rowHeight: Dp
   get() = when (this) {
@@ -93,6 +100,9 @@ fun ListRow(
   selection: RowSelection = RowSelection.NotSelectable,
   density: ListDensity = ListDensity.Screen,
   time: String? = null,
+  nameMark: (@Composable () -> Unit)? = null,
+  thirdLine: String? = null,
+  trailing: (@Composable () -> Unit)? = null,
   avatar: @Composable () -> Unit = {},
 ) {
   val colors = GlorianaTheme.colors
@@ -115,10 +125,80 @@ fun ListRow(
   ) {
     avatar()
     Column(Modifier.weight(1f)) {
-      Text(name, style = type.titleMedium, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.s6)) {
+        Text(
+          name,
+          Modifier.weight(1f, fill = false),
+          style = type.titleMedium,
+          color = colors.text,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        nameMark?.invoke()
+      }
       RowLineText(line)
+      if (thirdLine != null) {
+        Text(
+          thirdLine,
+          style = type.bodySmall,
+          color = colors.textSubtle,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
     }
     if (time != null) Text(time, style = type.labelSmall, color = colors.textSubtle)
+    trailing?.invoke()
+  }
+}
+
+private val MarkHeight = 22.dp
+
+@Composable
+fun Mark(text: String, modifier: Modifier = Modifier) {
+  val colors = GlorianaTheme.colors
+  val shape = GlorianaTheme.shapes.tag
+  Box(
+    modifier
+      .heightIn(min = MarkHeight)
+      .background(colors.surface2, shape)
+      .border(1.dp, colors.borderSubtle, shape)
+      .padding(horizontal = GlorianaTheme.spacing.s6),
+    contentAlignment = Alignment.Center,
+  ) {
+    Text(text, style = GlorianaTheme.type.material.labelMedium, color = colors.textMuted, maxLines = 1)
+  }
+}
+
+private val ListDensity.tileSize: Dp
+  get() = when (this) {
+    ListDensity.Screen -> 40.dp
+    ListDensity.Pane -> 36.dp
+  }
+
+private val ListDensity.tileIconSize: Dp
+  get() = when (this) {
+    ListDensity.Screen -> 20.dp
+    ListDensity.Pane -> 18.dp
+  }
+
+@Composable
+fun RowTile(icon: DrawableResource, density: ListDensity, modifier: Modifier = Modifier) {
+  val colors = GlorianaTheme.colors
+  Box(
+    modifier.size(density.tileSize).background(colors.surface2, GlorianaTheme.shapes.control),
+    contentAlignment = Alignment.Center,
+  ) {
+    Icon(painterResource(icon), null, Modifier.size(density.tileIconSize), tint = colors.textMuted)
+  }
+}
+
+@Composable
+fun RunningDot(modifier: Modifier = Modifier) {
+  val colors = GlorianaTheme.colors
+  Box(modifier.size(DotSlot), contentAlignment = Alignment.Center) {
+    Box(Modifier.size(Dot + DotHalo * 2).background(colors.accentRing, GlorianaTheme.shapes.pill))
+    Box(Modifier.size(Dot).background(colors.accent, GlorianaTheme.shapes.pill))
   }
 }
 
@@ -130,12 +210,17 @@ private fun RowLineText(line: RowLine) {
     is RowLine.Plain ->
       Text(line.text, style = style, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
     is RowLine.Running -> Row(verticalAlignment = Alignment.CenterVertically) {
-      Box(Modifier.size(DotSlot), contentAlignment = Alignment.Center) {
-        Box(Modifier.size(Dot + DotHalo * 2).background(colors.accentRing, GlorianaTheme.shapes.pill))
-        Box(Modifier.size(Dot).background(colors.accent, GlorianaTheme.shapes.pill))
-      }
+      RunningDot()
       Spacer(Modifier.width(GlorianaTheme.spacing.s6))
       Text(line.text, style = style, color = colors.accentText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+    is RowLine.Flagged -> Row(
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s6),
+    ) {
+      val tint = if (line.tone == LineTone.Danger) colors.dangerText else colors.textMuted
+      Icon(painterResource(line.icon), null, Modifier.size(FlagIconSize), tint = tint)
+      Text(line.text, style = style, color = tint, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
   }
 }

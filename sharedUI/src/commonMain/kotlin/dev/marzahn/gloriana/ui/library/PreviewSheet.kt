@@ -18,7 +18,7 @@ import dev.marzahn.gloriana.ui.characters.fields.FieldContent
 import dev.marzahn.gloriana.ui.characters.fields.Folding
 import dev.marzahn.gloriana.ui.characters.fields.rememberFieldBlocks
 import dev.marzahn.gloriana.ui.characters.metaLine
-import dev.marzahn.gloriana.ui.characters.tappable
+import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaSheet

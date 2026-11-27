@@ -51,7 +51,7 @@ data class EmptyBlock(
 )
 
 @Composable
-fun EmptyState(block: EmptyBlock, modifier: Modifier = Modifier) {
+fun EmptyState(block: EmptyBlock, modifier: Modifier = Modifier, actionModifier: Modifier = Modifier) {
   val colors = GlorianaTheme.colors
   val type = GlorianaTheme.type.material
   val spacing = GlorianaTheme.spacing
@@ -65,7 +65,7 @@ fun EmptyState(block: EmptyBlock, modifier: Modifier = Modifier) {
       Text(block.text, style = type.bodyMedium, color = colors.textMuted, textAlign = TextAlign.Center)
       if (action != null) {
         Spacer(Modifier.height(spacing.s24))
-        GlorianaButton(action.label, action.onClick, kind = ButtonKind.Primary, icon = action.icon)
+        GlorianaButton(action.label, action.onClick, actionModifier, kind = ButtonKind.Primary, icon = action.icon)
       }
     }
   }

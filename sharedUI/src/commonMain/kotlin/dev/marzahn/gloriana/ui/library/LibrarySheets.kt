@@ -29,7 +29,7 @@ import dev.marzahn.gloriana.logic.characters.AlreadyInLibrary
 import dev.marzahn.gloriana.logic.characters.AlreadyInLibraryAnswer
 import dev.marzahn.gloriana.logic.characters.AlreadyInLibraryChoice
 import dev.marzahn.gloriana.ui.characters.FocusFirstForKeyboard
-import dev.marzahn.gloriana.ui.characters.tappable
+import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaCheckbox

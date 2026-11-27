@@ -3,7 +3,11 @@ package dev.marzahn.gloriana.logic.keys
 import com.google.crypto.tink.Aead
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.debug.Faults
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.update
 import java.io.IOException
 import java.security.GeneralSecurityException
 import kotlin.uuid.Uuid
@@ -25,21 +29,29 @@ internal class TinkKeyVault(
   private val keyring = Keyring(directory, device, dataKeys, faults, passphraseCost)
   private val holder = KeysetHolder(keyring)
   private val sweep = StartSweep(dataKeys, stored)
+  private val foundMissing = MutableStateFlow<Set<SecretSlot>>(emptySet())
 
   override val state: StateFlow<VaultState> = holder.state
 
+  override val findings: Flow<KeyFindings> = combine(dataKeys.filed, foundMissing, ::KeyFindings)
+
   override suspend fun prepare(): VaultState = swept { holder.withKeyset { it.state } }
 
-  suspend fun sweepAtStart() = sweep.runIfDue(holder)
+  override suspend fun prepareIfPassphraseProtected(): VaultState = swept {
+    when (holder.withFiles { keyring.storedKind() }) {
+      StoredKind.Passphrase -> holder.withKeyset { it.state }
+      StoredKind.Unreadable -> VaultState.Unavailable
+      StoredKind.Device, StoredKind.None -> state.value
+    }
+  }
 
   override suspend fun seal(slot: SecretSlot, value: String): SealResult = swept {
     holder.withKeyset { keyset ->
-      when (val aead = keyset.aead()) {
-        null -> if (keyset.asksForPassphrase()) SealResult.Locked else SealResult.Unavailable
-        else -> unlessFilesFail(SealResult.Unavailable) {
+      keyset.withAead(SealOutcomes) { aead ->
+        unlessFilesFail(SealResult.Unavailable) {
           val dataKey = dataKeys.findOrMake(slot.connectionId, aead)
           sweep.giveUpForThisRun()
-          SealResult.Sealed(dataKey.sealSecret(slot, value))
+          SealResult.Sealed(dataKey.sealSecret(slot, value)).also { foundMissing.update { it - slot } }
         }
       }
     }
@@ -47,10 +59,10 @@ internal class TinkKeyVault(
 
   override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = swept {
     holder.withKeyset { keyset ->
-      when (val aead = keyset.aead()) {
-        null -> if (keyset.asksForPassphrase()) OpenResult.Locked else OpenResult.Unavailable
-        else -> unlessFilesFail(OpenResult.Unavailable) {
-          dataKeys.find(slot.connectionId, aead)?.openSecret(slot, secret) ?: OpenResult.Missing
+      keyset.withAead(OpenOutcomes) { aead ->
+        unlessFilesFail(OpenResult.Unavailable) {
+          val opened = dataKeys.find(slot.connectionId, aead)?.openSecret(slot, secret) ?: OpenResult.Missing
+          opened.also { result -> foundMissing.update { if (result == OpenResult.Missing) it + slot else it - slot } }
         }
       }
     }
@@ -93,43 +105,57 @@ internal class TinkKeyVault(
         val stored = keyring.storedPassphraseKeyset() as? StoredKeyset.Passphrase
           ?: return@rewriting PassphraseResult.NotAvailable
         val opened = stored.open(current) ?: return@rewriting PassphraseResult.WrongPassphrase
-        holder.keyset = keyring.writePassphraseKeyset(opened, new)
-        PassphraseResult.Accepted
+        unlessFilesFail(PassphraseResult.NotAvailable) {
+          holder.keyset = keyring.writePassphraseKeyset(opened, new)
+          PassphraseResult.Accepted
+        }
       }
     }
 
-  override suspend fun reset(newPassphrase: CharArray): PassphraseResult = clearing(newPassphrase) {
-    holder.rewriting(applies = { it is Keyset.Locked || it == Keyset.PassphraseDamaged }) {
-      dataKeys.eraseAll()
-      holder.keyset = keyring.writePassphraseKeyset(Keysets.newAes256Gcm(), newPassphrase)
-      PassphraseResult.Accepted
+  override suspend fun reset(newPassphrase: CharArray): ErasingResult = clearing(newPassphrase) {
+    holder.erasing { current ->
+      when (current) {
+        is Keyset.Locked, Keyset.PassphraseDamaged -> keyring.resetPassphraseKeyset(newPassphrase)
+        Keyset.Closed, is Keyset.DeviceUnlocked, is Keyset.PassphraseUnlocked, Keyset.NoKeychain, Keyset.Unavailable,
+        is Keyset.DeviceDamaged, is Keyset.DeviceKeyNotFound -> null
+      }
     }
   }
 
-  override suspend fun replaceDeviceKeyset(): PassphraseResult =
-    holder.rewriting(applies = { it is Keyset.DeviceDamaged || it is Keyset.DeviceKeyNotFound }) { current ->
-      val replacing = when (current) {
-        is Keyset.DeviceDamaged -> current.keyName
-        is Keyset.DeviceKeyNotFound -> current.keyName
-        else -> null
-      }
-      val replaced = keyring.replaceDeviceKeyset(replacing)
-      if (replaced is Keyset.DeviceUnlocked) {
-        holder.keyset = replaced
-        PassphraseResult.Accepted
-      } else {
-        PassphraseResult.NotAvailable
-      }
+  override suspend fun replaceDeviceKeyset(): ErasingResult = holder.erasing { current ->
+    when (current) {
+      is Keyset.DeviceDamaged -> keyring.replaceDeviceKeyset(current.keyName)
+      is Keyset.DeviceKeyNotFound -> keyring.replaceDeviceKeyset(current.keyName)
+      Keyset.Closed, is Keyset.DeviceUnlocked, is Keyset.PassphraseUnlocked, is Keyset.Locked, Keyset.NoKeychain,
+      Keyset.Unavailable, Keyset.PassphraseDamaged -> null
     }
+  }
 }
 
-private fun Keyset.aead(): Aead? = when (this) {
-  is Keyset.DeviceUnlocked -> aead
-  is Keyset.PassphraseUnlocked -> aead
-  else -> null
-}
+private class WithoutAead<T>(val needsPassphrase: T, val locked: T, val unreadable: T, val unavailable: T)
 
-private fun Keyset.asksForPassphrase(): Boolean = this is Keyset.Locked || this == Keyset.NoKeychain
+private val SealOutcomes = WithoutAead<SealResult>(
+  needsPassphrase = SealResult.NeedsPassphrase,
+  locked = SealResult.Locked,
+  unreadable = SealResult.Unreadable,
+  unavailable = SealResult.Unavailable,
+)
+
+private val OpenOutcomes = WithoutAead<OpenResult>(
+  needsPassphrase = OpenResult.Missing,
+  locked = OpenResult.Locked,
+  unreadable = OpenResult.Unreadable,
+  unavailable = OpenResult.Unavailable,
+)
+
+private inline fun <T> Keyset.withAead(without: WithoutAead<T>, use: (Aead) -> T): T = when (this) {
+  is Keyset.DeviceUnlocked -> use(aead)
+  is Keyset.PassphraseUnlocked -> use(aead)
+  Keyset.NoKeychain -> without.needsPassphrase
+  is Keyset.Locked -> without.locked
+  Keyset.PassphraseDamaged, is Keyset.DeviceDamaged, is Keyset.DeviceKeyNotFound -> without.unreadable
+  Keyset.Closed, Keyset.Unavailable -> without.unavailable
+}
 
 private inline fun <T> unlessFilesFail(unavailable: T, work: () -> T): T = try {
   work()

@@ -1,0 +1,366 @@
+<resources>
+    <string name="settings_group_connections">Connections</string>
+    <string name="settings_group_every_connection">For every Connection</string>
+    <string name="settings_group_keys">Keys</string>
+    <string name="settings_nothing_picked">Pick a Connection or a setting</string>
+    <string name="settings_nothing_picked_text">Or create a Connection.</string>
+    <string name="back_to_settings">Settings</string>
+
+    <string name="format_anthropic_messages">Anthropic Messages</string>
+    <string name="format_openai_chat_completions">OpenAI Chat Completions</string>
+    <string name="format_openai_responses">OpenAI Responses</string>
+
+    <string name="connection_default_mark">Default</string>
+    <string name="connection_more">More for %1$s</string>
+    <string name="make_default">Make default</string>
+    <string name="delete_connection">Delete Connection</string>
+    <string name="snack_made_default">%1$s is the default Connection.</string>
+
+    <string name="key_missing_key">Key missing: enter it again</string>
+    <string name="key_missing_headers">Header values missing: enter them again</string>
+    <string name="key_missing_both">Key and header values missing: enter them again</string>
+    <string name="key_missing_key_short">Key missing</string>
+    <string name="key_missing_headers_short">Header values missing</string>
+    <string name="key_missing_both_short">Key and header values missing</string>
+    <string name="keychain_unavailable_line">Keychain unavailable: unlock it, then try again</string>
+    <string name="keychain_unavailable_line_short">Keychain unavailable</string>
+    <string name="key_unreadable_key">Key can't be opened: start over above</string>
+    <string name="key_unreadable_headers">Header values can't be opened: start over above</string>
+    <string name="key_unreadable_both">Key and header values can't be opened: start over above</string>
+    <string name="key_unreadable_key_short">Key can't be opened</string>
+    <string name="key_unreadable_headers_short">Header values can't be opened</string>
+    <string name="key_unreadable_both_short">Key and header values can't be opened</string>
+
+    <string name="model_settings">Model settings</string>
+    <string name="model_settings_row">Samplers sent where a Connection leaves them empty</string>
+    <string name="model_settings_row_short">Samplers for every Connection</string>
+    <string name="passphrase">Passphrase</string>
+    <string name="passphrase_row">This device has no keychain, so a passphrase protects your keys</string>
+    <string name="passphrase_row_short">Protects your keys on this device</string>
+
+    <string name="create_connection">Create a Connection</string>
+    <string name="create_connection_text">A template fills in the name, API format and base URL. You can change anything.</string>
+    <string name="template_from_nothing">From nothing</string>
+    <string name="template_from_nothing_text">Any host, in any of the three formats</string>
+
+    <string name="connections_empty">No Connections yet</string>
+    <string name="connections_empty_text">A Connection is how Gloriana reaches a model. Start from Anthropic, OpenAI, OpenRouter or your own host.</string>
+    <string name="connections_error">Your Connections couldn't be loaded.</string>
+    <string name="connections_error_detail">Nothing was changed. Retry, or restart Gloriana if it keeps happening.</string>
+
+    <string name="keys_unreadable">Your saved keys can't be opened.</string>
+    <plurals name="keys_unreadable_detail">
+        <item quantity="one">Gloriana can't open them with what the system keychain holds. If your keychain is locked or still starting, unlock it and they come back. Otherwise, start over to erase the keys and header values of %1$d Connection; everything else in it stays.</item>
+        <item quantity="other">Gloriana can't open them with what the system keychain holds. If your keychain is locked or still starting, unlock it and they come back. Otherwise, start over to erase the keys and header values of %1$d Connections; everything else in them stays.</item>
+    </plurals>
+    <string name="start_over">Start over</string>
+    <string name="start_over_title">Start over with new keys?</string>
+    <plurals name="start_over_text">
+        <item quantity="one">The keys and header values of %1$d Connection are erased. Everything else in it stays. Then you enter them again.</item>
+        <item quantity="other">The keys and header values of %1$d Connections are erased. Everything else in them stays. Then you enter the keys again in each Connection.</item>
+    </plurals>
+    <string name="start_over_confirm">Erase keys and start over</string>
+    <string name="erasing">Erasing…</string>
+    <string name="keys_not_erased">The keys weren't erased: Gloriana couldn't write its key file.</string>
+    <string name="start_over_failed_detail">Nothing was changed. Free some space, then start over again.</string>
+    <string name="start_over_keys_erased">The keys were erased, but Gloriana couldn't write its new key file.</string>
+    <string name="start_over_keys_erased_detail">Free some space, then start over again.</string>
+    <string name="snack_keys_erased">Your keys were erased. Enter them again in each Connection.</string>
+
+    <string name="new_connection">New Connection</string>
+    <string name="not_saved_yet">Not saved yet</string>
+    <string name="followed_by_dot">%1$s ·</string>
+    <string name="joined_by_dot">%1$s · %2$s</string>
+    <string name="save">Save</string>
+    <string name="saving">Saving…</string>
+    <string name="test">Test</string>
+    <string name="testing">Testing…</string>
+    <string name="snack_saved">%1$s was saved.</string>
+    <string name="test_passed">Test passed in %1$s s. The host replied: "%2$s"</string>
+
+    <string name="section_where_requests_go">Where requests go</string>
+    <string name="section_model">Model</string>
+    <string name="section_samplers">Samplers</string>
+    <string name="section_request">Request</string>
+
+    <string name="field_name">Name</string>
+    <string name="field_api_format">API format</string>
+    <string name="pick_api_format">Pick an API format</string>
+    <string name="field_base_url">Base URL</string>
+    <string name="base_url_hint">Requests go to %1$s</string>
+    <string name="base_url_hint_no_format">Pick an API format to see where requests go.</string>
+    <string name="plain_http_note">Plain http reaches only your own network.</string>
+    <string name="field_key">Key</string>
+    <string name="optional">· optional</string>
+    <string name="key_hint_empty">Leave it empty for a host that needs none.</string>
+    <string name="key_hint_typed">Stored encrypted on this device. Once saved, it's never shown again.</string>
+    <string name="key_hint_saved">Saved and encrypted. It's never shown again.</string>
+    <string name="key_hint_replacing">Save to replace the saved key. Cancel keeps it.</string>
+    <string name="key_removed">Removed. Save to delete it.</string>
+    <string name="key_missing">Missing on this device</string>
+    <string name="key_missing_hint">Enter it again. Until then this Connection sends nothing.</string>
+    <string name="keychain_unavailable">Keychain unavailable</string>
+    <string name="keychain_unavailable_hint">Unlock your system keychain. Gloriana tries again the next time it needs the key.</string>
+    <string name="key_unreadable">Can't be opened</string>
+    <string name="key_unreadable_hint">Gloriana can't open your saved keys with what the system keychain holds. Start over in Settings, then enter this key again.</string>
+    <string name="header_unreadable_hint">Gloriana can't open your saved keys with what the system keychain holds. Start over in Settings, then enter this value again.</string>
+    <string name="replace">Replace</string>
+    <string name="remove">Remove</string>
+    <string name="undo">Undo</string>
+    <string name="enter_key">Enter key</string>
+    <string name="show_key">Show key</string>
+    <string name="hide_key">Hide key</string>
+    <string name="saved_secret">•••</string>
+
+    <string name="field_model">Model</string>
+    <string name="model_placeholder">Type it, or pick from the host's list</string>
+    <string name="pick_model">Pick from the host's list</string>
+    <string name="field_context_size">Context size</string>
+    <string name="field_max_reply_tokens">Max reply tokens</string>
+    <string name="prompt_budget">Leaves %1$s tokens for the prompt.</string>
+    <string name="model_list_none">The host lists no models here. Type the model.</string>
+
+    <string name="pick_model_title">Pick a model</string>
+    <plurals name="pick_model_count">
+        <item quantity="one">%1$s lists %2$d model.</item>
+        <item quantity="other">%1$s lists %2$d models.</item>
+    </plurals>
+    <string name="filter_models">Filter models</string>
+    <string name="asking_models">Asking %1$s for its models…</string>
+    <string name="no_model_matches">No model matches "%1$s".</string>
+    <string name="model_list_failed">The model list couldn't be fetched: %1$s.</string>
+    <string name="model_list_failed_field">The host's model list couldn't be fetched: %1$s.</string>
+
+    <string name="samplers_intro">Empty means unset: Model settings' value is sent, or nothing.</string>
+    <string name="sampler_temperature">Temperature</string>
+    <string name="sampler_top_p">Top P</string>
+    <string name="sampler_top_k">Top K</string>
+    <string name="sampler_frequency_penalty">Frequency penalty</string>
+    <string name="sampler_presence_penalty">Presence penalty</string>
+    <string name="sampler_seed">Seed</string>
+    <string name="range_between">%1$s to %2$s</string>
+    <string name="range_at_least">%1$s or more</string>
+    <string name="range_whole">A whole number</string>
+    <string name="sampler_hint_global">%1$s · Model settings sends %2$s</string>
+    <string name="sampler_hint_not_sent">%1$s · not sent</string>
+    <string name="sampler_dropped">%1$s isn't sent with %2$s. Saving drops it.</string>
+
+    <string name="field_streaming">Streaming</string>
+    <string name="streaming_hint">The reply shows as it's written.</string>
+    <string name="field_include_usage">Report token usage</string>
+    <string name="include_usage_hint">Sends stream_options.include_usage. Turn it off if the host refuses it.</string>
+    <string name="field_timeout">Timeout</string>
+    <string name="seconds">seconds</string>
+    <string name="timeout_hint">How long to wait to connect, and between parts of a reply.</string>
+    <string name="field_custom_headers">Custom headers</string>
+    <string name="header_name">Header name</string>
+    <string name="header_value">Header value</string>
+    <string name="remove_header">Remove header</string>
+    <string name="replace_value">Replace value</string>
+    <string name="enter_value">Enter value</string>
+    <string name="header_missing">Missing</string>
+    <string name="add_header">Add a header</string>
+    <string name="headers_hint">Saved values show as •••. A header named like the format's own replaces it.</string>
+    <string name="field_custom_body">Custom body JSON</string>
+    <string name="custom_body_hint">Merged over the request Gloriana builds. null removes a key.</string>
+
+    <string name="error_name_empty">Give this Connection a name.</string>
+    <string name="error_name_taken">Another Connection is named %1$s.</string>
+    <string name="error_format_empty">Pick an API format.</string>
+    <string name="error_base_url_scheme">Start the address with https:// or http://.</string>
+    <string name="error_base_url_host">This address has no host.</string>
+    <string name="error_base_url_query">Take out the part after ? or #: a base URL can't hold it.</string>
+    <string name="error_base_url_port">Use a port from 1 to 65535.</string>
+    <string name="error_base_url_user">Take out the user name and password: a base URL can't hold them.</string>
+    <string name="error_base_url_character">Take out spaces and backslashes: a base URL can't hold them.</string>
+    <string name="error_model_empty">Type a model, or pick one from the host's list.</string>
+    <string name="error_whole_above_zero">Use a whole number above 0.</string>
+    <string name="error_below_context">Must be below the context size.</string>
+    <string name="error_sampler_range">Use a number from %1$s to %2$s.</string>
+    <string name="error_sampler_at_least">Use a number of %1$s or more.</string>
+    <string name="error_sampler_whole">Use a whole number.</string>
+    <string name="error_sampler_number">Use a number.</string>
+    <string name="error_sampler_no_format">No format takes %1$s: the widest range is %2$s.</string>
+    <string name="error_key_character">A key can't hold %1$s. Use plain letters, digits and punctuation.</string>
+    <string name="error_header_name_empty">Give this header a name.</string>
+    <string name="error_header_name_character">A header name can't hold %1$s. Use letters, digits and !#$%&amp;'*+-.^_`|~.</string>
+    <string name="error_header_name_taken">Another header is named %1$s.</string>
+    <string name="error_header_reserved">Gloriana sets %1$s itself. Remove this header.</string>
+    <string name="error_header_value_character">A header value can't hold %1$s. Use plain letters, digits, punctuation, spaces and tabs.</string>
+    <string name="error_content_type">Content-Type must read type/subtype, such as application/json.</string>
+    <string name="error_header_value_enter">Enter it again. Until then this Connection sends nothing.</string>
+    <string name="error_json">This isn't valid JSON: %1$s at line %2$d, column %3$d.</string>
+    <string name="error_json_unplaced">This isn't valid JSON: %1$s.</string>
+    <string name="error_json_object">This must be a JSON object, in { }.</string>
+    <string name="json_comma">a comma is missing</string>
+    <string name="json_brace">a } is missing</string>
+    <string name="json_bracket">a ] is missing</string>
+    <string name="json_quote">a closing quote is missing</string>
+    <string name="json_value">a value is missing</string>
+    <string name="json_character">there's a character JSON doesn't allow</string>
+    <string name="json_trailing">there's text after the end</string>
+    <string name="json_other">something is wrong</string>
+    <string name="character_space">a space</string>
+    <string name="character_line_break">a line break</string>
+    <string name="character_invisible">an invisible character</string>
+
+    <string name="test_failed">The test failed: %1$s.</string>
+    <string name="host_said">It said: "%1$s".</string>
+    <string name="reason_unreachable">the host couldn't be reached</string>
+    <string name="reason_timeout">the host didn't answer within %1$d s</string>
+    <string name="reason_key_rejected">the host rejected the key (%1$d)</string>
+    <string name="reason_refused">the host refused the request (%1$d)</string>
+    <string name="reason_rate_limited">the host is limiting requests (429)</string>
+    <string name="reason_host_error">the host answered with an error (%1$s)</string>
+    <string name="reason_host_error_unknown">the host answered with an error</string>
+    <string name="reason_plain_http">plain http goes only to your own network</string>
+    <string name="reason_bad_address">the address can't be used as written</string>
+    <string name="reason_bad_header">a custom header can't be sent</string>
+    <string name="reason_stream_not_boolean">stream in the custom body isn't true or false</string>
+    <string name="step_unreachable">Check the address, then test again.</string>
+    <string name="step_timeout">Try again in a while, or raise the timeout.</string>
+    <string name="step_replace_key">Replace the key, then test again.</string>
+    <string name="step_typed_key">Make sure the key you typed is right, then test again.</string>
+    <string name="step_headers">Check your custom headers, then test again.</string>
+    <string name="step_no_key">This Connection has no key. Add one if the host needs it, then test again.</string>
+    <string name="step_rate_limited">Try again in a while.</string>
+    <string name="step_host_error">Check the model and the custom body, then test again.</string>
+    <string name="step_plain_http">Use https, then test again.</string>
+    <string name="step_bad_address">Check the base URL, then test again.</string>
+    <string name="step_stream">Set it to true or false, or take it out, then test again.</string>
+
+    <string name="keychain_note_sent">Gloriana couldn't reach the system keychain, so nothing was sent.</string>
+    <string name="keychain_note_sent_detail">Unlock your keychain, then try again.</string>
+    <string name="keychain_note_saved">%1$s wasn't saved: Gloriana couldn't reach the system keychain.</string>
+    <string name="keychain_note_saved_detail">What you typed is still here. Unlock your keychain, then save again.</string>
+    <string name="unreadable_note_sent">Your saved keys can't be opened, so nothing was sent.</string>
+    <string name="unreadable_note_sent_detail">Start over in Settings, then enter %1$s again.</string>
+    <string name="unreadable_note_saved">%1$s wasn't saved: your saved keys can't be opened.</string>
+    <string name="unreadable_note_saved_detail">What you typed is still here. Start over in Settings, then save again.</string>
+    <string name="what_key">the key</string>
+    <string name="what_headers">the header values</string>
+    <string name="what_both">the key and header values</string>
+    <string name="missing_note_key">The key is missing on this device, so nothing was sent.</string>
+    <string name="missing_note_headers">The header values are missing on this device, so nothing was sent.</string>
+    <string name="missing_note_both">The key and header values are missing on this device, so nothing was sent.</string>
+    <string name="missing_note_key_detail">Enter it again, then try again.</string>
+    <string name="missing_note_values_detail">Enter them again, then try again.</string>
+
+    <string name="not_saved_storage">%1$s wasn't saved: there isn't enough storage.</string>
+    <string name="not_saved_storage_detail">What you typed is still here. Free some space, then save again.</string>
+    <string name="not_saved">%1$s wasn't saved.</string>
+    <string name="not_saved_detail">What you typed is still here. Save again.</string>
+    <string name="this_connection">This Connection</string>
+
+    <string name="discard_title">Discard your changes?</string>
+    <string name="changes_not_saved">Your changes to %1$s aren't saved.</string>
+    <string name="discard_new_connection">Your changes to this new Connection aren't saved.</string>
+    <string name="discard_model_settings">Your changes to Model settings aren't saved.</string>
+    <string name="discard_quit_two">Your changes to %1$s and %2$s aren't saved.</string>
+    <plurals name="discard_quit_more">
+        <item quantity="one">Your changes to %1$s, %2$s and %3$d more page aren't saved.</item>
+        <item quantity="other">Your changes to %1$s, %2$s and %3$d more pages aren't saved.</item>
+    </plurals>
+    <string name="quit_name_new_connection">a new Connection</string>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
+
+    <string name="delete_connection_title">Delete %1$s?</string>
+    <string name="delete_connection_both">Its key and header values become unreadable in every file Gloriana keeps. An encrypted backup made before now still holds the key.</string>
+    <string name="delete_connection_key">Its key becomes unreadable in every file Gloriana keeps. An encrypted backup made before now still holds the key.</string>
+    <string name="delete_connection_headers">Its header values become unreadable in every file Gloriana keeps.</string>
+    <string name="delete_connection_default">%1$s is the default, so no Connection will be the default.</string>
+
+    <string name="connection_error">This Connection couldn't be loaded.</string>
+    <string name="connection_error_detail">Nothing was changed. Retry, or go back to Settings.</string>
+
+    <string name="model_settings_intro">Sent through every Connection that leaves a sampler empty, where its API format takes it and the value is in its range.</string>
+    <string name="model_settings_footer">Empty means unset. A Connection's own value always wins.</string>
+    <string name="all_formats">All three formats</string>
+    <string name="snack_model_settings_saved">Model settings were saved.</string>
+    <string name="model_settings_error">Model settings couldn't be loaded.</string>
+    <string name="model_settings_error_detail">Nothing was changed. Retry, or restart Gloriana if it keeps happening.</string>
+    <string name="model_settings_not_saved_storage">Model settings weren't saved: there isn't enough storage.</string>
+    <string name="model_settings_not_saved">Model settings weren't saved.</string>
+
+    <string name="set_passphrase_title">Set a passphrase</string>
+    <string name="set_passphrase_text">This device has no keychain, so a passphrase protects your keys. Gloriana asks for it each time it starts. A forgotten passphrase can't be recovered: you can only reset it, which erases every key.</string>
+    <string name="passphrase_hint">At least 8 characters</string>
+    <string name="type_it_again">Type it again</string>
+    <string name="set_passphrase_and_save">Set passphrase and save</string>
+    <string name="set_passphrase">Set passphrase</string>
+    <string name="setting">Setting…</string>
+    <string name="error_passphrase_short">Use at least 8 characters.</string>
+    <string name="error_passphrase_mismatch">The two don't match.</string>
+    <string name="error_passphrase_wrong">That passphrase is wrong. Try again.</string>
+    <string name="set_passphrase_failed">The passphrase wasn't set: Gloriana couldn't write its key file.</string>
+    <string name="set_passphrase_failed_detail">Nothing was saved. Free some space, then try again.</string>
+    <string name="show_passphrase">Show passphrase</string>
+    <string name="hide_passphrase">Hide passphrase</string>
+
+    <string name="unlock_title">Unlock your keys</string>
+    <string name="unlock_text">This device has no keychain, so your passphrase protects your Connections' keys.</string>
+    <string name="unlock">Unlock</string>
+    <string name="checking">Checking…</string>
+    <string name="forgot_passphrase">Forgot passphrase?</string>
+    <string name="damaged_title">Your keys can't be read</string>
+    <plurals name="damaged_text">
+        <item quantity="one">The file that holds your keys is damaged, so the keys and header values of %1$d Connection can't be read. Reset to erase them and set a new passphrase. Everything else in it stays.</item>
+        <item quantity="other">The file that holds your keys is damaged, so the keys and header values of %1$d Connections can't be read. Reset to erase them and set a new passphrase. Everything else in those Connections stays.</item>
+    </plurals>
+    <string name="reset">Reset</string>
+    <string name="reset_title">Reset your passphrase?</string>
+    <plurals name="reset_text">
+        <item quantity="one">The keys and header values of %1$d Connection are erased. Everything else in it stays. Then you enter the keys again.</item>
+        <item quantity="other">The keys and header values of %1$d Connections are erased. Everything else in them stays. Then you enter the keys again.</item>
+    </plurals>
+    <string name="reset_confirm">Erase keys and reset</string>
+    <string name="reset_failed_detail">Nothing was changed. Free some space, then reset again.</string>
+    <string name="reset_keys_erased">The keys were erased, but the new passphrase wasn't set: Gloriana couldn't write its key file.</string>
+    <string name="reset_keys_erased_detail">Your old passphrase still opens Gloriana. Free some space, then reset again.</string>
+
+    <string name="change_passphrase_text">This device has no keychain, so your passphrase protects your keys. Changing it keeps every key.</string>
+    <string name="change_passphrase">Change passphrase</string>
+    <string name="changing">Changing…</string>
+    <string name="current_passphrase">Current passphrase</string>
+    <string name="new_passphrase">New passphrase</string>
+    <string name="change_failed">Your passphrase wasn't changed: Gloriana couldn't write its key file.</string>
+    <string name="change_failed_detail">The old one still works. Free some space, then try again.</string>
+    <string name="snack_passphrase_changed">Your passphrase was changed.</string>
+
+    <string name="two_sentences">%1$s %2$s</string>
+    <string name="formats_two">%1$s, %2$s</string>
+    <string name="range_groups_two">%1$s; %2$s</string>
+    <string name="not_made_default">%1$s wasn't made the default.</string>
+    <string name="not_made_default_detail">Nothing was changed. Retry.</string>
+    <string name="samplers_pick_format">Pick an API format to see its samplers.</string>
+    <string name="cancel_replace_value">Keep the saved value</string>
+
+    <string name="list_step_unreachable">Check the address, or close this and type the model.</string>
+    <string name="list_step_timeout">Try again in a while, raise the timeout, or close this and type the model.</string>
+    <string name="list_step_replace_key">Replace the key, or close this and type the model.</string>
+    <string name="list_step_typed_key">Make sure the key you typed is right, or close this and type the model.</string>
+    <string name="list_step_headers">Check your custom headers, or close this and type the model.</string>
+    <string name="list_step_no_key">This Connection has no key. Add one if the host needs it, or close this and type the model.</string>
+    <string name="list_step_rate_limited">Try again in a while, or close this and type the model.</string>
+    <string name="list_step_host_error">Check the custom body, or close this and type the model.</string>
+    <string name="list_step_plain_http">Use https, or close this and type the model.</string>
+    <string name="list_step_bad_address">Check the base URL, or close this and type the model.</string>
+    <string name="list_step_stream">Set stream to true or false or take it out, or close this and type the model.</string>
+    <string name="field_step_unreachable">Check the address, or type the model.</string>
+    <string name="field_step_timeout">Try again in a while, raise the timeout, or type the model.</string>
+    <string name="field_step_replace_key">Replace the key, or type the model.</string>
+    <string name="field_step_typed_key">Make sure the key you typed is right, or type the model.</string>
+    <string name="field_step_headers">Check your custom headers, or type the model.</string>
+    <string name="field_step_no_key">This Connection has no key. Add one if the host needs it, or type the model.</string>
+    <string name="field_step_rate_limited">Try again in a while, or type the model.</string>
+    <string name="field_step_host_error">Check the custom body, or type the model.</string>
+    <string name="field_step_plain_http">Use https, or type the model.</string>
+    <string name="field_step_bad_address">Check the base URL, or type the model.</string>
+    <string name="field_step_stream">Set stream to true or false or take it out, or type the model.</string>
+
+    <string name="damaged_no_keys">The file that holds your keys is damaged. No Connection holds a key now: reset to set a new passphrase.</string>
+    <string name="reset_no_keys">No Connection holds a key now, so nothing else changes.</string>
+    <string name="keys_not_checked">Your keys couldn't be checked.</string>
+    <string name="keys_not_checked_detail">Nothing was changed. Retry, or restart Gloriana if it keeps happening.</string>
+</resources>

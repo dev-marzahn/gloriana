@@ -7,7 +7,13 @@ sealed interface ConnectionSaveResult {
 
   data class Refused(val problems: Set<ConnectionProblem>) : ConnectionSaveResult
 
+  data object NeedsPassphrase : ConnectionSaveResult
+
   data object Locked : ConnectionSaveResult
+
+  data object KeysUnavailable : ConnectionSaveResult
+
+  data object KeysUnreadable : ConnectionSaveResult
 
   data object Gone : ConnectionSaveResult
 

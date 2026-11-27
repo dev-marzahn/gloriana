@@ -47,6 +47,16 @@ internal sealed interface Keyset {
   }
 }
 
+internal enum class StoredKind { Passphrase, Device, None, Unreadable }
+
+internal sealed interface Rewrite {
+  class Written(val keyset: Keyset) : Rewrite
+
+  data object NothingErased : Rewrite
+
+  data object ErasedNotWritten : Rewrite
+}
+
 internal class Keyring(
   private val directory: Path,
   private val device: DeviceKeyStore,
@@ -73,21 +83,52 @@ internal class Keyring(
 
   fun storedPassphraseKeyset(): StoredKeyset? = files.read()
 
+  fun storedKind(): StoredKind = try {
+    when (files.storedKind()) {
+      KeysetKind.Passphrase -> StoredKind.Passphrase
+      KeysetKind.Device -> StoredKind.Device
+      null -> StoredKind.None
+    }
+  } catch (_: IOException) {
+    StoredKind.Unreadable
+  }
+
   fun writePassphraseKeyset(keyset: KeysetHandle, passphrase: CharArray): Keyset {
     val protection = newPassphraseProtection(passphraseCost)
     files.write(protection, keyset, protection.wrapping(passphrase)) { faults.reached(KeyWritePoint.NewKeysetStaged) }
     return Keyset.PassphraseUnlocked(Keysets.aead(keyset))
   }
 
-  fun replaceDeviceKeyset(replacing: String?): Keyset = newDeviceKeyset(replacing, noStore = Keyset.Unavailable)
+  fun resetPassphraseKeyset(passphrase: CharArray): Rewrite =
+    erasingThenWriting { writePassphraseKeyset(Keysets.newAes256Gcm(), passphrase) }
+
+  fun replaceDeviceKeyset(replacing: String?): Rewrite = when (val created = device.create()) {
+    is NewDeviceKey.Made -> erasingThenWriting { writeDeviceKeyset(created, replacing) }.also { rewrite ->
+      if (rewrite !is Rewrite.Written) device.delete(created.name)
+    }
+    NewDeviceKey.NoStore, NewDeviceKey.Unreachable -> Rewrite.NothingErased
+  }
+
+  private fun erasingThenWriting(write: () -> Keyset): Rewrite {
+    try {
+      dataKeys.eraseAll()
+    } catch (_: IOException) {
+      return Rewrite.NothingErased
+    }
+    return try {
+      Rewrite.Written(write())
+    } catch (_: IOException) {
+      Rewrite.ErasedNotWritten
+    }
+  }
 
   private fun openDeviceKeyset(stored: StoredKeyset.Device): Keyset = when (val key = device.find(stored.keyName)) {
     is DeviceKey.Found -> when (val opening = stored.open(key.key)) {
       is KeysetOpening.Opened -> Keyset.DeviceUnlocked(Keysets.aead(opening.keyset))
       KeysetOpening.WrongKey -> Keyset.DeviceDamaged(stored.keyName)
-      KeysetOpening.Lost -> replaceDeviceKeyset(stored.keyName)
+      KeysetOpening.Lost -> newDeviceKeyset(stored.keyName, noStore = Keyset.Unavailable)
     }
-    DeviceKey.Lost -> replaceDeviceKeyset(stored.keyName)
+    DeviceKey.Lost -> newDeviceKeyset(stored.keyName, noStore = Keyset.Unavailable)
     DeviceKey.Unusable -> Keyset.DeviceDamaged(stored.keyName)
     DeviceKey.Unconfirmed -> Keyset.DeviceKeyNotFound(stored.keyName)
     DeviceKey.Unreachable, DeviceKey.NoStore -> Keyset.Unavailable
@@ -96,14 +137,18 @@ internal class Keyring(
   private fun newDeviceKeyset(replacing: String?, noStore: Keyset): Keyset = when (val created = device.create()) {
     is NewDeviceKey.Made -> {
       dataKeys.eraseAll()
-      val keyset = Keysets.newAes256Gcm()
-      files.write(KeysetProtection.Device(created.name), keyset, created.key) {
-        faults.reached(KeyWritePoint.NewKeysetStaged)
-      }
-      replacing?.let(device::delete)
-      Keyset.DeviceUnlocked(Keysets.aead(keyset))
+      writeDeviceKeyset(created, replacing)
     }
     NewDeviceKey.NoStore -> noStore
     NewDeviceKey.Unreachable -> Keyset.Unavailable
+  }
+
+  private fun writeDeviceKeyset(created: NewDeviceKey.Made, replacing: String?): Keyset {
+    val keyset = Keysets.newAes256Gcm()
+    files.write(KeysetProtection.Device(created.name), keyset, created.key) {
+      faults.reached(KeyWritePoint.NewKeysetStaged)
+    }
+    replacing?.let(device::delete)
+    return Keyset.DeviceUnlocked(Keysets.aead(keyset))
   }
 }

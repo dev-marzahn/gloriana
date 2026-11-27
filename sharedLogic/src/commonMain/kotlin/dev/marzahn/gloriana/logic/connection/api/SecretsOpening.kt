@@ -31,4 +31,5 @@ private inline fun OpenResult.valueOr(refuse: (ModelApiError) -> Nothing): Strin
   OpenResult.Missing -> refuse(ModelApiError.KeysMissing)
   OpenResult.Locked -> refuse(ModelApiError.KeysLocked)
   OpenResult.Unavailable -> refuse(ModelApiError.KeysUnavailable)
+  OpenResult.Unreadable -> refuse(ModelApiError.KeysUnreadable)
 }

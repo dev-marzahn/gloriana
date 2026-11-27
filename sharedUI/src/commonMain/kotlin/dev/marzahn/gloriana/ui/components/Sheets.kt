@@ -9,10 +9,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.BasicAlertDialog
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.Text
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.SheetValue
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -39,6 +41,7 @@ private enum class DialogKind { Plain, Alert }
 private fun SheetOrDialog(
   onDismiss: () -> Unit,
   kind: DialogKind,
+  dismissible: Boolean,
   modifier: Modifier = Modifier,
   content: @Composable ColumnScope.(SheetStyle) -> Unit,
 ) {
@@ -52,13 +55,20 @@ private fun SheetOrDialog(
     ModalBottomSheet(
       onDismissRequest = onDismiss,
       sheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded)),
+      sheetGesturesEnabled = dismissible,
       shape = shapes.sheet,
       containerColor = colors.raised,
       contentColor = colors.text,
       tonalElevation = 0.dp,
       scrimColor = scrim.tinted,
+      dragHandle = if (dismissible) ({ BottomSheetDefaults.DragHandle() }) else null,
+      properties = ModalBottomSheetProperties(
+        shouldDismissOnBackPress = dismissible,
+        shouldDismissOnClickOutside = dismissible,
+      ),
     ) {
-      Column(modifier.padding(horizontal = spacing.s24).padding(bottom = spacing.s24), content = body)
+      val top = if (dismissible) 0.dp else spacing.s24
+      Column(modifier.padding(horizontal = spacing.s24).padding(top = top, bottom = spacing.s24), content = body)
     }
     return
   }
@@ -74,54 +84,84 @@ private fun SheetOrDialog(
       content = body,
     )
   }
+  val properties = dialogProperties(scrim, dismissible)
   when (kind) {
-    DialogKind.Plain -> Dialog(onDismiss, dialogProperties(scrim), panel)
-    DialogKind.Alert -> BasicAlertDialog(onDismiss, properties = dialogProperties(scrim), content = panel)
+    DialogKind.Plain -> Dialog(onDismiss, properties, panel)
+    DialogKind.Alert -> BasicAlertDialog(onDismiss, properties = properties, content = panel)
   }
 }
 
 @Composable
-fun GlorianaSheet(onDismiss: () -> Unit, modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-  SheetOrDialog(onDismiss, DialogKind.Plain, modifier) { content() }
+fun GlorianaSheet(
+  onDismiss: () -> Unit,
+  modifier: Modifier = Modifier,
+  dismissible: Boolean = true,
+  content: @Composable ColumnScope.() -> Unit,
+) {
+  SheetOrDialog(onDismiss, DialogKind.Plain, dismissible, modifier) { content() }
 }
 
 @Composable
+fun SheetButtons(
+  modifier: Modifier = Modifier,
+  buttons: @Composable (Modifier) -> Unit,
+) {
+  val spacing = GlorianaTheme.spacing
+  val stacked = GlorianaTheme.widthClass.sheetStyle == SheetStyle.BottomSheet
+  FlowRow(
+    modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.spacedBy(spacing.s8, Alignment.End),
+    verticalArrangement = Arrangement.spacedBy(spacing.s8),
+    maxItemsInEachRow = if (stacked) 1 else Int.MAX_VALUE,
+  ) {
+    buttons(if (stacked) Modifier.fillMaxWidth() else Modifier)
+  }
+}
+
+class Confirmation(
+  val title: String,
+  val lines: List<String>,
+  val confirmLabel: String,
+  val cancelLabel: String? = null,
+)
+
+@Composable
 fun GlorianaConfirmation(
-  title: String,
-  message: String,
-  confirmLabel: String,
+  confirmation: Confirmation,
   onConfirm: () -> Unit,
   onDismiss: () -> Unit,
   modifier: Modifier = Modifier,
+  busy: Boolean = false,
 ) {
   val cancelFocus = remember { FocusRequester() }
   val spacing = GlorianaTheme.spacing
-  SheetOrDialog(onDismiss, DialogKind.Alert, modifier) { style ->
-    Text(title, style = GlorianaTheme.type.material.headlineSmall, color = GlorianaTheme.colors.text)
-    Text(
-      message,
-      Modifier.padding(top = spacing.s8, bottom = spacing.s24),
-      style = GlorianaTheme.type.material.bodyMedium,
-      color = GlorianaTheme.colors.textMuted,
-    )
+  val type = GlorianaTheme.type.material
+  val dismiss = { if (!busy) onDismiss() }
+  SheetOrDialog(dismiss, DialogKind.Alert, dismissible = !busy, modifier) { style ->
+    Text(confirmation.title, style = type.headlineSmall, color = GlorianaTheme.colors.text)
+    confirmation.lines.forEach { line ->
+      Text(line, Modifier.padding(top = spacing.s8), style = type.bodyMedium, color = GlorianaTheme.colors.textMuted)
+    }
+    val cancelLabel = confirmation.cancelLabel ?: stringResource(Res.string.cancel)
     val cancel = @Composable { buttonModifier: Modifier ->
-      GlorianaButton(stringResource(Res.string.cancel), onDismiss, buttonModifier.focusRequester(cancelFocus))
+      GlorianaButton(
+        cancelLabel,
+        dismiss,
+        buttonModifier.focusRequester(cancelFocus),
+        kind = ButtonKind.Ghost,
+        enabled = !busy,
+      )
     }
     val confirm = @Composable { buttonModifier: Modifier ->
-      GlorianaButton(confirmLabel, onConfirm, buttonModifier, kind = ButtonKind.Danger)
+      GlorianaButton(confirmation.confirmLabel, onConfirm, buttonModifier, kind = ButtonKind.Danger, enabled = !busy)
     }
-    when (style) {
-      SheetStyle.BottomSheet -> Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
-        confirm(Modifier.fillMaxWidth())
-        cancel(Modifier.fillMaxWidth())
-      }
-      SheetStyle.Dialog -> FlowRow(
-        Modifier.align(Alignment.End),
-        horizontalArrangement = Arrangement.spacedBy(spacing.s8, Alignment.End),
-        verticalArrangement = Arrangement.spacedBy(spacing.s8),
-      ) {
-        cancel(Modifier)
-        confirm(Modifier)
+    SheetButtons(Modifier.padding(top = spacing.s24)) { buttonModifier ->
+      if (style == SheetStyle.BottomSheet) {
+        confirm(buttonModifier)
+        cancel(buttonModifier)
+      } else {
+        cancel(buttonModifier)
+        confirm(buttonModifier)
       }
     }
     LaunchedEffect(Unit) { cancelFocus.requestFocus() }

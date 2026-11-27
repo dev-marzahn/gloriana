@@ -33,19 +33,19 @@ sealed interface ConnectionProblem {
 
   data class SamplerNotFinite(val sampler: Sampler) : ConnectionProblem
 
-  data object KeyBadCharacter : ConnectionProblem
+  data class KeyBadCharacter(val character: Char) : ConnectionProblem
 
   data object KeyMissing : ConnectionProblem
 
   data class HeaderNameEmpty(val index: Int) : ConnectionProblem
 
-  data class HeaderNameNotToken(val index: Int) : ConnectionProblem
+  data class HeaderNameNotToken(val index: Int, val character: Char) : ConnectionProblem
 
   data class HeaderNameRepeated(val index: Int) : ConnectionProblem
 
   data class HeaderNameReserved(val index: Int) : ConnectionProblem
 
-  data class HeaderValueBadCharacter(val index: Int) : ConnectionProblem
+  data class HeaderValueBadCharacter(val index: Int, val character: Char) : ConnectionProblem
 
   data class HeaderContentTypeInvalid(val index: Int) : ConnectionProblem
 

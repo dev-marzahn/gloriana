@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.logic.connection
 
 import dev.marzahn.gloriana.logic.app.failingAs
+import dev.marzahn.gloriana.logic.assets.isStorageFull
 import dev.marzahn.gloriana.logic.connection.storage.GlobalSamplersSetting
 import dev.marzahn.gloriana.logic.settings.LibrarySettings
 import kotlinx.coroutines.flow.Flow
@@ -10,6 +11,8 @@ sealed interface GlobalSamplersSave {
   data object Saved : GlobalSamplersSave
 
   data class Refused(val outsideEveryFormat: Set<Sampler>) : GlobalSamplersSave
+
+  data object StorageFull : GlobalSamplersSave
 
   data object Failed : GlobalSamplersSave
 }
@@ -22,7 +25,7 @@ class GlobalModelSettings(private val settings: LibrarySettings) {
   suspend fun setSamplers(samplers: Samplers): GlobalSamplersSave {
     val outside = samplers.outsideEveryFormat()
     if (outside.isNotEmpty()) return GlobalSamplersSave.Refused(outside)
-    return failingAs(GlobalSamplersSave.Failed) {
+    return failingAs({ if (it.isStorageFull()) GlobalSamplersSave.StorageFull else GlobalSamplersSave.Failed }) {
       settings.write(GlobalSamplersSetting, samplers)
       GlobalSamplersSave.Saved
     }
