@@ -20,17 +20,6 @@ import dev.marzahn.gloriana.ui.resources.error_json
 import dev.marzahn.gloriana.ui.resources.error_json_unplaced
 import dev.marzahn.gloriana.ui.resources.error_key_character
 import dev.marzahn.gloriana.ui.resources.error_name_taken
-import dev.marzahn.gloriana.ui.resources.field_step_bad_address
-import dev.marzahn.gloriana.ui.resources.field_step_headers
-import dev.marzahn.gloriana.ui.resources.field_step_host_error
-import dev.marzahn.gloriana.ui.resources.field_step_no_key
-import dev.marzahn.gloriana.ui.resources.field_step_plain_http
-import dev.marzahn.gloriana.ui.resources.field_step_rate_limited
-import dev.marzahn.gloriana.ui.resources.field_step_replace_key
-import dev.marzahn.gloriana.ui.resources.field_step_stream
-import dev.marzahn.gloriana.ui.resources.field_step_timeout
-import dev.marzahn.gloriana.ui.resources.field_step_typed_key
-import dev.marzahn.gloriana.ui.resources.field_step_unreachable
 import dev.marzahn.gloriana.ui.resources.host_said
 import dev.marzahn.gloriana.ui.resources.json_brace
 import dev.marzahn.gloriana.ui.resources.json_bracket
@@ -44,17 +33,6 @@ import dev.marzahn.gloriana.ui.resources.keychain_note_saved
 import dev.marzahn.gloriana.ui.resources.keychain_note_saved_detail
 import dev.marzahn.gloriana.ui.resources.keychain_note_sent
 import dev.marzahn.gloriana.ui.resources.keychain_note_sent_detail
-import dev.marzahn.gloriana.ui.resources.list_step_bad_address
-import dev.marzahn.gloriana.ui.resources.list_step_headers
-import dev.marzahn.gloriana.ui.resources.list_step_host_error
-import dev.marzahn.gloriana.ui.resources.list_step_no_key
-import dev.marzahn.gloriana.ui.resources.list_step_plain_http
-import dev.marzahn.gloriana.ui.resources.list_step_rate_limited
-import dev.marzahn.gloriana.ui.resources.list_step_replace_key
-import dev.marzahn.gloriana.ui.resources.list_step_stream
-import dev.marzahn.gloriana.ui.resources.list_step_timeout
-import dev.marzahn.gloriana.ui.resources.list_step_typed_key
-import dev.marzahn.gloriana.ui.resources.list_step_unreachable
 import dev.marzahn.gloriana.ui.resources.missing_note_both
 import dev.marzahn.gloriana.ui.resources.missing_note_headers
 import dev.marzahn.gloriana.ui.resources.missing_note_key
@@ -76,18 +54,8 @@ import dev.marzahn.gloriana.ui.resources.reason_rate_limited
 import dev.marzahn.gloriana.ui.resources.reason_refused
 import dev.marzahn.gloriana.ui.resources.reason_stream_not_boolean
 import dev.marzahn.gloriana.ui.resources.reason_timeout
+import dev.marzahn.gloriana.ui.resources.reason_unexpected
 import dev.marzahn.gloriana.ui.resources.reason_unreachable
-import dev.marzahn.gloriana.ui.resources.step_bad_address
-import dev.marzahn.gloriana.ui.resources.step_headers
-import dev.marzahn.gloriana.ui.resources.step_host_error
-import dev.marzahn.gloriana.ui.resources.step_no_key
-import dev.marzahn.gloriana.ui.resources.step_plain_http
-import dev.marzahn.gloriana.ui.resources.step_rate_limited
-import dev.marzahn.gloriana.ui.resources.step_replace_key
-import dev.marzahn.gloriana.ui.resources.step_stream
-import dev.marzahn.gloriana.ui.resources.step_timeout
-import dev.marzahn.gloriana.ui.resources.step_typed_key
-import dev.marzahn.gloriana.ui.resources.step_unreachable
 import dev.marzahn.gloriana.ui.resources.two_sentences
 import dev.marzahn.gloriana.ui.resources.unreadable_note_saved
 import dev.marzahn.gloriana.ui.resources.unreadable_note_saved_detail
@@ -149,52 +117,6 @@ private fun characterClass(character: Char): StringResource? = when {
   else -> null
 }
 
-enum class StepFor { Test, ModelList, ModelField }
-
-private class Steps(val test: StringResource, val list: StringResource, val field: StringResource) {
-  fun of(use: StepFor) = when (use) {
-    StepFor.Test -> test
-    StepFor.ModelList -> list
-    StepFor.ModelField -> field
-  }
-}
-
-private val unreachableSteps =
-  Steps(Res.string.step_unreachable, Res.string.list_step_unreachable, Res.string.field_step_unreachable)
-private val timeoutSteps = Steps(Res.string.step_timeout, Res.string.list_step_timeout, Res.string.field_step_timeout)
-private val replaceKeySteps =
-  Steps(Res.string.step_replace_key, Res.string.list_step_replace_key, Res.string.field_step_replace_key)
-private val typedKeySteps =
-  Steps(Res.string.step_typed_key, Res.string.list_step_typed_key, Res.string.field_step_typed_key)
-private val headersSteps = Steps(Res.string.step_headers, Res.string.list_step_headers, Res.string.field_step_headers)
-private val noKeySteps = Steps(Res.string.step_no_key, Res.string.list_step_no_key, Res.string.field_step_no_key)
-private val rateLimitedSteps =
-  Steps(Res.string.step_rate_limited, Res.string.list_step_rate_limited, Res.string.field_step_rate_limited)
-private val hostErrorSteps =
-  Steps(Res.string.step_host_error, Res.string.list_step_host_error, Res.string.field_step_host_error)
-private val plainHttpSteps =
-  Steps(Res.string.step_plain_http, Res.string.list_step_plain_http, Res.string.field_step_plain_http)
-private val badAddressSteps =
-  Steps(Res.string.step_bad_address, Res.string.list_step_bad_address, Res.string.field_step_bad_address)
-private val streamSteps = Steps(Res.string.step_stream, Res.string.list_step_stream, Res.string.field_step_stream)
-
-private fun HostFailure.steps(): Steps = when (problem) {
-  HostProblem.Unreachable -> unreachableSteps
-  is HostProblem.Timeout -> timeoutSteps
-  is HostProblem.KeyRejected -> when (keys) {
-    KeyContext.SavedKey -> replaceKeySteps
-    KeyContext.TypedKey -> typedKeySteps
-    KeyContext.HeadersOnly -> headersSteps
-    KeyContext.NoKey -> noKeySteps
-  }
-  is HostProblem.RateLimited -> rateLimitedSteps
-  is HostProblem.HostError -> hostErrorSteps
-  HostProblem.PlainHttpToPublicHost -> plainHttpSteps
-  HostProblem.BadAddress -> badAddressSteps
-  HostProblem.BadHeader -> headersSteps
-  HostProblem.StreamNotBoolean -> streamSteps
-}
-
 @Composable
 fun HostFailure.reason(): String = when (val failed = problem) {
   HostProblem.Unreachable -> stringResource(Res.string.reason_unreachable)
@@ -210,15 +132,16 @@ fun HostFailure.reason(): String = when (val failed = problem) {
   HostProblem.BadAddress -> stringResource(Res.string.reason_bad_address)
   HostProblem.BadHeader -> stringResource(Res.string.reason_bad_header)
   HostProblem.StreamNotBoolean -> stringResource(Res.string.reason_stream_not_boolean)
+  HostProblem.Unexpected -> stringResource(Res.string.reason_unexpected)
 }
 
 @Composable
 fun HostFailure.details(use: StepFor): String {
-  val step = stringResource(steps().of(use))
+  val step = stringResource(step(use))
   val said = when (val failed = problem) {
     is HostProblem.WithBody -> failed.body
     HostProblem.Unreachable, is HostProblem.Timeout, HostProblem.PlainHttpToPublicHost, HostProblem.BadAddress,
-    HostProblem.BadHeader, HostProblem.StreamNotBoolean,
+    HostProblem.BadHeader, HostProblem.StreamNotBoolean, HostProblem.Unexpected,
     -> ""
   }
   return if (said.isBlank()) {

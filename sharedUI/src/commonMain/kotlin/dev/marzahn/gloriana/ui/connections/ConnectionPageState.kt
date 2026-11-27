@@ -31,6 +31,8 @@ sealed interface HostProblem {
   data object BadHeader : HostProblem
 
   data object StreamNotBoolean : HostProblem
+
+  data object Unexpected : HostProblem
 }
 
 data class HostFailure(val problem: HostProblem, val keys: KeyContext)
@@ -79,11 +81,16 @@ fun ModelApiError.refusal(probed: Probed): Refusal {
     ModelApiError.BadAddress -> host(HostProblem.BadAddress)
     ModelApiError.BadHeader -> host(HostProblem.BadHeader)
     ModelApiError.StreamNotBoolean -> host(HostProblem.StreamNotBoolean)
-    is ModelApiError.KeysMissing -> Refusal.Keys(PageNote.KeysMissing(held))
+    ModelApiError.Unexpected -> host(HostProblem.Unexpected)
+    is ModelApiError.KeysNotOpened -> Refusal.Keys(blockedNote())
     ModelApiError.KeysLocked -> Refusal.Locked
-    is ModelApiError.KeysUnavailable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.KeychainUnavailable, held))
-    is ModelApiError.KeysUnreadable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.Unreadable, held))
   }
+}
+
+private fun ModelApiError.KeysNotOpened.blockedNote(): PageNote.BlockedSend = when (this) {
+  is ModelApiError.KeysMissing -> PageNote.KeysMissing(held)
+  is ModelApiError.KeysUnavailable -> PageNote.KeysBlockedSend(KeysProblem.KeychainUnavailable, held)
+  is ModelApiError.KeysUnreadable -> PageNote.KeysBlockedSend(KeysProblem.Unreadable, held)
 }
 
 sealed interface TestOutcome {
@@ -107,11 +114,15 @@ sealed interface ModelListNote {
 }
 
 sealed interface PageActivity {
-  val locksForm: Boolean get() = this == Saving || this == Deleting
+  val locksForm: Boolean get() = this == OpeningSaved || this == Deleting
+
+  val isSaving: Boolean get() = this == Saving || this == OpeningSaved
 
   data object Idle : PageActivity
 
   data object Saving : PageActivity
+
+  data object OpeningSaved : PageActivity
 
   data object Testing : PageActivity
 

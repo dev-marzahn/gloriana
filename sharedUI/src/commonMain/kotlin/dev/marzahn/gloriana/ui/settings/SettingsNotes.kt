@@ -22,6 +22,7 @@ import dev.marzahn.gloriana.ui.resources.ic_restart_alt_20
 import dev.marzahn.gloriana.ui.resources.keys_not_erased
 import dev.marzahn.gloriana.ui.resources.keys_unreadable
 import dev.marzahn.gloriana.ui.resources.keys_unreadable_detail
+import dev.marzahn.gloriana.ui.resources.keys_unreadable_until_loaded_detail
 import dev.marzahn.gloriana.ui.resources.key_file_unreadable
 import dev.marzahn.gloriana.ui.resources.key_file_unreadable_detail
 import dev.marzahn.gloriana.ui.resources.not_made_default
@@ -42,6 +43,14 @@ internal fun ConnectionNotes(state: SettingsState, onIntent: (SettingsIntent) ->
   Column(verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8)) {
     when (val keys = state.keys) {
       is KeysNote.Unreadable -> StartOverNote(unreadableText(keys.holding), failed = false, onIntent)
+      KeysNote.UnreadableWhileTheListCantLoad -> NoteCard {
+        NoteLine(
+          boldThenPlain(
+            stringResource(Res.string.keys_unreadable),
+            stringResource(Res.string.keys_unreadable_until_loaded_detail),
+          ),
+        )
+      }
       is KeysNote.StartOverFailed -> StartOverNote(failedText(keys.failure), failed = true, onIntent)
       KeysNote.None -> Unit
     }

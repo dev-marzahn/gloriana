@@ -14,7 +14,6 @@ import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.isEnabled
 import androidx.compose.ui.test.isNotEnabled
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
@@ -203,7 +202,7 @@ class ConnectionScreensTest {
   }
 
   @Test
-  fun thePageTakesNoEditWhileItSavesSoNoneIsLost() = LiveLibrary.use { library ->
+  fun anEditMadeWhileAConnectionSavesStaysUnsaved() = LiveLibrary.use { library ->
     runComposeUiTest {
       library.created("Work")
       openSettings(library)
@@ -211,14 +210,16 @@ class ConnectionScreensTest {
       field("Work").performTextReplacement("Home")
       library.writes.hold()
       tap(Res.string.save)
-      waitFor(hasText(getString(Res.string.saving)))
-
-      waitFor(hasText("Home") and isNotEnabled())
-      assertTrue(onAllNodes(hasSetTextAction() and isEnabled()).fetchSemanticsNodes().isEmpty())
+      waitFor(hasText(getString(Res.string.saving)) and isNotEnabled())
+      field("Home").assertIsEnabled().performTextReplacement("Home, later")
       waitUntil(timeoutMillis = WAIT_MILLIS) { library.writes.writesCaught > 0 }
       library.writes.release()
+
       waitUntil(timeoutMillis = WAIT_MILLIS) { library.connections().single().fields.name == "Home" }
-      field("Home").assertIsEnabled()
+      waitForIdle()
+      field("Home, later")
+      tap(Res.string.save)
+      waitUntil(timeoutMillis = WAIT_MILLIS) { library.connections().single().fields.name == "Home, later" }
     }
   }
 

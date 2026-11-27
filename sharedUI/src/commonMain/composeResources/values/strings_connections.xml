@@ -53,6 +53,7 @@
         <item quantity="one">Gloriana can't open them with what the system keychain holds. If your keychain is locked or still starting, unlock it and they come back. Otherwise, start over to erase the keys and header values of %1$d Connection; everything else in it stays.</item>
         <item quantity="other">Gloriana can't open them with what the system keychain holds. If your keychain is locked or still starting, unlock it and they come back. Otherwise, start over to erase the keys and header values of %1$d Connections; everything else in them stays.</item>
     </plurals>
+    <string name="keys_unreadable_until_loaded_detail">Gloriana can't open them with what the system keychain holds. If your keychain is locked or still starting, unlock it and they come back. Otherwise, start over here once your Connections load: it erases their keys and header values, and everything else in them stays.</string>
     <string name="start_over">Start over</string>
     <string name="start_over_title">Start over with new keys?</string>
     <plurals name="start_over_text">
@@ -233,6 +234,8 @@
     <string name="step_plain_http">Use https, then test again.</string>
     <string name="step_bad_address">Check the base URL, then test again.</string>
     <string name="step_stream">Set it to true or false, or take it out, then test again.</string>
+    <string name="reason_unexpected">Gloriana ran into a problem of its own</string>
+    <string name="step_unexpected">Test again, or restart Gloriana if it keeps happening.</string>
 
     <string name="keychain_note_sent">Gloriana couldn't reach the system keychain, so nothing was sent.</string>
     <string name="keychain_note_sent_detail">Unlock your keychain, then try again.</string>
@@ -352,6 +355,7 @@
     <string name="list_step_plain_http">Use https, or close this and type the model.</string>
     <string name="list_step_bad_address">Check the base URL, or close this and type the model.</string>
     <string name="list_step_stream">Set stream to true or false or take it out, or close this and type the model.</string>
+    <string name="list_step_unexpected">Retry, or close this and type the model.</string>
     <string name="field_step_unreachable">Check the address, or type the model.</string>
     <string name="field_step_timeout">Try again in a while, raise the timeout, or type the model.</string>
     <string name="field_step_replace_key">Replace the key, or type the model.</string>
@@ -363,6 +367,7 @@
     <string name="field_step_plain_http">Use https, or type the model.</string>
     <string name="field_step_bad_address">Check the base URL, or type the model.</string>
     <string name="field_step_stream">Set stream to true or false or take it out, or type the model.</string>
+    <string name="field_step_unexpected">Try again, or type the model.</string>
 
     <string name="damaged_no_keys">The file that holds your keys is damaged. No Connection holds a key now: reset to set a new passphrase.</string>
     <string name="no_keys_held">No Connection holds a key now, so nothing else changes.</string>

@@ -22,6 +22,8 @@ sealed interface ModelApiError {
 
   data object StreamNotBoolean : ModelApiError
 
+  data object Unexpected : ModelApiError
+
   sealed interface KeysNotOpened : ModelApiError {
     val held: HeldSecrets
   }

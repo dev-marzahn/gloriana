@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.update
 import java.io.IOException
+import java.nio.file.Path
 import java.security.GeneralSecurityException
 import kotlin.uuid.Uuid
 
@@ -16,6 +17,8 @@ private const val KEYS_DIRECTORY = "keys"
 private const val DATA_KEYS_FILE = "connections.json"
 private const val API_KEY_TAG: Byte = 1
 private const val HEADER_VALUE_TAG: Byte = 2
+
+internal fun keysDirectoryIn(library: Path): Path = library.resolve(KEYS_DIRECTORY)
 
 internal class TinkKeyVault(
   library: LibraryDirectory,
@@ -25,7 +28,7 @@ internal class TinkKeyVault(
   passphraseCost: Argon2idCost = Argon2idCost.Default,
   private val derivation: KeyDerivation = KeyDerivation.Argon2id,
 ) : KeyVault {
-  private val directory = library.path().resolve(KEYS_DIRECTORY)
+  private val directory = keysDirectoryIn(library.path())
   private val dataKeys = DataKeys(directory.resolve(DATA_KEYS_FILE))
   private val keyring = Keyring(directory, device, dataKeys, faults, passphraseCost, derivation)
   private val holder = KeysetHolder(keyring)

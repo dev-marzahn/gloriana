@@ -16,6 +16,10 @@ private const val LINE_BREAK = '\n'
 private const val DEVICE_KEYSET_FILE = "keyset-device.json"
 private const val PASSPHRASE_KEYSET_FILE = "keyset-passphrase.json"
 
+fun deviceKeysetFileIn(library: Path): Path = keysDirectoryIn(library).resolve(DEVICE_KEYSET_FILE)
+
+fun passphraseKeysetFileIn(library: Path): Path = keysDirectoryIn(library).resolve(PASSPHRASE_KEYSET_FILE)
+
 @Serializable
 internal sealed interface KeysetProtection {
   @Serializable

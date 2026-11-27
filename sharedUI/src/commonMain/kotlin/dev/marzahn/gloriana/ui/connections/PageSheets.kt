@@ -44,7 +44,9 @@ internal fun PageSheets(page: ConnectionPageState.Shown, onIntent: (PageIntent) 
       onDismiss = { onIntent(PageIntent.CloseModelList) },
     )
     is PageActivity.Prompt -> PromptSheet(activity, onIntent)
-    PageActivity.Idle, PageActivity.Saving, PageActivity.Testing, PageActivity.MakingDefault -> Unit
+    PageActivity.Idle, PageActivity.Saving, PageActivity.OpeningSaved, PageActivity.Testing,
+    PageActivity.MakingDefault,
+    -> Unit
   }
 }
 

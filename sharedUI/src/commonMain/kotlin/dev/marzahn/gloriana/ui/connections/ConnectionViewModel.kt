@@ -130,7 +130,7 @@ class ConnectionViewModel(
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), ConnectionPageState.Loading)
 
   private val work = PageWork(
-    PageContext(session, viewModelScope, eventChannel) { state.value as? ConnectionPageState.Shown },
+    PageContext(session, viewModelScope, eventChannel, state),
     repository,
     probe,
     vault,
@@ -140,7 +140,7 @@ class ConnectionViewModel(
   fun show(route: ConnectionRoute) {
     if (inputs.value?.route == route) return
     inputs.value = PageInputs(route, attempt = 0)
-    session.value = PageSession()
+    session.value = PageSession(form = startingForm(route))
     checks?.cancel()
     checks = when (route) {
       is ConnectionRoute.Saved -> viewModelScope.launch {
@@ -156,6 +156,11 @@ class ConnectionViewModel(
       PageIntent.Retry -> inputs.value = current.copy(attempt = current.attempt + 1)
       is PageIntent.PageAction -> work.on(intent, current.route)
     }
+  }
+
+  private fun startingForm(route: ConnectionRoute): PageForm = when (route) {
+    is ConnectionRoute.Saved -> PageForm.followingTheStoredRow(route.editsDuringItsFirstSave)
+    is ConnectionRoute.New -> PageForm.Untouched
   }
 
   private fun storedSide(route: ConnectionRoute): Flow<StoredSide> {

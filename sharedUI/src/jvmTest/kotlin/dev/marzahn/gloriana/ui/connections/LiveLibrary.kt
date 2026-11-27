@@ -27,6 +27,8 @@ import dev.marzahn.gloriana.logic.keys.KeychainSecret
 import dev.marzahn.gloriana.logic.keys.KeychainWrite
 import dev.marzahn.gloriana.logic.keys.OsKeychain
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
+import dev.marzahn.gloriana.logic.keys.deviceKeysetFileIn
+import dev.marzahn.gloriana.logic.keys.passphraseKeysetFileIn
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
@@ -43,6 +45,7 @@ import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
+import kotlin.io.path.deleteIfExists
 import kotlin.io.path.deleteRecursively
 import kotlin.io.path.exists
 import kotlin.io.path.listDirectoryEntries
@@ -55,12 +58,18 @@ import kotlin.uuid.Uuid
 class MemoryKeychain : OsKeychain {
   private val secrets = mutableMapOf<String, ByteArray>()
 
+  @Volatile
+  var unreachable = false
+
   val accounts: Set<String> get() = secrets.keys.toSet()
 
-  override fun read(account: String): KeychainSecret =
-    secrets[account]?.let { KeychainSecret.Found(it.copyOf()) } ?: KeychainSecret.NotFound(confirmed = true)
+  override fun read(account: String): KeychainSecret = when {
+    unreachable -> KeychainSecret.Unreachable
+    else -> secrets[account]?.let { KeychainSecret.Found(it.copyOf()) } ?: KeychainSecret.NotFound(confirmed = true)
+  }
 
   override fun write(account: String, secret: ByteArray): KeychainWrite {
+    if (unreachable) return KeychainWrite.Unreachable
     secrets[account] = secret.copyOf()
     return KeychainWrite.Written
   }
@@ -80,6 +89,10 @@ object NoKeychain : OsKeychain {
 
 class LiveLibrary private constructor(private val directory: Path, private val device: DeviceKeyStore) {
   var keysetWritesFail = false
+
+  private var whenTheNextKeysetWriteIsRefused: (() -> Unit)? = null
+
+  private val deviceKeysetFile: Path get() = deviceKeysetFileIn(directory)
 
   val writes = WriteGate()
 
@@ -133,15 +146,20 @@ class LiveLibrary private constructor(private val directory: Path, private val d
   }
 
   fun damagePassphraseKeyset() {
-    directory.resolve("keys/keyset-passphrase.json").writeText("damaged")
+    passphraseKeysetFileIn(directory).writeText("damaged")
   }
 
   fun damageDeviceKeyset() {
-    directory.resolve("keys").createDirectories().resolve("keyset-device.json").writeText("damaged")
+    deviceKeysetFile.parent.createDirectories()
+    deviceKeysetFile.writeText("damaged")
+  }
+
+  fun loseTheDeviceKeysetFile() {
+    deviceKeysetFile.deleteIfExists()
   }
 
   fun keysetFiles(): List<String> =
-    directory.resolve("keys").takeIf { it.exists() }?.listDirectoryEntries("keyset-*")?.map { it.name }.orEmpty()
+    deviceKeysetFile.parent.takeIf { it.exists() }?.listDirectoryEntries("keyset-*")?.map { it.name }.orEmpty()
 
   fun needKeys() = runBlocking { vault.prepare() }
 
@@ -180,8 +198,18 @@ class LiveLibrary private constructor(private val directory: Path, private val d
     return koinApplication { modules(logicModule, uiModule, platform) }
   }
 
+  fun refuseTheNextKeysetWrite(alongside: () -> Unit) {
+    whenTheNextKeysetWriteIsRefused = alongside
+  }
+
   private fun failKeysetWrite(point: FaultPoint) {
-    if (keysetWritesFail && point == KeyWritePoint.NewKeysetStaged) throw IOException("keyset write refused")
+    if (point != KeyWritePoint.NewKeysetStaged) return
+    whenTheNextKeysetWriteIsRefused?.let { alongside ->
+      whenTheNextKeysetWriteIsRefused = null
+      alongside()
+      throw IOException("keyset write refused")
+    }
+    if (keysetWritesFail) throw IOException("keyset write refused")
   }
 
   companion object {

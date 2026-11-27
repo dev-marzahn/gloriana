@@ -63,16 +63,21 @@ internal sealed interface StartOverStep {
 }
 
 sealed interface KeysNote {
-  val holding: Int?
+  data object None : KeysNote
 
-  data object None : KeysNote {
-    override val holding: Int? = null
-  }
+  data class Unreadable(val holding: Int) : KeysNote
 
-  data class Unreadable(override val holding: Int) : KeysNote
+  data object UnreadableWhileTheListCantLoad : KeysNote
 
-  data class StartOverFailed(val failure: WriteFailure, override val holding: Int?) : KeysNote
+  data class StartOverFailed(val failure: WriteFailure, val holding: Int?) : KeysNote
 }
+
+private val KeysNote.holdingForTheSheet: Int?
+  get() = when (this) {
+    is KeysNote.Unreadable -> holding
+    is KeysNote.StartOverFailed -> holding
+    KeysNote.None, KeysNote.UnreadableWhileTheListCantLoad -> null
+  }
 
 data class StartOverSheet(val holding: Int?, val erasing: Boolean)
 
@@ -188,7 +193,7 @@ class SettingsViewModel(
       is SettingsIntent.AskToDelete -> rows(RowActivity.ConfirmingDelete(intent.row))
       SettingsIntent.CancelDelete -> rows(RowActivity.Idle)
       SettingsIntent.ConfirmDelete -> confirmDelete()
-      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming(state.value.keys.holding))
+      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming(state.value.keys.holdingForTheSheet))
       SettingsIntent.CancelStartOver -> startOver(StartOverStep.Idle)
       SettingsIntent.ConfirmStartOver -> confirmStartOver()
       SettingsIntent.Focused -> {
@@ -238,19 +243,18 @@ class SettingsViewModel(
         ?: (current to null)
     } ?: return
     viewModelScope.launch {
-      val result = vault.replaceDeviceKeyset()
-      when (val failure = result.failure()) {
-        null -> {
-          session.update { it.copy(startOver = StartOverStep.Idle, focusFirstRow = true) }
-          messages.show(AppMessage(getString(Res.string.snack_keys_erased)))
-        }
+      when (val failure = vault.replaceDeviceKeyset().failure()) {
+        null -> keysErased()
         WriteFailure.NothingChanged -> startOver(StartOverStep.Failed(failure))
-        WriteFailure.KeysErased -> {
-          vault.prepare()
-          startOver(StartOverStep.Failed(failure))
-        }
+        WriteFailure.KeysErased ->
+          if (vault.prepare() == VaultState.Unlocked) keysErased() else startOver(StartOverStep.Failed(failure))
       }
     }
+  }
+
+  private suspend fun keysErased() {
+    session.update { it.copy(startOver = StartOverStep.Idle, focusFirstRow = true) }
+    messages.show(AppMessage(getString(Res.string.snack_keys_erased)))
   }
 }
 
@@ -261,8 +265,9 @@ private fun ConnectionsList.holding(findings: KeyFindings): Int? = when (this) {
 
 internal fun keysNote(holding: Int?, vault: VaultState, step: StartOverStep): KeysNote = when {
   step is StartOverStep.Failed -> KeysNote.StartOverFailed(step.failure, holding)
-  vault.needsStartingOver && holding != null -> KeysNote.Unreadable(holding)
-  else -> KeysNote.None
+  !vault.needsStartingOver -> KeysNote.None
+  holding == null -> KeysNote.UnreadableWhileTheListCantLoad
+  else -> KeysNote.Unreadable(holding)
 }
 
 private fun StartOverStep.sheet(): StartOverSheet? = when (this) {

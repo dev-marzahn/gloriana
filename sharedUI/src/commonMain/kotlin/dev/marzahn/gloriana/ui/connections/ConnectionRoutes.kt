@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.ui.connections
 import androidx.navigation3.runtime.NavKey
 import dev.marzahn.gloriana.logic.connection.ConnectionTemplate
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlin.jvm.JvmInline
 import kotlin.uuid.Uuid
 
@@ -24,6 +25,14 @@ sealed interface ConnectionRoute : NavKey {
   @Serializable
   data class Saved(val id: String) : ConnectionRoute {
     constructor(id: Uuid) : this(id.toString())
+
+    internal constructor(id: Uuid, editsDuringItsFirstSave: List<FormChange>) : this(id.toString()) {
+      this.editsDuringItsFirstSave = editsDuringItsFirstSave
+    }
+
+    @Transient
+    internal var editsDuringItsFirstSave: List<FormChange> = emptyList()
+      private set
 
     val uuid: Uuid get() = Uuid.parse(id)
   }

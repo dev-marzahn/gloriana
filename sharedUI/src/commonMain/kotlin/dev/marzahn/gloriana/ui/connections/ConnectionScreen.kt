@@ -249,7 +249,7 @@ private fun ActionsRow(page: ConnectionPageState.Shown, onIntent: (PageIntent) -
   val testing = page.activity == PageActivity.Testing
   Row(Modifier.padding(bottom = spacing.s6), horizontalArrangement = Arrangement.spacedBy(spacing.s8)) {
     GlorianaButton(
-      stringResource(if (page.activity == PageActivity.Saving) Res.string.saving else Res.string.save),
+      stringResource(if (page.activity.isSaving) Res.string.saving else Res.string.save),
       { onIntent(PageIntent.Save) },
       kind = ButtonKind.Primary,
       icon = Res.drawable.ic_check_20,

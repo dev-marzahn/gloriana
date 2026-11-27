@@ -110,7 +110,7 @@ private fun PageActivity.Prompt.typedAgain(text: SecretText): PageActivity.Promp
 private val PageActivity.prompt: PageActivity.Prompt?
   get() = when (this) {
     is PageActivity.Prompt -> this
-    PageActivity.Idle, PageActivity.Saving, PageActivity.Testing, PageActivity.MakingDefault,
+    PageActivity.Idle, PageActivity.Saving, PageActivity.OpeningSaved, PageActivity.Testing, PageActivity.MakingDefault,
     PageActivity.ConfirmingDelete, PageActivity.Deleting, is PageActivity.PickingModel,
     -> null
   }

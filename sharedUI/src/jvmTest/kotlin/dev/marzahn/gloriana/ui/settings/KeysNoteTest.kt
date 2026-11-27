@@ -7,9 +7,13 @@ import kotlin.test.assertEquals
 
 class KeysNoteTest {
   @Test
-  fun anUnknownCountHidesTheNoteThatWouldClaimOne() {
-    assertEquals(KeysNote.None, keysNote(holding = null, VaultState.DeviceDamaged, StartOverStep.Idle))
+  fun anUnknownCountShowsTheNoteWithoutACount() {
+    assertEquals(
+      KeysNote.UnreadableWhileTheListCantLoad,
+      keysNote(holding = null, VaultState.DeviceDamaged, StartOverStep.Idle),
+    )
     assertEquals(KeysNote.Unreadable(0), keysNote(holding = 0, VaultState.DeviceDamaged, StartOverStep.Idle))
+    assertEquals(KeysNote.None, keysNote(holding = null, VaultState.Unlocked, StartOverStep.Idle))
   }
 
   @Test

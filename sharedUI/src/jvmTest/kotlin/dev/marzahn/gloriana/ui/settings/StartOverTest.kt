@@ -23,6 +23,7 @@ import dev.marzahn.gloriana.ui.resources.discard
 import dev.marzahn.gloriana.ui.resources.key_missing_key_short
 import dev.marzahn.gloriana.ui.resources.keys_unreadable
 import dev.marzahn.gloriana.ui.resources.key_file_unreadable_detail
+import dev.marzahn.gloriana.ui.resources.keys_unreadable_until_loaded_detail
 import dev.marzahn.gloriana.ui.resources.model_settings
 import dev.marzahn.gloriana.ui.resources.no_keys_held
 import dev.marzahn.gloriana.ui.resources.save
@@ -121,7 +122,7 @@ class StartOverTest {
   }
 
   @Test
-  fun startOverWaitsForTheConnectionsToLoad() = LiveLibrary.use { library ->
+  fun whileTheConnectionsCantLoadTheNoteShowsWithoutACountOrStartOver() = LiveLibrary.use { library ->
     runComposeUiTest {
       library.created("Work", KeyInput.Entered("sk-made-up"))
       library.damageDeviceKeyset()
@@ -129,10 +130,9 @@ class StartOverTest {
       openSettings(library)
 
       waitFor(hasText(getString(Res.string.connections_error), substring = true))
+      waitFor(hasText(getString(Res.string.keys_unreadable_until_loaded_detail), substring = true))
       waitForIdle()
-      val note = hasText(getString(Res.string.keys_unreadable), substring = true)
       val noKeyNote = hasText(getString(Res.string.key_file_unreadable_detail), substring = true)
-      assertTrue(onAllNodes(note).fetchSemanticsNodes().isEmpty())
       assertTrue(onAllNodes(noKeyNote).fetchSemanticsNodes().isEmpty())
       assertTrue(onAllNodes(hasText(getString(Res.string.start_over))).fetchSemanticsNodes().isEmpty())
     }
@@ -157,6 +157,49 @@ class StartOverTest {
       startOver()
       waitGone(erasedNote)
       waitFor(hasText(getString(Res.string.key_missing_key_short)))
+    }
+  }
+
+  @Test
+  fun whenTheCheckAfterAFailedStartOverWritesANewKeyFileTheStartOverIsDone() = LiveLibrary.use { library ->
+    runComposeUiTest {
+      library.created("Work", KeyInput.Entered("sk-made-up"))
+      library.damageDeviceKeyset()
+      library.restart()
+      library.refuseTheNextKeysetWrite { library.loseTheDeviceKeysetFile() }
+      openSettings(library)
+      waitFor(hasText(getString(Res.string.keys_unreadable), substring = true))
+      startOver()
+
+      waitFor(hasText(getString(Res.string.key_missing_key_short)))
+      waitForIdle()
+      val erasedNote = hasText(getString(Res.string.start_over_keys_erased), substring = true)
+      assertTrue(onAllNodes(erasedNote).fetchSemanticsNodes().isEmpty())
+      assertTrue(onAllNodes(hasText(getString(Res.string.start_over))).fetchSemanticsNodes().isEmpty())
+      assertEquals(listOf("keyset-device.json"), library.keysetFiles())
+    }
+  }
+
+  @Test
+  fun whenTheCheckAfterAFailedStartOverCantReachTheKeychainTheErasedNoteStays() {
+    val keychain = MemoryKeychain()
+    LiveLibrary.use(keychain) { library ->
+      runComposeUiTest {
+        library.created("Work", KeyInput.Entered("sk-made-up"))
+        library.damageDeviceKeyset()
+        library.restart()
+        library.refuseTheNextKeysetWrite {
+          library.loseTheDeviceKeysetFile()
+          keychain.unreachable = true
+        }
+        openSettings(library)
+        waitFor(hasText(getString(Res.string.keys_unreadable), substring = true))
+        startOver()
+
+        waitFor(hasText(getString(Res.string.start_over_keys_erased), substring = true))
+        waitFor(hasText(getString(Res.string.start_over)) and hasClickAction())
+        assertEquals(emptyList(), library.keysetFiles())
+      }
     }
   }
 }

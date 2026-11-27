@@ -12,8 +12,6 @@ import dev.marzahn.gloriana.logic.connection.entered
 import dev.marzahn.gloriana.logic.keys.KeyFileResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.OpenResult
-import dev.marzahn.gloriana.logic.keys.SealedSecret
-import dev.marzahn.gloriana.logic.keys.SecretSlot
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
@@ -96,16 +94,24 @@ class VaultModelApiTest {
   }
 
   @Test
-  fun aBugWhileOpeningTheKeyIsNotReportedAsAnUnreachableHost() = runBlocking {
+  fun aBugWhileOpeningTheKeyIsAnUnexpectedFailureNotAnUnreachableHostOrAThrow() = runBlocking {
     val connection = stored(KeyInput.Entered("sk-vault-bug"))
-    val broken = object : KeyVault by library.vault {
-      override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = error("a bug in the vault")
+
+    val events = api(ThrowingVault(library.vault)).reply(greeting, connection).toList()
+
+    assertEquals(listOf<ModelEvent>(ModelEvent.Failed(ModelApiError.Unexpected)), events)
+    assertEquals(emptyList(), stub.recordedRequests())
+  }
+
+  @Test
+  fun aCollectorsOwnThrowIsNotTurnedIntoAFailure() = runBlocking {
+    val connection = stored(KeyInput.Entered("sk-vault-3"))
+
+    val thrown = assertFailsWith<IllegalStateException> {
+      api().reply(greeting, connection).collect { error("the collector failed") }
     }
 
-    val thrown = assertFailsWith<IllegalStateException> { api(broken).reply(greeting, connection).toList() }
-
-    assertEquals("a bug in the vault", thrown.message)
-    assertEquals(emptyList(), stub.recordedRequests())
+    assertEquals("the collector failed", thrown.message)
   }
 
   @Test

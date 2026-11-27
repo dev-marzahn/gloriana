@@ -43,6 +43,16 @@ class ProbeDraftTest {
   private fun kept(name: String = "X-Org") = HeaderDraft(name, HeaderValueInput.Kept("X-Org"))
 
   @Test
+  fun aBugWhileOpeningTheKeysIsAnUnexpectedFailureOfTheTestAndTheModelList() = runBlocking {
+    val stored = stored()
+    val probe = harness.probe(ThrowingVault(harness.library.vault))
+
+    assertEquals(ProbeResult.Failed(ModelApiError.Unexpected), probe.test(stored.asDraft(), stored))
+    assertEquals(ProbeResult.Failed(ModelApiError.Unexpected), probe.models(stored.asDraft(), stored))
+    assertEquals(emptyList(), harness.stub.recordedRequests())
+  }
+
+  @Test
   fun aConnectionAsSavedSendsItsStoredValues() = runBlocking {
     val stored = stored()
 

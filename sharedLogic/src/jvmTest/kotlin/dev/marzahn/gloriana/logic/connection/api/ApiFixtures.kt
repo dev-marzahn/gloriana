@@ -46,6 +46,10 @@ internal class AnsweringVault(vault: KeyVault, private val answer: OpenResult) :
   override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = answer
 }
 
+internal class ThrowingVault(vault: KeyVault) : KeyVault by vault {
+  override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = error("a bug in the vault")
+}
+
 internal class StubHostReplies(directory: Path, delay: Duration = 3.seconds) : AutoCloseable {
   val host: RunningStubHost = runBlocking { startStubHost(directory.resolve("record.jsonl"), delay = delay) }
   val calls = HostCalls(OkHttpModelClients())
