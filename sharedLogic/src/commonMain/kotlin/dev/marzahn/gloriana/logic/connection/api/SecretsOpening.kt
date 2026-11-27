@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.connection.api
 
+import dev.marzahn.gloriana.logic.connection.HeldSecrets
 import dev.marzahn.gloriana.logic.connection.SecretSource
 import dev.marzahn.gloriana.logic.connection.SecretSources
 import dev.marzahn.gloriana.logic.keys.HeaderName
@@ -13,23 +14,37 @@ internal sealed interface SecretsOpening {
 }
 
 internal suspend fun KeyVault.openSecrets(sources: SecretSources): SecretsOpening = run opening@{
-  val key = sources.key?.let { open(it).valueOr { error -> return@opening SecretsOpening.Refused(error) } }
+  val refuse = { error: ModelApiError -> SecretsOpening.Refused(error) }
+  val key = sources.key?.let { source ->
+    open(source, sources) { error -> return@opening refuse(error) }
+  }
   val headers = sources.headers.map { header ->
-    val value = open(header.source).valueOr { error -> return@opening SecretsOpening.Refused(error) }
-    HostHeader(HeaderName.of(header.name), value)
+    HostHeader(HeaderName.of(header.name), open(header.source, sources) { error -> return@opening refuse(error) })
   }
   SecretsOpening.Opened(key, headers)
 }
 
-private suspend fun KeyVault.open(source: SecretSource): OpenResult = when (source) {
-  is SecretSource.Typed -> OpenResult.Opened(source.value)
-  is SecretSource.Stored -> open(source.slot, source.secret)
+private suspend inline fun KeyVault.open(
+  source: SecretSource,
+  sources: SecretSources,
+  refuse: (ModelApiError) -> Nothing,
+): String = when (source) {
+  is SecretSource.Typed -> source.value
+  is SecretSource.Stored -> when (val result = open(source.slot, source.secret)) {
+    is OpenResult.Opened -> result.value
+    OpenResult.Missing -> refuse(ModelApiError.KeysMissing(sources.storedHeld()))
+    OpenResult.Locked -> refuse(ModelApiError.KeysLocked)
+    OpenResult.Unavailable -> refuse(ModelApiError.KeysUnavailable(sources.storedHeld()))
+    OpenResult.Unreadable -> refuse(ModelApiError.KeysUnreadable(sources.storedHeld()))
+  }
 }
 
-private inline fun OpenResult.valueOr(refuse: (ModelApiError) -> Nothing): String = when (this) {
-  is OpenResult.Opened -> value
-  OpenResult.Missing -> refuse(ModelApiError.KeysMissing)
-  OpenResult.Locked -> refuse(ModelApiError.KeysLocked)
-  OpenResult.Unavailable -> refuse(ModelApiError.KeysUnavailable)
-  OpenResult.Unreadable -> refuse(ModelApiError.KeysUnreadable)
+private fun SecretSources.storedHeld(): HeldSecrets {
+  val keyStored = key is SecretSource.Stored
+  val headersStored = headers.any { it.source is SecretSource.Stored }
+  return when {
+    keyStored && headersStored -> HeldSecrets.KeyAndHeaderValues
+    keyStored -> HeldSecrets.Key
+    else -> HeldSecrets.HeaderValues
+  }
 }

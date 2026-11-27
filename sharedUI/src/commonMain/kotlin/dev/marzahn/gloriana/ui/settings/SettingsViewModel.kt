@@ -175,6 +175,9 @@ class SettingsViewModel(
 
   init {
     viewModelScope.launch { vault.prepareIfStored() }
+    viewModelScope.launch {
+      state.collect { shown -> if (shown.connections !is ConnectionsList.Loaded) closeStartOverQuestion() }
+    }
     viewModelScope.launch { vault.secretChecks(repository.connections().catch { emit(emptyList()) }).collect() }
   }
 
@@ -198,6 +201,10 @@ class SettingsViewModel(
   private fun rows(activity: RowActivity) = session.update { it.copy(rows = activity) }
 
   private fun startOver(step: StartOverStep) = session.update { it.copy(startOver = step) }
+
+  private fun closeStartOverQuestion() = session.update { current ->
+    if (current.startOver is StartOverStep.Confirming) current.copy(startOver = StartOverStep.Idle) else current
+  }
 
   private fun makeDefault(row: ConnectionRowState) {
     if (session.value.rows is RowActivity.MakingDefault) return

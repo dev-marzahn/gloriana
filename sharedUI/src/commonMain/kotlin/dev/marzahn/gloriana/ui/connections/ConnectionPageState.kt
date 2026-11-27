@@ -65,10 +65,9 @@ sealed interface Refusal {
   data object Locked : Refusal
 }
 
-class Probed(val keys: KeyContext, val timeoutSeconds: Int, val held: HeldSecrets)
+class Probed(val keys: KeyContext, val timeoutSeconds: Int)
 
 fun ModelApiError.refusal(probed: Probed): Refusal {
-  val held = probed.held
   val host = { problem: HostProblem -> Refusal.Host(HostFailure(problem, probed.keys)) }
   return when (this) {
     ModelApiError.Unreachable -> host(HostProblem.Unreachable)
@@ -80,10 +79,10 @@ fun ModelApiError.refusal(probed: Probed): Refusal {
     ModelApiError.BadAddress -> host(HostProblem.BadAddress)
     ModelApiError.BadHeader -> host(HostProblem.BadHeader)
     ModelApiError.StreamNotBoolean -> host(HostProblem.StreamNotBoolean)
-    ModelApiError.KeysMissing -> Refusal.Keys(PageNote.KeysMissing(held))
+    is ModelApiError.KeysMissing -> Refusal.Keys(PageNote.KeysMissing(held))
     ModelApiError.KeysLocked -> Refusal.Locked
-    ModelApiError.KeysUnavailable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.KeychainUnavailable, held))
-    ModelApiError.KeysUnreadable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.Unreadable, held))
+    is ModelApiError.KeysUnavailable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.KeychainUnavailable, held))
+    is ModelApiError.KeysUnreadable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.Unreadable, held))
   }
 }
 

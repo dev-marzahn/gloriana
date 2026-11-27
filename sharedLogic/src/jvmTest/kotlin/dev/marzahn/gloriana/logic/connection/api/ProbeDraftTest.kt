@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.logic.connection.api
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.HeaderDraft
+import dev.marzahn.gloriana.logic.connection.HeldSecrets
 import dev.marzahn.gloriana.logic.connection.HeaderValueInput
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.asDraft
@@ -115,9 +116,9 @@ class ProbeDraftTest {
     val draft = harness.draftFor(ApiFormat.AnthropicMessages, "normal", KeyInput.Kept)
 
     mapOf(
-      OpenResult.Missing to ModelApiError.KeysMissing,
+      OpenResult.Missing to ModelApiError.KeysMissing(HeldSecrets.Key),
       OpenResult.Locked to ModelApiError.KeysLocked,
-      OpenResult.Unavailable to ModelApiError.KeysUnavailable,
+      OpenResult.Unavailable to ModelApiError.KeysUnavailable(HeldSecrets.Key),
     ).forEach { (answer, refusal) ->
       val probe = harness.probe(AnsweringVault(harness.library.vault, answer))
       assertEquals(ProbeResult.Failed(refusal), probe.test(draft, stored), "$answer")

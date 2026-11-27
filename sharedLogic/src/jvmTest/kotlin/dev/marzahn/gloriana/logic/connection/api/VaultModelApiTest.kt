@@ -4,6 +4,7 @@ import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionLibrary
 import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
 import dev.marzahn.gloriana.logic.connection.HeaderDraft
+import dev.marzahn.gloriana.logic.connection.HeldSecrets
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.draft
@@ -114,7 +115,7 @@ class VaultModelApiTest {
 
     val events = api().reply(greeting, connection).toList()
 
-    assertEquals(listOf<ModelEvent>(ModelEvent.Failed(ModelApiError.KeysMissing)), events)
+    assertEquals(listOf<ModelEvent>(ModelEvent.Failed(ModelApiError.KeysMissing(HeldSecrets.Key))), events)
     assertEquals(emptyList(), stub.recordedRequests())
   }
 
@@ -122,7 +123,10 @@ class VaultModelApiTest {
   fun aLockedOrUnavailableVaultIsRefusedAndNothingIsSent() = runBlocking {
     val connection = stored(KeyInput.Removed, listOf(HeaderDraft("X-Org", entered("org-7"))))
 
-    mapOf(OpenResult.Locked to ModelApiError.KeysLocked, OpenResult.Unavailable to ModelApiError.KeysUnavailable)
+    mapOf(
+      OpenResult.Locked to ModelApiError.KeysLocked,
+      OpenResult.Unavailable to ModelApiError.KeysUnavailable(HeldSecrets.HeaderValues),
+    )
       .forEach { (answer, refusal) ->
         val events = api(AnsweringVault(library.vault, answer)).reply(greeting, connection).toList()
 
