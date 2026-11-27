@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.ui.navigation
 
 import androidx.navigation3.runtime.NavKey
 import androidx.savedstate.serialization.SavedStateConfiguration
+import dev.marzahn.gloriana.ui.characters.CharacterRoute
 import dev.marzahn.gloriana.ui.chats.ChatsRoute
 import dev.marzahn.gloriana.ui.library.LibraryRoute
 import dev.marzahn.gloriana.ui.settings.SettingsRoute
@@ -14,6 +15,7 @@ internal val backStackConfiguration = SavedStateConfiguration {
     polymorphic(NavKey::class) {
       subclass(ChatsRoute::class)
       subclass(LibraryRoute::class)
+      subclass(CharacterRoute::class)
       subclass(SettingsRoute::class)
     }
   }

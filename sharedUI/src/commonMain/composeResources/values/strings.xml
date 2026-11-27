@@ -6,11 +6,168 @@
     <string name="create">Create</string>
     <string name="cancel">Cancel</string>
     <string name="retry">Retry</string>
+    <string name="close">Close</string>
+    <string name="open">Open</string>
     <string name="search_clear">Clear search</string>
+    <string name="not_available_yet">Not available yet</string>
     <string name="chats_empty_heading">No chats yet</string>
     <string name="chats_empty_text">Start one from a Character in your Library.</string>
     <string name="settings_empty_heading">Nothing to set yet</string>
     <string name="settings_empty_text">Your Connections to AI providers will be set up here.</string>
     <string name="library_empty">No Characters yet</string>
     <string name="library_empty_text">Create one by importing a Character Card.</string>
+
+    <string name="characters_nothing_picked">Pick a Character</string>
+    <string name="characters_nothing_picked_text">Or create one.</string>
+    <string name="characters_error">Your Characters couldn't be loaded. Nothing was changed. Retry, or restart Gloriana if it keeps happening.</string>
+
+    <string name="create_title">Create a Character</string>
+    <string name="create_import">Import Character Cards</string>
+    <string name="create_import_text">Pick one or more PNG, JSON or CHARX files.</string>
+    <string name="create_write">Write one</string>
+    <string name="create_write_text">Start from an empty Character. Not available yet.</string>
+
+    <string name="meta_creator_version">by %1$s · version %2$s</string>
+    <string name="meta_creator">by %1$s</string>
+    <string name="meta_version">version %1$s</string>
+    <string name="start_chat">Start a chat</string>
+    <string name="avatar_full_screen">Show %1$s's avatar full screen</string>
+
+    <string name="import_importing">Importing…</string>
+    <string name="import_waiting">Waiting…</string>
+    <string name="import_needs_answer">Already in your library</string>
+    <string name="import_choose">Choose</string>
+    <string name="import_announce">Importing %1$s, %2$d of %3$d</string>
+
+    <string name="already_title">%1$s is already in your library</string>
+    <string name="already_text">Import %1$s as a second Character, or update the one you have. Updating replaces its fields, pictures and assets with the file's, and keeps its place and its pronouns. This can't be undone.</string>
+    <string name="already_text_lorebook">Import %1$s as a second Character, or update the one you have. Updating replaces its fields, pictures and assets with the file's, and keeps its place and its pronouns. Its Lorebook goes too: this file has none. This can't be undone.</string>
+    <string name="already_text_json">Import %1$s as a second Character, or update the one you have. Updating replaces its fields and every picture or file it links to with the file's, and keeps its place, its pronouns and the pictures and files stored in Gloriana. This can't be undone.</string>
+    <string name="already_text_json_lorebook">Import %1$s as a second Character, or update the one you have. Updating replaces its fields and every picture or file it links to with the file's, and keeps its place, its pronouns and the pictures and files stored in Gloriana. Its Lorebook goes too: this file has none. This can't be undone.</string>
+    <string name="already_rest">Do the same for the rest of this import</string>
+    <string name="already_copy">Import as a copy</string>
+    <string name="already_update">Update %1$s</string>
+
+    <plurals name="import_failed_some">
+        <item quantity="one">%1$d of %2$d files wasn't imported.</item>
+        <item quantity="other">%1$d of %2$d files weren't imported.</item>
+    </plurals>
+    <string name="import_failed_all">None of the %1$d files were imported.</string>
+    <string name="import_choose_another">Choose another file</string>
+    <string name="import_choose_others">Choose other files</string>
+    <string name="import_choose_again">Choose files again</string>
+    <string name="dismiss">Dismiss</string>
+    <plurals name="import_timed_out">
+        <item quantity="one">Background time ran out, so %1$d of %2$d files wasn't imported.</item>
+        <item quantity="other">Background time ran out, so %1$d of %2$d files weren't imported.</item>
+    </plurals>
+    <string name="import_timed_out_text">Android limits how long Gloriana can work in the background. Import these again:</string>
+
+    <string name="reason_cant_open">%1$s couldn't be opened.</string>
+    <string name="reason_cant_open_detail">It may have been moved or deleted, or Gloriana may no longer have access to it.</string>
+    <string name="reason_damaged_png">%1$s is damaged and can't be read as a PNG.</string>
+    <string name="reason_damaged_json">%1$s is damaged and can't be read as JSON.</string>
+    <string name="reason_damaged_zip">%1$s is damaged and can't be unpacked.</string>
+    <string name="reason_damaged_no_card">%1$s is damaged: it has no Character Card inside.</string>
+    <string name="reason_not_a_card">%1$s isn't a Character Card.</string>
+    <string name="reason_not_a_card_detail">It opens, but holds no Character.</string>
+    <string name="reason_too_large_card">%1$s is too large: its Character Card data is over 16 MB.</string>
+    <string name="reason_too_large_items">%1$s is too large: it holds more than 10,000 items.</string>
+    <string name="reason_too_large_unpacked">%1$s is too large: something inside it unpacks to more than 512 MB.</string>
+    <string name="reason_unsafe">%1$s wasn't imported because it's unsafe: it would write files outside the import, or unpack to far more than its size.</string>
+    <string name="reason_storage_full">%1$s wasn't imported: there isn't enough storage.</string>
+    <string name="reason_storage_full_detail">Free some space, then import it again.</string>
+    <string name="reason_not_saved">%1$s wasn't imported: Gloriana couldn't save it.</string>
+    <string name="reason_not_saved_detail">Nothing was changed. Import it again.</string>
+
+    <string name="snack_failed_one">%1$s wasn't imported.</string>
+    <string name="snack_imported_one">%1$s was imported.</string>
+    <plurals name="snack_imported">
+        <item quantity="one">%1$d Character was imported.</item>
+        <item quantity="other">%1$d Characters were imported.</item>
+    </plurals>
+    <string name="snack_needs_answer">An import needs your answer.</string>
+    <plurals name="snack_timed_out">
+        <item quantity="one">Background time ran out: %1$d of %2$d files wasn't imported.</item>
+        <item quantity="other">Background time ran out: %1$d of %2$d files weren't imported.</item>
+    </plurals>
+
+    <string name="edit">Edit</string>
+    <string name="more">More</string>
+    <string name="back">Back</string>
+    <string name="delete_character">Delete Character</string>
+    <string name="export">Export</string>
+    <string name="panel_model">Sent to the model</string>
+    <string name="panel_private">Only you see this</string>
+    <string name="field_nickname">Nickname</string>
+    <string name="field_pronouns">Pronouns</string>
+    <string name="field_description">Description</string>
+    <string name="field_personality">Personality</string>
+    <string name="field_scenario">Scenario</string>
+    <string name="field_greeting">Greeting</string>
+    <string name="field_alternate_greeting">Alternate greeting %1$d</string>
+    <string name="field_group_greeting">Group greeting %1$d · only in group chats</string>
+    <string name="field_examples">Example messages</string>
+    <string name="field_main_prompt">Main prompt · overrides the Preset's</string>
+    <string name="field_post_history">Post-history instructions · overrides the Preset's</string>
+    <string name="field_note">Character's note · depth %1$d · %2$s</string>
+    <string name="role_system">System</string>
+    <string name="role_user">User</string>
+    <string name="role_assistant">Assistant</string>
+    <string name="field_creator_notes">Creator notes</string>
+    <string name="field_tags">Tags</string>
+    <string name="field_assets">Other assets</string>
+    <string name="asset_kind">%1$s · %2$s</string>
+    <string name="pronouns_not_set">Not set</string>
+    <string name="show_all">Show all</string>
+    <string name="show_less">Show less</string>
+    <string name="page_error">This Character couldn't be loaded.</string>
+    <string name="page_error_detail">Nothing was changed. Retry, or go back to your Characters.</string>
+    <string name="image_not_loaded">Image not loaded</string>
+    <string name="image_not_loaded_alt">Image not loaded: %1$s</string>
+    <string name="details_summary">Details</string>
+    <string name="opens_in_browser">opens in your browser</string>
+
+    <string name="export_title">Export %1$s</string>
+    <string name="export_text">As a Character Card other apps can import.</string>
+    <string name="export_png">PNG image</string>
+    <string name="export_png_text">Keeps everything: the avatar is the picture, the other assets go inside.</string>
+    <string name="export_png_no_avatar">Keeps everything. Gloriana's placeholder becomes the picture.</string>
+    <string name="export_json">JSON file</string>
+    <string name="export_json_text">Text only. Some apps read only this.</string>
+    <string name="export_left_out">A JSON file can't hold pictures or other files, so it leaves out:</string>
+    <string name="export_left_out_item">%1$s (%2$s)</string>
+    <string name="export_avatar">Avatar</string>
+    <string name="export_avatar_kind">Avatar</string>
+    <string name="export_choose_where">Choose where to save</string>
+    <string name="exporting">Exporting %1$s…</string>
+    <string name="export_saved">Saved %1$s.</string>
+    <string name="export_again">Export again</string>
+    <string name="export_failed">%1$s wasn't saved:</string>
+    <string name="export_failed_cant_write">Gloriana may not write to that folder. Nothing was left there. Try another place.</string>
+    <string name="export_failed_storage">there isn't enough storage. Nothing was left there. Free some space or try another place.</string>
+    <string name="export_failed_unreadable">a picture or file stored in Gloriana couldn't be read. Nothing was left there. A JSON file leaves them out.</string>
+    <string name="all_characters">All Characters</string>
+    <string name="export_incomplete">%1$s is incomplete:</string>
+    <string name="export_incomplete_storage">storage ran out while it was written. Delete it in your Files app, then export again.</string>
+    <string name="export_incomplete_access">Gloriana lost access to it while it was written. Delete it in your Files app, then export again.</string>
+    <string name="snack_export_failed">%1$s wasn't saved.</string>
+    <string name="snack_export_incomplete">%1$s is incomplete.</string>
+
+    <string name="delete_title">Delete %1$s?</string>
+    <string name="delete_text">%1$s is removed from Gloriana. Files you exported are kept. This can't be undone.</string>
+    <string name="delete_text_with">%1$s is removed from Gloriana, with %2$s. Files you exported are kept. This can't be undone.</string>
+    <string name="delete_part_avatar">its avatar</string>
+    <plurals name="delete_part_assets">
+        <item quantity="one">its %1$d other asset</item>
+        <item quantity="other">its %1$d other assets</item>
+    </plurals>
+    <string name="delete_part_lorebook">its Lorebook</string>
+    <string name="list_two">%1$s and %2$s</string>
+    <string name="list_more">%1$s, %2$s</string>
+    <string name="delete">Delete</string>
+    <string name="deleting">Deleting…</string>
+    <string name="snack_deleted">%1$s was deleted.</string>
+    <string name="delete_failed">%1$s wasn't deleted.</string>
+    <string name="delete_failed_detail">Nothing was changed. Retry.</string>
 </resources>

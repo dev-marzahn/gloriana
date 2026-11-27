@@ -12,6 +12,13 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Alignment
+import dev.marzahn.gloriana.ui.components.GlorianaSnackbarHost
+import dev.marzahn.gloriana.ui.messages.AppMessages
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -49,6 +56,7 @@ internal fun Shell(
   navigator: ShellNavigator,
   entries: Map<Destination, List<NavEntry<NavKey>>>,
   hasSystemBack: Boolean,
+  messages: AppMessages,
   modifier: Modifier = Modifier,
 ) {
   CompositionLocalProvider(LocalShellNavigator provides navigator) {
@@ -58,13 +66,13 @@ internal fun Shell(
       Row(shellModifier) {
         rail()
         val insets = WindowInsets.safeDrawing.only(SidesBesideRail)
-        DestinationContent(navigator, entries, navigation, Modifier.weight(1f).windowInsetsPadding(insets))
+        DestinationContent(navigator, entries, navigation, messages, Modifier.weight(1f).windowInsetsPadding(insets))
       }
     }
     when (navigation) {
       Navigation.Bar -> Column(shellModifier) {
         val insets = if (navigator.atRoot) WindowInsets.safeDrawing.only(TopSides) else WindowInsets.safeDrawing
-        DestinationContent(navigator, entries, navigation, Modifier.weight(1f).windowInsetsPadding(insets))
+        DestinationContent(navigator, entries, navigation, messages, Modifier.weight(1f).windowInsetsPadding(insets))
         if (navigator.atRoot) GlorianaNavigationBar(navigator.current, navigator::select)
       }
       Navigation.LabelledRail -> besideRail { LabelledNavigationRail(navigator.current, navigator::select) }
@@ -83,25 +91,41 @@ private fun DestinationContent(
   navigator: ShellNavigator,
   entries: Map<Destination, List<NavEntry<NavKey>>>,
   navigation: Navigation,
+  messages: AppMessages,
   modifier: Modifier = Modifier,
 ) {
   val push = rememberPushTransitions()
   val motion = GlorianaTheme.motion
   val sceneStrategies = if (navigation == Navigation.Workbench) listOf(ListDetailSceneStrategy) else emptyList()
-  AnimatedContent(
-    targetState = navigator.current,
-    modifier = modifier,
-    transitionSpec = { fadeIn(motion.fadeThroughIn.tween()) togetherWith fadeOut(motion.fadeThroughOut.tween()) },
-  ) { destination ->
-    NavDisplay(
-      entries = entries.getValue(destination),
-      sceneStrategies = sceneStrategies,
-      transitionSpec = push.forward,
-      popTransitionSpec = push.backward,
-      predictivePopTransitionSpec = { push.scrubbedBackward(this) },
-      onBack = { navigator.pop(destination) },
-    )
+  Box(modifier) {
+    AnimatedContent(
+      targetState = navigator.current,
+      modifier = Modifier.fillMaxSize(),
+      transitionSpec = { fadeIn(motion.fadeThroughIn.tween()) togetherWith fadeOut(motion.fadeThroughOut.tween()) },
+    ) { destination ->
+      NavDisplay(
+        entries = entries.getValue(destination),
+        sceneStrategies = sceneStrategies,
+        transitionSpec = push.forward,
+        popTransitionSpec = push.backward,
+        predictivePopTransitionSpec = { push.scrubbedBackward(this) },
+        onBack = { navigator.pop(destination) },
+      )
+    }
+    MessagesHost(messages, navigator, Modifier.align(Alignment.BottomCenter))
   }
+}
+
+@Composable
+private fun MessagesHost(messages: AppMessages, navigator: ShellNavigator, modifier: Modifier = Modifier) {
+  val hostState = remember { SnackbarHostState() }
+  LaunchedEffect(messages, navigator) {
+    messages.messages.collect { message ->
+      val result = hostState.showSnackbar(message.text, message.action?.label)
+      if (result == SnackbarResult.ActionPerformed) message.action?.perform(navigator)
+    }
+  }
+  GlorianaSnackbarHost(hostState, modifier)
 }
 
 private class PushTransitions(distancePx: Int, direction: LayoutDirection, motion: LookMotion) {

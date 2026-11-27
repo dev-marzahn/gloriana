@@ -49,7 +49,7 @@ class CharacterImportTest {
     )
 
     assertIs<FileImportResult.Imported>(results[0])
-    assertEquals(FileImportResult.Failed(ImportFailure.Damaged), results[1])
+    assertEquals(FileImportResult.Failed(ImportFailure.Damaged(DamagedAs.Png)), results[1])
     assertIs<FileImportResult.Imported>(results[2])
     assertEquals(FileImportResult.Failed(ImportFailure.NotACharacterCard), results[3])
     assertEquals(listOf("wren.png"), questions.map { it.fileName })
@@ -230,6 +230,19 @@ class CharacterImportTest {
     })
 
     assertEquals(listOf(true, false), questions.map { it.losesEmbeddedLorebook })
+  }
+
+  @Test
+  fun theUpdateQuestionSaysWhenTheFileHoldsNoFiles() = runTest {
+    library.importedCharacter(ImporterCorpus.ccv2Json)
+    val questions = mutableListOf<AlreadyInLibrary>()
+
+    library.repository.import(listOf(ImporterCorpus.ccv2Json, ImporterCorpus.ccv2Png), { question ->
+      questions += question
+      AlreadyInLibraryAnswer(AlreadyInLibraryChoice.Cancel)
+    })
+
+    assertEquals(listOf(true, false), questions.map { it.fileHoldsNoFiles })
   }
 
   @Test

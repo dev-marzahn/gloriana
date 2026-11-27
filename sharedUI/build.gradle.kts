@@ -36,6 +36,11 @@ kotlin {
       implementation(libs.koin.compose)
       implementation(libs.koin.compose.viewmodel)
       implementation(libs.koin.compose.navigation3)
+      implementation(libs.jetbrains.markdown)
+      implementation(libs.ksoup)
+    }
+    androidMain.dependencies {
+      implementation(libs.androidx.activity.compose)
     }
     jvmTest.dependencies {
       implementation(libs.kotlinx.coroutines.test)

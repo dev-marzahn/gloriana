@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.assets.StoreIoException
 import dev.marzahn.gloriana.logic.assets.storeIo
 import dev.marzahn.gloriana.logic.characters.CardFileRead
 import dev.marzahn.gloriana.logic.characters.CardReader
+import dev.marzahn.gloriana.logic.characters.DamagedAs
 import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.ImportedCard
 import dev.marzahn.gloriana.logic.characters.OpenedFile
@@ -17,6 +18,13 @@ import java.io.IOException
 import java.nio.file.Files
 
 private const val SNIFF_LENGTH = 64
+
+private enum class FileKind(val unreadable: ImportFailure) {
+  Png(ImportFailure.Damaged(DamagedAs.Png)),
+  Zip(ImportFailure.Damaged(DamagedAs.Zip)),
+  Json(ImportFailure.Damaged(DamagedAs.Json)),
+  Other(ImportFailure.NotACharacterCard),
+}
 private val ZIP_MAGIC = listOf(byteArrayOf(0x50, 0x4B, 0x03, 0x04), byteArrayOf(0x50, 0x4B, 0x05, 0x06))
 
 internal class JvmCardReader(private val store: AssetStore) : CardReader {
@@ -34,9 +42,15 @@ internal class JvmCardReader(private val store: AssetStore) : CardReader {
     }
   }
 
+  private fun readGuarded(name: String, input: BufferedInputStream, staging: Staging): CardFileRead =
+    guarded(unreadable = ImportFailure.NotACharacterCard) {
+      val kind = sniff(input)
+      guarded(kind.unreadable) { readKind(kind, name, input, staging) }
+    }
+
   @Suppress("TooGenericExceptionCaught")
-  private fun readGuarded(name: String, input: BufferedInputStream, staging: Staging): CardFileRead = try {
-    readKnownKind(name, input, staging)
+  private fun guarded(unreadable: ImportFailure, read: () -> CardFileRead): CardFileRead = try {
+    read()
   } catch (_: SourceReadException) {
     CardFileRead.Failed(ImportFailure.CantBeOpened)
   } catch (_: StorageFullException) {
@@ -46,24 +60,31 @@ internal class JvmCardReader(private val store: AssetStore) : CardReader {
   } catch (_: EntryLargerThanDeclared) {
     CardFileRead.Failed(ImportFailure.Unsafe)
   } catch (_: IOException) {
-    CardFileRead.Failed(ImportFailure.Damaged)
+    CardFileRead.Failed(unreadable)
   } catch (_: RuntimeException) {
-    CardFileRead.Failed(ImportFailure.Damaged)
+    CardFileRead.Failed(unreadable)
   }
 
-  private fun readKnownKind(name: String, input: BufferedInputStream, staging: Staging): CardFileRead {
+  private fun sniff(input: BufferedInputStream): FileKind {
     input.mark(SNIFF_LENGTH)
     val start = input.readUpTo(SNIFF_LENGTH)
     input.reset()
     return when {
-      start.startsWith(PNG_SIGNATURE) -> PngCardReader(staging).read(input)
-      ZIP_MAGIC.any { start.startsWith(it) } -> store.withTemporaryFile { zip ->
-        storeIo { Files.newOutputStream(zip).use { input.copyTo(it) } }
-        CharxReader(staging).read(name, zip)
-      }
-      CardJson.startsLikeJson(start) -> readJson(input)
-      else -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
+      start.startsWith(PNG_SIGNATURE) -> FileKind.Png
+      ZIP_MAGIC.any { start.startsWith(it) } -> FileKind.Zip
+      CardJson.startsLikeJson(start) -> FileKind.Json
+      else -> FileKind.Other
     }
+  }
+
+  private fun readKind(kind: FileKind, name: String, input: BufferedInputStream, staging: Staging) = when (kind) {
+    FileKind.Png -> PngCardReader(staging).read(input)
+    FileKind.Zip -> store.withTemporaryFile { zip ->
+      storeIo { Files.newOutputStream(zip).use { input.copyTo(it) } }
+      CharxReader(staging).read(name, zip)
+    }
+    FileKind.Json -> readJson(input)
+    FileKind.Other -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
   }
 
   private fun readJson(input: BufferedInputStream): CardFileRead {
@@ -73,7 +94,7 @@ internal class JvmCardReader(private val store: AssetStore) : CardReader {
       is CardJsonRead.Card -> CardFileRead.Card(
         ImportedCard.JsonOnly(card.card, card.card.assets.map { it.toAsset(stored = null) }),
       )
-      CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged)
+      CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged(DamagedAs.Json))
       CardJsonRead.NotACard -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
     }
   }

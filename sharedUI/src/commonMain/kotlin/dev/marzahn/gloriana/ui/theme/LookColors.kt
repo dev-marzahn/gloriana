@@ -63,6 +63,7 @@ data class LookColors(
   val onAvatar: Color,
   val scrim: Color,
   val scrimAlpha: Float,
+  val pictureShade: Color,
   val containers: ContainerRoles,
   val fixed: FixedRoles,
 )
@@ -71,6 +72,7 @@ private val Rose = Color(0xFFA84D68)
 private val RoseLight = Color(0xFFE596AD)
 private val Ink = Color(0xFF1C1917)
 private val White = Color(0xFFFFFFFF)
+private val Black = Color(0xFF000000)
 
 private val Fixed = FixedRoles(
   primary = Color(0xFFF5D9E1),
@@ -120,6 +122,7 @@ val LightLookColors = LookColors(
   onAvatar = White,
   scrim = Ink,
   scrimAlpha = 0.4f,
+  pictureShade = Black,
   containers = ContainerRoles(
     lowest = White,
     low = LightPane,
@@ -169,8 +172,9 @@ val DarkLookColors = LookColors(
   inverse = Color(0xFFF5F5F4),
   inverseFg = Ink,
   onAvatar = White,
-  scrim = Color(0xFF000000),
+  scrim = Black,
   scrimAlpha = 0.6f,
+  pictureShade = Black,
   containers = ContainerRoles(
     lowest = DarkRail,
     low = DarkPane,

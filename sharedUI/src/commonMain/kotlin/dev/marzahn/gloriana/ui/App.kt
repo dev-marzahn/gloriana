@@ -2,12 +2,14 @@ package dev.marzahn.gloriana.ui
 
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.Shell
 import dev.marzahn.gloriana.ui.navigation.ShellNavigator
@@ -15,13 +17,14 @@ import dev.marzahn.gloriana.ui.navigation.platformHasSystemBack
 import dev.marzahn.gloriana.ui.navigation.rememberShellNavigator
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.WidthClass
+import org.koin.compose.koinInject
 import org.koin.compose.navigation3.koinEntryProvider
 import org.koin.core.annotation.KoinExperimentalAPI
 
 @OptIn(KoinExperimentalAPI::class)
 @Composable
 fun App(modifier: Modifier = Modifier) {
-  GlorianaApp(koinEntryProvider(), modifier)
+  GlorianaApp(koinEntryProvider(), modifier, messages = koinInject())
 }
 
 @Composable
@@ -30,6 +33,7 @@ internal fun GlorianaApp(
   modifier: Modifier = Modifier,
   navigator: ShellNavigator = rememberShellNavigator(),
   hasSystemBack: Boolean = platformHasSystemBack,
+  messages: AppMessages = remember { AppMessages() },
 ) {
   val decorators = listOf(
     rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
@@ -40,7 +44,7 @@ internal fun GlorianaApp(
   }
   BoxWithConstraints(modifier) {
     GlorianaTheme(WidthClass.of(maxWidth)) {
-      Shell(navigator, entries, hasSystemBack)
+      Shell(navigator, entries, hasSystemBack, messages)
     }
   }
 }

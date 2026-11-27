@@ -15,7 +15,7 @@ sealed interface FileImportResult {
 sealed interface ImportFailure {
   data object CantBeOpened : ImportFailure
 
-  data object Damaged : ImportFailure
+  data class Damaged(val readAs: DamagedAs) : ImportFailure
 
   data object NotACharacterCard : ImportFailure
 
@@ -26,6 +26,13 @@ sealed interface ImportFailure {
   data object StorageFull : ImportFailure
 
   data object CouldNotSave : ImportFailure
+}
+
+enum class DamagedAs {
+  Png,
+  Json,
+  Zip,
+  CharxWithoutCard,
 }
 
 enum class SizeLimit {
@@ -47,6 +54,7 @@ data class AlreadyInLibrary(
   val existing: CharacterSummary,
   val filesLeftAfterThis: Int,
   val losesEmbeddedLorebook: Boolean,
+  val fileHoldsNoFiles: Boolean,
 )
 
 enum class AlreadyInLibraryChoice {

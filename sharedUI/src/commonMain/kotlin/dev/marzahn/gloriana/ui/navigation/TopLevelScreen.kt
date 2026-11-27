@@ -44,15 +44,15 @@ sealed interface TopLevelContent {
 
   class Items(
     val nothingPicked: EmptyBlock,
-    val createRoute: NavKey? = null,
+    val onCreate: (() -> Unit)? = null,
     val list: @Composable (header: @Composable () -> Unit) -> Unit,
   ) : TopLevelContent
 }
 
-private val TopLevelContent.createRoute: NavKey?
+private val TopLevelContent.createAction: (() -> Unit)?
   get() = when (this) {
     is TopLevelContent.Empty -> null
-    is TopLevelContent.Items -> createRoute
+    is TopLevelContent.Items -> onCreate
   }
 
 @Composable
@@ -63,11 +63,11 @@ fun TopLevelScreen(destination: Destination, content: TopLevelContent, modifier:
   } else {
     when (content) {
       is TopLevelContent.Empty -> Column(modifier.fillMaxSize()) {
-        TitleRow(destination, createRoute = null)
+        TitleRow(destination, onCreate = null)
         EmptyState(content.block, Modifier.weight(1f).fillMaxWidth().padding(GlorianaTheme.spacing.s16))
       }
       is TopLevelContent.Items -> Box(modifier.fillMaxSize()) {
-        content.list { TitleRow(destination, content.createRoute) }
+        content.list { TitleRow(destination, content.onCreate) }
       }
     }
   }
@@ -86,7 +86,7 @@ private fun Workbench(
     is TopLevelContent.Items -> content.nothingPicked
   }
   Column(modifier.fillMaxSize()) {
-    TopBar(destination, content.createRoute)
+    TopBar(destination, content.createAction)
     Row(Modifier.weight(1f).fillMaxWidth()) {
       Box(Modifier.width(ListPaneWidth).fillMaxHeight().background(colors.pane)) {
         if (content is TopLevelContent.Items) content.list {}
@@ -120,7 +120,7 @@ private fun DetailPane(detail: NavEntry<NavKey>?, idle: EmptyBlock, modifier: Mo
 }
 
 @Composable
-private fun TopBar(destination: Destination, createRoute: NavKey?) {
+private fun TopBar(destination: Destination, onCreate: (() -> Unit)?) {
   val colors = GlorianaTheme.colors
   val spacing = GlorianaTheme.spacing
   Column(Modifier.fillMaxWidth().background(colors.canvas)) {
@@ -134,14 +134,14 @@ private fun TopBar(destination: Destination, createRoute: NavKey?) {
         style = GlorianaTheme.type.material.titleLarge,
         color = colors.text,
       )
-      if (createRoute != null) CreateButton(createRoute, ButtonSize.Small)
+      if (onCreate != null) CreateButton(onCreate, ButtonSize.Small)
     }
     HorizontalDivider(color = colors.border)
   }
 }
 
 @Composable
-private fun TitleRow(destination: Destination, createRoute: NavKey?) {
+private fun TitleRow(destination: Destination, onCreate: (() -> Unit)?) {
   val spacing = GlorianaTheme.spacing
   Row(
     Modifier.fillMaxWidth().heightIn(min = TitleRowHeight).padding(horizontal = spacing.s16),
@@ -153,16 +153,15 @@ private fun TitleRow(destination: Destination, createRoute: NavKey?) {
       style = GlorianaTheme.type.material.headlineLarge,
       color = GlorianaTheme.colors.text,
     )
-    if (createRoute != null) CreateButton(createRoute, ButtonSize.Regular)
+    if (onCreate != null) CreateButton(onCreate, ButtonSize.Regular)
   }
 }
 
 @Composable
-private fun CreateButton(createRoute: NavKey, size: ButtonSize) {
-  val navigator = LocalShellNavigator.current
+private fun CreateButton(onCreate: () -> Unit, size: ButtonSize) {
   GlorianaButton(
     stringResource(Res.string.create),
-    { navigator.push(createRoute) },
+    onCreate,
     icon = Res.drawable.ic_add_20,
     size = size,
   )

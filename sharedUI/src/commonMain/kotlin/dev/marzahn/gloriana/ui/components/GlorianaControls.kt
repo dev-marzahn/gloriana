@@ -30,6 +30,7 @@ fun GlorianaIconButton(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
   enabled: Boolean = true,
+  stateDescription: String? = null,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val colors = GlorianaTheme.colors
@@ -38,7 +39,7 @@ fun GlorianaIconButton(
   ControlFrame(interactionSource, shape, modifier) {
     IconButton(
       onClick = onClick,
-      modifier = Modifier.size(IconButtonSize),
+      modifier = Modifier.size(IconButtonSize).describingState(stateDescription),
       enabled = enabled,
       shape = shape,
       colors = IconButtonDefaults.iconButtonColors(

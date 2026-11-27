@@ -33,6 +33,7 @@ import dev.marzahn.gloriana.ui.library.LibraryContent
 import dev.marzahn.gloriana.ui.library.LibraryRoute
 import dev.marzahn.gloriana.ui.library.LibraryState
 import dev.marzahn.gloriana.ui.navigation.Destination
+import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.ShellNavigator
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
@@ -217,7 +218,8 @@ class ShellTest {
   }
 
   private val creatingLibrary: @Composable () -> Unit = {
-    val content = TopLevelContent.Items(nothingPicked = nothingPicked, createRoute = Pushed) { header ->
+    val navigator = LocalShellNavigator.current
+    val content = TopLevelContent.Items(nothingPicked, onCreate = { navigator.push(Pushed) }) { header ->
       Column { header() }
     }
     TopLevelScreen(Destination.Library, content)
@@ -234,7 +236,7 @@ class ShellTest {
   }
 
   @Test
-  fun createSitsInTheTitleRowBelowExpandedAndPushesItsRoute() = runComposeUiTest {
+  fun createSitsInTheTitleRowBelowExpandedAndRunsItsAction() = runComposeUiTest {
     val harness = showApp(400.dp, library = creatingLibrary)
     onNodeWithText(getString(Res.string.create)).performClick()
     waitForIdle()

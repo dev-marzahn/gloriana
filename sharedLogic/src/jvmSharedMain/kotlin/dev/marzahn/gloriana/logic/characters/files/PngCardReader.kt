@@ -5,6 +5,7 @@ import dev.marzahn.gloriana.logic.assets.StagedAsset
 import dev.marzahn.gloriana.logic.characters.AssetSource
 import dev.marzahn.gloriana.logic.characters.CardFileRead
 import dev.marzahn.gloriana.logic.characters.CharacterAsset
+import dev.marzahn.gloriana.logic.characters.DamagedAs
 import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.ImportedCard
 import dev.marzahn.gloriana.logic.characters.SizeLimit
@@ -42,7 +43,7 @@ internal class PngCardReader(private val staging: Staging) {
     if (tooLarge) return CardFileRead.Failed(ImportFailure.TooLarge(SizeLimit.CardJson))
     return when (val card = chooseCard(decoded)) {
       is CardJsonRead.Card -> CardFileRead.Card(imported(card.card, avatar))
-      CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged)
+      CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged(DamagedAs.Png))
       CardJsonRead.NotACard -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
     }
   }

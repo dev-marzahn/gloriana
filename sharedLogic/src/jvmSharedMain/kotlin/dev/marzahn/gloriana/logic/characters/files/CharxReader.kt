@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.logic.characters.files
 
 import dev.marzahn.gloriana.logic.assets.StagedAsset
 import dev.marzahn.gloriana.logic.characters.CardFileRead
+import dev.marzahn.gloriana.logic.characters.DamagedAs
 import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.ImportedCard
 import dev.marzahn.gloriana.logic.characters.SizeLimit
@@ -31,13 +32,13 @@ internal class CharxReader(private val staging: Staging) {
     val json = zip.declaredContent(cardEntry).use { it.readBytes() }
     return when (val card = CardJson.read(json)) {
       is CardJsonRead.Card -> CardFileRead.Card(imported(card.card, zip, entries))
-      CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged)
+      CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged(DamagedAs.Zip))
       CardJsonRead.NotACard -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
     }
   }
 
   private fun missingCard(fileName: String) = when {
-    fileName.endsWith(CHARX_EXTENSION, ignoreCase = true) -> ImportFailure.Damaged
+    fileName.endsWith(CHARX_EXTENSION, ignoreCase = true) -> ImportFailure.Damaged(DamagedAs.CharxWithoutCard)
     else -> ImportFailure.NotACharacterCard
   }
 

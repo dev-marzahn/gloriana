@@ -12,6 +12,8 @@ import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.SheetValue
+import androidx.compose.material3.rememberBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -49,6 +51,7 @@ private fun SheetOrDialog(
   if (style == SheetStyle.BottomSheet) {
     ModalBottomSheet(
       onDismissRequest = onDismiss,
+      sheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded)),
       shape = shapes.sheet,
       containerColor = colors.raised,
       contentColor = colors.text,

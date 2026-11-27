@@ -38,7 +38,7 @@ class ImportRobustnessTest {
       error("asked")
     })
 
-    assertEquals(FileImportResult.Failed(ImportFailure.Damaged), results[0])
+    assertEquals(FileImportResult.Failed(ImportFailure.Damaged(DamagedAs.Zip)), results[0])
     assertIs<FileImportResult.Imported>(results[1])
     assertEquals(emptyList(), library.stagingFiles())
   }

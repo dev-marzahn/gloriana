@@ -83,7 +83,13 @@ class CharacterRepository internal constructor(
       ?: return ImportDecision.New
     val losesLorebook = dao.rows(match.id)?.character?.keptFields?.hasEmbeddedLorebook == true &&
       !card.parsed.kept.hasEmbeddedLorebook
-    val question = AlreadyInLibrary(fileName, match, filesLeft, losesEmbeddedLorebook = losesLorebook)
+    val question = AlreadyInLibrary(
+      fileName,
+      match,
+      filesLeft,
+      losesEmbeddedLorebook = losesLorebook,
+      fileHoldsNoFiles = card is ImportedCard.JsonOnly,
+    )
     return when (answers.choiceFor(question)) {
       AlreadyInLibraryChoice.Copy -> ImportDecision.New
       AlreadyInLibraryChoice.Update -> ImportDecision.UpdateMatch

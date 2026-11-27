@@ -87,6 +87,7 @@ fun GlorianaButton(
   icon: DrawableResource? = null,
   size: ButtonSize = ButtonSize.Regular,
   enabled: Boolean = true,
+  stateDescription: String? = null,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val look = buttonLook(kind, interactionSource.interactionState())
@@ -104,6 +105,7 @@ fun GlorianaButton(
       onClick = onClick,
       modifier = Modifier
         .then(if (shadow != null) Modifier.lookShadow(shadow, look.shape) else Modifier)
+        .describingState(stateDescription)
         .heightIn(min = size.minHeight),
       enabled = enabled,
       shape = look.shape,
