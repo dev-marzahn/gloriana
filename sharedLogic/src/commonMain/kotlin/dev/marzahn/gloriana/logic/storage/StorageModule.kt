@@ -9,7 +9,7 @@ import org.koin.dsl.onClose
 val storageModule = module {
   single<IdFactory> { UuidV7IdFactory }
   single { UpdatedAtClock() }
-  single { ApplicationScope(::stopApp) } onClose { it?.cancel() }
+  single { ApplicationScope { stopApp(it) } } onClose { it?.cancel() }
   single(createdAtStart = true) { DatabaseOpenedAtStart(get(), get()) }
   single { Tombstones(get(), get()) }
 }

@@ -32,7 +32,8 @@ Each module's code lives under its own package root, so a test can tell the modu
   tables without touching another feature's code.
 - `sharedUI` (`dev.marzahn.gloriana.ui`): the Compose screens, one package per screen. Each screen has a `ViewModel`
   exposing one `StateFlow` of screen state, and a Navigation 3 route. Every route is registered in
-  `navigation/BackStack.kt`, so the back stack survives a configuration change and process death.
+  `navigation/BackStack.kt`, so the back stack survives a configuration change and process death. `theme` holds the
+  look, `components` the shared composables every screen is built from, and `navigation` the app shell.
 - `androidApp` (`dev.marzahn.gloriana.android`) and `desktopApp` (`dev.marzahn.gloriana.desktop`): each platform's
   entry point and its implementations of the platform seams (plain interfaces in common code), bound in that
   platform's Koin module.
@@ -82,6 +83,10 @@ stack trace and exit code 1. The file is `library.db`:
   test run never touches a real library: `~/Library/Application Support/` on macOS, `%APPDATA%` on Windows,
   `$XDG_DATA_HOME` (or `~/.local/share`) on Linux.
 
+Files a row points to (avatars, a Character Card's assets) are in `assets/<first two hex digits>/<SHA-256>` beside
+`library.db`. `AssetStore` writes a file to `assets/staging` while hashing it, syncs it, and renames it into place only
+after the import has read the whole file, so a stored file is never partial and is never changed; rows hold the hash.
+
 Rules for every table:
 
 - **IDs and timestamps come only from `IdFactory` and `UpdatedAtClock`.** Every row's `id` is a UUIDv7 from the
@@ -111,6 +116,32 @@ Every string the UI shows is a Compose resource in `sharedUI/src/commonMain/comp
 resources and arguments as placeholders, never joined from pieces, so the app can be translated without code changes.
 The one Android resource string, the launcher label in `androidApp/src/main/res/values/strings.xml`, has to be an
 Android resource; `LauncherLabelTest` keeps it equal to the Compose `app_name`.
+
+## Look
+
+- **Tokens only.** No screen names a colour, font, radius, spacing, shadow or duration: it reads them through
+  `GlorianaTheme` (`colors`, `fonts`, `shapes`, `shadows`, `type`, `spacing`, `motion`, `avatarGradients`, `chat`).
+  `LookTokens` holds a light and a dark `LookSet` with all of them, Material's container and fixed roles included, so a
+  theme can replace the whole look at run time. Material You's dynamic colour is not used.
+- **Wrappers only.** Screens use the `components` wrappers (`GlorianaButton`, `GlorianaIconButton`, `GlorianaSwitch`,
+  `ListRow`, `SearchField`, `GlorianaSheet` and the rest), never the Material component directly: the wrappers give
+  each one its token colours, its hover and pressed fills and its keyboard focus ring (`GlorianaFocusRing`), and keep
+  its shadow and ring on the drawn shape, inside the touch target. Material's ripple is off; a plain clickable takes
+  `GlorianaIndication(shape)` for its own shape. A disabled control draws with `Color.disabled()`.
+- **Width classes.** `WidthClass` (compact under 600 dp, medium to 839 dp, expanded from 840 dp) comes from the
+  window's width and carries the policies that depend on it: the `Navigation` (bar, labelled rail, or the workbench of
+  rail, top bar, list pane and detail pane), the `SheetStyle`, and `pointerDense` (expanded's denser type and controls,
+  with no 48 dp touch-target padding).
+- **Top-level screens** start with `TopLevelScreen`. Below expanded it hands the title row to the list as its first
+  item, so it scrolls with the list; on the workbench it draws the top bar, the list pane and the detail pane, which
+  shows the pushed screen or, with nothing pushed, the Nothing picked block. Its `TopLevelContent` is either `Empty`
+  (one `EmptyBlock`, no Create) or `Items` (the list, its Nothing picked block and an optional `createRoute`, which
+  Create pushes). Screens navigate through `LocalShellNavigator`; each `Destination` keeps its own back stack there.
+- **Back and Escape.** A pushed screen pops on system Back, on Escape (desktop) and with the predictive gesture. System
+  Back on a destination's root goes to Chats; Escape on a root does nothing.
+- **Fonts and icons** are bundled resources: Literata and Inter as static TTF files in `composeResources/font`, and
+  Material Symbols Outlined (weight 400, grade 0) as vector drawables in `composeResources/drawable`, copied one by
+  one as screens need them. Licence texts live in `composeResources/files/licenses` and `THIRD_PARTY_NOTICES.md`.
 
 ## Logs, keys and chats
 

@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+
 plugins {
   id("gloriana.kmp-library")
   id("gloriana.detekt")
@@ -21,6 +24,16 @@ tasks.named<Test>("jvmTest") {
 }
 
 kotlin {
+  @OptIn(ExperimentalKotlinGradlePluginApi::class)
+  applyDefaultHierarchyTemplate {
+    common {
+      group("jvmShared") {
+        withJvm()
+        withCompilations { it.target.platformType == KotlinPlatformType.androidJvm }
+      }
+    }
+  }
+
   android {
     namespace = "dev.marzahn.gloriana.logic"
     withDeviceTest {
