@@ -11,16 +11,16 @@ import dev.marzahn.gloriana.logic.characters.CardForExport
 import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.CardWriter
 import dev.marzahn.gloriana.logic.characters.CharacterAsset
-import dev.marzahn.gloriana.logic.characters.ExportContentFailure
-import dev.marzahn.gloriana.logic.characters.ExportDestination
-import dev.marzahn.gloriana.logic.characters.ExportFailure
-import dev.marzahn.gloriana.logic.characters.ExportProblem
 import dev.marzahn.gloriana.logic.characters.ExportResult
-import dev.marzahn.gloriana.logic.characters.ExportWrite
 import dev.marzahn.gloriana.logic.characters.card.CardAssetEntry
 import dev.marzahn.gloriana.logic.characters.card.CardJsonWriter
 import dev.marzahn.gloriana.logic.characters.card.CardSpec
 import dev.marzahn.gloriana.logic.characters.card.CardToWrite
+import dev.marzahn.gloriana.logic.files.ExportContentFailure
+import dev.marzahn.gloriana.logic.files.ExportDestination
+import dev.marzahn.gloriana.logic.files.ExportFailure
+import dev.marzahn.gloriana.logic.files.ExportProblem
+import dev.marzahn.gloriana.logic.files.ExportWrite
 import kotlinx.serialization.json.Json
 
 internal class JvmCardWriter(private val store: AssetStore, transcoder: AvatarTranscoder) : CardWriter {

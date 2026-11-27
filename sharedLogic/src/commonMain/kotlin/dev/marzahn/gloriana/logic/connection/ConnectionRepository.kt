@@ -63,6 +63,19 @@ class ConnectionRepository internal constructor(
 
   suspend fun update(id: Uuid, draft: ConnectionDraft): ConnectionSaveResult = save(SaveRequest.Update(id), draft)
 
+  suspend fun read(id: Uuid): ConnectionRead = when (val stored = dao.find(id)?.decoded()) {
+    null -> ConnectionRead.Gone
+    StoredConnection.Unreadable -> ConnectionRead.Unreadable
+    is StoredConnection.Readable -> ConnectionRead.Readable(stored.connection)
+  }
+
+  suspend fun updateSamplers(id: Uuid, change: (ConnectionFields) -> Samplers): SamplersUpdateResult =
+    erasure.oneAtATime {
+    failingAs({ if (it.isStorageFull()) SamplersUpdateResult.StorageFull else SamplersUpdateResult.Failed }) {
+      writes.updateSamplers(id, change)
+    }
+  }
+
   suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { writes.makeDefault(id) }
 
   suspend fun delete(id: Uuid): ConnectionDeleteResult = erasure.oneAtATime {
@@ -76,36 +89,37 @@ class ConnectionRepository internal constructor(
   }
 
   private suspend fun save(request: SaveRequest, draft: ConnectionDraft): ConnectionSaveResult = erasure.oneAtATime {
-    when (val prepared = failingAs({ Prepared.Stop(saveFailure(it)) }) { prepared(request, draft) }) {
+    when (val prepared = failingAs({ Prepared.Stop(saveFailure(it)) }) { writes.prepared(dao, request, draft) }) {
       is Prepared.Stop -> prepared.result
-      is Prepared.Ready -> failingAs(::saveFailure) { sealAndWrite(prepared) }.also { result ->
+      is Prepared.Ready -> failingAs(::saveFailure) { writes.sealAndWrite(secrets, prepared) }.also { result ->
         if (result !is ConnectionSaveResult.Saved) eraseUnlessStoredValuesNeedIt(prepared.target.id)
       }
     }
   }
+}
 
-  private suspend fun prepared(request: SaveRequest, draft: ConnectionDraft): Prepared = when (request) {
-    is SaveRequest.Create -> writes.ready(SaveTarget.New(request.id), draft)
-    is SaveRequest.Update -> when (val stored = dao.find(request.id)?.decoded()) {
-      null -> Prepared.Stop(ConnectionSaveResult.Gone)
-      StoredConnection.Unreadable -> Prepared.Stop(ConnectionSaveResult.Unreadable)
-      is StoredConnection.Readable -> writes.ready(SaveTarget.Existing(stored.connection), draft)
+private suspend fun ConnectionWrites.sealAndWrite(secrets: ConnectionSecrets, ready: Prepared.Ready) =
+  when (val sealing = secrets.seal(ready.plan)) {
+    Sealing.Locked -> ConnectionSaveResult.Locked
+    Sealing.Unavailable -> ConnectionSaveResult.Failed
+    is Sealing.Refused -> ConnectionSaveResult.Refused(sealing.problems)
+    is Sealing.Sealed -> Connection(ready.target.id, ready.fields, sealing.key, sealing.headers).let { connection ->
+      when (ready.target) {
+        is SaveTarget.New -> insert(connection)
+        is SaveTarget.Existing -> replace(connection)
+      }
     }
   }
 
-  private suspend fun sealAndWrite(ready: Prepared.Ready): ConnectionSaveResult =
-    when (val sealing = secrets.seal(ready.plan)) {
-      Sealing.Locked -> ConnectionSaveResult.Locked
-      Sealing.Unavailable -> ConnectionSaveResult.Failed
-      is Sealing.Refused -> ConnectionSaveResult.Refused(sealing.problems)
-      is Sealing.Sealed -> Connection(ready.target.id, ready.fields, sealing.key, sealing.headers).let { connection ->
-        when (ready.target) {
-          is SaveTarget.New -> writes.insert(connection)
-          is SaveTarget.Existing -> writes.replace(connection)
-        }
-      }
+private suspend fun ConnectionWrites.prepared(dao: ConnectionDao, request: SaveRequest, draft: ConnectionDraft) =
+  when (request) {
+    is SaveRequest.Create -> ready(SaveTarget.New(request.id), draft)
+    is SaveRequest.Update -> when (val stored = dao.find(request.id)?.decoded()) {
+      null -> Prepared.Stop(ConnectionSaveResult.Gone)
+      StoredConnection.Unreadable -> Prepared.Stop(ConnectionSaveResult.Unreadable)
+      is StoredConnection.Readable -> ready(SaveTarget.Existing(stored.connection), draft)
     }
-}
+  }
 
 private suspend fun ConnectionWrites.ready(target: SaveTarget, draft: ConnectionDraft): Prepared {
   val fields = draft.fields.normalised()

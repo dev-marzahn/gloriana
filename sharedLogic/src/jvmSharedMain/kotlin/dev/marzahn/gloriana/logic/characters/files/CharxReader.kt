@@ -9,6 +9,7 @@ import dev.marzahn.gloriana.logic.characters.SizeLimit
 import dev.marzahn.gloriana.logic.characters.card.CardAssetEntry
 import dev.marzahn.gloriana.logic.characters.card.CardJsonRead
 import dev.marzahn.gloriana.logic.characters.card.ParsedCard
+import dev.marzahn.gloriana.logic.files.JSON_FILE_LIMIT_BYTES
 import java.io.InputStream
 import java.nio.file.Path
 
@@ -83,7 +84,7 @@ internal object ZipCheck {
     val paths = all.map { it to ZipPath.of(it.name) }
     val cardEntries = paths.filter { (_, path) -> path == CARD_ENTRY }.map { it.first }
     val tooLarge = listOfNotNull(
-      SizeLimit.CardJson.takeIf { cardEntries.any { it.size > CardLimits.CARD_JSON_BYTES } },
+      SizeLimit.CardJson.takeIf { cardEntries.any { it.size > JSON_FILE_LIMIT_BYTES } },
       SizeLimit.ZipEntryCount.takeIf { all.size > CardLimits.ZIP_ENTRIES },
       SizeLimit.ZipEntrySize.takeIf { all.any { it.size > CardLimits.ZIP_ENTRY_BYTES } },
     )

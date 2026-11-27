@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.logic.characters
+package dev.marzahn.gloriana.logic.files
 
 interface ByteSource : AutoCloseable {
   fun read(into: ByteArray, offset: Int, length: Int): Int

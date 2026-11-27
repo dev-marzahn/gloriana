@@ -1,0 +1,13 @@
+{
+    "temperature": "0.7",
+    "top_k": 12.5,
+    "seed": -5,
+    "prompts": [
+        { "identifier": "main", "name": "Main Prompt", "role": "system", "content": "First main." },
+        { "identifier": "aside", "content": "No name, no role, odd position.", "role": "narrator", "injection_position": 3 },
+        { "identifier": "main", "name": "Second main", "role": "user", "content": "A later prompt with the same identifier." },
+        { "identifier": "deep", "name": "Deep", "role": "assistant", "content": "Below zero.", "injection_position": 1, "injection_depth": -3 },
+        { "identifier": "nodepth", "name": "No depth", "content": "In chat, depth missing.", "injection_position": 1 },
+        { "name": "No identifier", "content": "Never an entry." }
+    ]
+}

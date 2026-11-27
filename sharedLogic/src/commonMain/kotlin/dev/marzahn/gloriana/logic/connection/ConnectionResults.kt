@@ -25,6 +25,30 @@ enum class ConnectionDeleteResult {
   Failed,
 }
 
+sealed interface ConnectionRead {
+  class Readable(val connection: Connection) : ConnectionRead
+
+  data object Unreadable : ConnectionRead
+
+  data object Gone : ConnectionRead
+}
+
+sealed interface SamplersUpdateResult {
+  data object Updated : SamplersUpdateResult
+
+  data object Unchanged : SamplersUpdateResult
+
+  data class Refused(val problems: Set<ConnectionProblem>) : SamplersUpdateResult
+
+  data object Gone : SamplersUpdateResult
+
+  data object Unreadable : SamplersUpdateResult
+
+  data object StorageFull : SamplersUpdateResult
+
+  data object Failed : SamplersUpdateResult
+}
+
 enum class MakeDefaultResult {
   Made,
   Gone,

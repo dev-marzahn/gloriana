@@ -28,4 +28,3 @@ internal sealed interface CardShape {
 }
 
 internal fun JsonObject.hasKnownSpec() = string(SPEC_KEY) in setOf(SPEC_V2, SPEC_V3)
-

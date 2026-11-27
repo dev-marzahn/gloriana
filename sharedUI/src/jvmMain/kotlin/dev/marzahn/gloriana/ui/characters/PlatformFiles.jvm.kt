@@ -9,7 +9,7 @@ import androidx.compose.ui.graphics.asComposeImageBitmap
 import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.DesktopExportDestination
 import dev.marzahn.gloriana.logic.characters.DesktopPickedFile
-import dev.marzahn.gloriana.logic.characters.PickedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import org.jetbrains.skia.Bitmap
 import org.jetbrains.skia.Canvas
 import org.jetbrains.skia.Image

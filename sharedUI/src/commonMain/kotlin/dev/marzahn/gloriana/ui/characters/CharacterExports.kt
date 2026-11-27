@@ -3,9 +3,9 @@ package dev.marzahn.gloriana.ui.characters
 import dev.marzahn.gloriana.logic.app.ApplicationScope
 import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.CharacterRepository
-import dev.marzahn.gloriana.logic.characters.ExportDestination
-import dev.marzahn.gloriana.logic.characters.ExportProblem
 import dev.marzahn.gloriana.logic.characters.ExportResult
+import dev.marzahn.gloriana.logic.files.ExportDestination
+import dev.marzahn.gloriana.logic.files.ExportProblem
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.messages.MessageAction

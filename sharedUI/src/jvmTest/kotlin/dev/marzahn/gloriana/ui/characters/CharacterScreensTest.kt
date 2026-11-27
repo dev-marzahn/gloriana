@@ -25,11 +25,11 @@ import dev.marzahn.gloriana.logic.characters.AssetSource
 import dev.marzahn.gloriana.logic.characters.CharacterAsset
 import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.DamagedAs
-import dev.marzahn.gloriana.logic.characters.ExportFailure
-import dev.marzahn.gloriana.logic.characters.ExportProblem
 import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.KeptCardFields
 import dev.marzahn.gloriana.logic.characters.Pronouns
+import dev.marzahn.gloriana.logic.files.ExportFailure
+import dev.marzahn.gloriana.logic.files.ExportProblem
 import dev.marzahn.gloriana.ui.library.CharacterTile
 import dev.marzahn.gloriana.ui.library.LibraryActions
 import dev.marzahn.gloriana.ui.library.LibraryContent

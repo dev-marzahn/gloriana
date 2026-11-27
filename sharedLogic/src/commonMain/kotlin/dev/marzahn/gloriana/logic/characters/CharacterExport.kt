@@ -1,5 +1,7 @@
 package dev.marzahn.gloriana.logic.characters
 
+import dev.marzahn.gloriana.logic.files.ExportProblem
+
 enum class CardFormat {
   Png,
   Json,

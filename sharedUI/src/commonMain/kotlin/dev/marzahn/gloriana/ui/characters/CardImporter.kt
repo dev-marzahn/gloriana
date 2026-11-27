@@ -4,7 +4,7 @@ import dev.marzahn.gloriana.logic.characters.AlreadyInLibraryQuestion
 import dev.marzahn.gloriana.logic.characters.CharacterRepository
 import dev.marzahn.gloriana.logic.characters.FileImportResult
 import dev.marzahn.gloriana.logic.characters.ImportStatusListener
-import dev.marzahn.gloriana.logic.characters.PickedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import kotlinx.coroutines.flow.first
 import kotlin.uuid.Uuid
 

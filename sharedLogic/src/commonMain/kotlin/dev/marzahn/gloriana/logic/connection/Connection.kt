@@ -51,5 +51,3 @@ enum class ConnectionTemplate(val templateName: String, val format: ApiFormat, v
 
   fun fields(): ConnectionFields = ConnectionFields(name = templateName, format = format, baseUrl = baseUrl, model = "")
 }
-
-internal fun nameKey(name: String): String = name.lowercase()

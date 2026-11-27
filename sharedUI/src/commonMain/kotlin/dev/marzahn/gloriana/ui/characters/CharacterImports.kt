@@ -5,7 +5,7 @@ import dev.marzahn.gloriana.logic.characters.AlreadyInLibrary
 import dev.marzahn.gloriana.logic.characters.AlreadyInLibraryAnswer
 import dev.marzahn.gloriana.logic.characters.FileImportResult
 import dev.marzahn.gloriana.logic.characters.FileImportStatus
-import dev.marzahn.gloriana.logic.characters.PickedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.messages.MessageAction

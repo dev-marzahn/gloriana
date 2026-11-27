@@ -1,0 +1,9 @@
+{
+    "prompts": [
+        { "identifier": "main", "name": "Main Prompt", "role": "system", "content": "Hello." }
+    ],
+    "prompt_order": [
+        { "character_id": 100001, "order": [ { "identifier": "main", "enabled": true } ] }
+    ],
+    "gloriana": "MARKER-GLORIANA-STRING"
+}

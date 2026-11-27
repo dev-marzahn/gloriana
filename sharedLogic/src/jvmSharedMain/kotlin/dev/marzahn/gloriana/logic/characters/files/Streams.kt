@@ -1,7 +1,7 @@
 package dev.marzahn.gloriana.logic.characters.files
 
-import dev.marzahn.gloriana.logic.characters.ByteSink
-import dev.marzahn.gloriana.logic.characters.ByteSource
+import dev.marzahn.gloriana.logic.files.ByteSink
+import dev.marzahn.gloriana.logic.files.ByteSource
 import java.io.IOException
 import java.io.InputStream
 import java.io.OutputStream

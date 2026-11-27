@@ -3,7 +3,7 @@ package dev.marzahn.gloriana.ui.characters
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.ImageBitmap
 import dev.marzahn.gloriana.logic.characters.CardFormat
-import dev.marzahn.gloriana.logic.characters.PickedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 
 fun interface CardFilePicker {
   fun pick()

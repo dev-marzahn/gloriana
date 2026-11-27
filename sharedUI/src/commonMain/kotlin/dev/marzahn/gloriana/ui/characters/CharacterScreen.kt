@@ -27,12 +27,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.Character
-import dev.marzahn.gloriana.logic.characters.ExportFailure
+import dev.marzahn.gloriana.logic.files.ExportFailure
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaIconButton
@@ -43,8 +43,8 @@ import dev.marzahn.gloriana.ui.library.StartChatButton
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.resources.Res
-import dev.marzahn.gloriana.ui.resources.avatar_full_screen
 import dev.marzahn.gloriana.ui.resources.all_characters
+import dev.marzahn.gloriana.ui.resources.avatar_full_screen
 import dev.marzahn.gloriana.ui.resources.delete_character
 import dev.marzahn.gloriana.ui.resources.delete_failed
 import dev.marzahn.gloriana.ui.resources.delete_failed_detail

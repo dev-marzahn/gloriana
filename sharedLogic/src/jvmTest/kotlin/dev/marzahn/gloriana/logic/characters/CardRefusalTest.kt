@@ -4,6 +4,9 @@ import dev.marzahn.gloriana.logic.characters.CardFixtures.base64
 import dev.marzahn.gloriana.logic.characters.CardFixtures.image
 import dev.marzahn.gloriana.logic.characters.CardFixtures.png
 import dev.marzahn.gloriana.logic.characters.CardFixtures.zip
+import dev.marzahn.gloriana.logic.files.ByteSource
+import dev.marzahn.gloriana.logic.files.OpenedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach

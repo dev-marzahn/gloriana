@@ -19,7 +19,7 @@ import androidx.compose.ui.platform.LocalContext
 import dev.marzahn.gloriana.logic.characters.AndroidExportDestination
 import dev.marzahn.gloriana.logic.characters.AndroidPickedFile
 import dev.marzahn.gloriana.logic.characters.CardFormat
-import dev.marzahn.gloriana.logic.characters.PickedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 
 private const val ANY_FILE = "*/*"
 private const val PNG_TYPE = "image/png"

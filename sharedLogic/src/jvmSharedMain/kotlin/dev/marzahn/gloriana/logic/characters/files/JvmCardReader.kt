@@ -9,10 +9,13 @@ import dev.marzahn.gloriana.logic.characters.CardReader
 import dev.marzahn.gloriana.logic.characters.DamagedAs
 import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.ImportedCard
-import dev.marzahn.gloriana.logic.characters.OpenedFile
-import dev.marzahn.gloriana.logic.characters.PickedFile
 import dev.marzahn.gloriana.logic.characters.SizeLimit
 import dev.marzahn.gloriana.logic.characters.card.CardJsonRead
+import dev.marzahn.gloriana.logic.files.JSON_FILE_LIMIT_BYTES
+import dev.marzahn.gloriana.logic.files.LimitedRead
+import dev.marzahn.gloriana.logic.files.OpenedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
+import dev.marzahn.gloriana.logic.files.readWithin
 import java.io.BufferedInputStream
 import java.io.IOException
 import java.nio.file.Files
@@ -87,16 +90,18 @@ internal class JvmCardReader(private val store: AssetStore) : CardReader {
     FileKind.Other -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
   }
 
-  private fun readJson(input: BufferedInputStream): CardFileRead {
-    val bytes = CardJson.readWithin(input, CardLimits.CARD_JSON_BYTES)
-      ?: return CardFileRead.Failed(ImportFailure.TooLarge(SizeLimit.CardJson))
-    return when (val card = CardJson.read(bytes)) {
-      is CardJsonRead.Card -> CardFileRead.Card(
-        ImportedCard.JsonOnly(card.card, card.card.assets.map { it.toAsset(stored = null) }),
-      )
-      CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged(DamagedAs.Json))
-      CardJsonRead.NotACard -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
+  private fun readJson(input: BufferedInputStream): CardFileRead =
+    when (val read = readWithin(JSON_FILE_LIMIT_BYTES, input::read)) {
+      LimitedRead.TooLarge -> CardFileRead.Failed(ImportFailure.TooLarge(SizeLimit.CardJson))
+      is LimitedRead.Read -> cardFromJson(read.bytes)
     }
+
+  private fun cardFromJson(bytes: ByteArray): CardFileRead = when (val card = CardJson.read(bytes)) {
+    is CardJsonRead.Card -> CardFileRead.Card(
+      ImportedCard.JsonOnly(card.card, card.card.assets.map { it.toAsset(stored = null) }),
+    )
+    CardJsonRead.Damaged -> CardFileRead.Failed(ImportFailure.Damaged(DamagedAs.Json))
+    CardJsonRead.NotACard -> CardFileRead.Failed(ImportFailure.NotACharacterCard)
   }
 }
 

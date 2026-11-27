@@ -1,0 +1,106 @@
+{
+    "chat_completion_source": "openai",
+    "openai_model": "model-of-the-month",
+    "temperature": 0.85,
+    "frequency_penalty": 0.3,
+    "presence_penalty": 0.1,
+    "top_p": 0.92,
+    "top_k": 40,
+    "top_a": 0.2,
+    "min_p": 0.05,
+    "repetition_penalty": 1.1,
+    "openai_max_context": 32000,
+    "openai_max_tokens": 900,
+    "names_behavior": 0,
+    "send_if_empty": "",
+    "impersonation_prompt": "[Reply as {{user}} would, in their voice.]",
+    "new_chat_prompt": "[A new story begins]",
+    "new_group_chat_prompt": "[A new group story begins: {{group}}]",
+    "new_example_chat_prompt": "[Example scene]",
+    "continue_nudge_prompt": "[Carry on from where you stopped.]",
+    "reverse_proxy": "https://MARKER-PROXY-URL.example",
+    "proxy_password": "MARKER-PROXY-PASSWORD",
+    "max_context_unlocked": true,
+    "wi_format": "[Lore: {0}]",
+    "scenario_format": "[Setting: {{scenario}}]",
+    "personality_format": "[Temperament: {{personality}}]",
+    "group_nudge_prompt": "[Only {{char}} speaks next.]",
+    "stream_openai": true,
+    "MARKER-KEPT": "a key Gloriana doesn't use",
+    "prompts": [
+        {
+            "name": "Main Prompt",
+            "system_prompt": true,
+            "role": "system",
+            "content": "Write {{char}}'s next reply in this story with {{user}}.",
+            "identifier": "main",
+            "injection_order": 100,
+            "forbid_overrides": false
+        },
+        {
+            "identifier": "personaDescription",
+            "name": "Persona Description",
+            "system_prompt": true,
+            "marker": true
+        },
+        {
+            "identifier": "charDescription",
+            "name": "Char Description",
+            "system_prompt": true,
+            "marker": true
+        },
+        {
+            "identifier": "chatHistory",
+            "name": "Chat History",
+            "system_prompt": true,
+            "marker": true
+        },
+        {
+            "identifier": "3f0c9a2e-tone",
+            "name": "Tone reminder",
+            "system_prompt": false,
+            "role": "user",
+            "content": "Keep the tone quiet and warm.",
+            "injection_position": 1,
+            "injection_depth": 2,
+            "injection_trigger": ["normal", "continue"]
+        },
+        {
+            "identifier": "jailbreak",
+            "name": "Post-History Instructions",
+            "system_prompt": true,
+            "role": "system",
+            "content": "Stay in the scene."
+        },
+        {
+            "identifier": "MARKER-UNORDERED",
+            "name": "Not in the order",
+            "system_prompt": false,
+            "role": "system",
+            "content": "An entry no order list names."
+        }
+    ],
+    "prompt_order": [
+        {
+            "character_id": 100000,
+            "order": [
+                { "identifier": "main", "enabled": true },
+                { "identifier": "chatHistory", "enabled": true }
+            ]
+        },
+        {
+            "character_id": 100001,
+            "order": [
+                { "identifier": "main", "enabled": true },
+                { "identifier": "personaDescription", "enabled": true },
+                { "identifier": "charDescription", "enabled": false },
+                { "identifier": "chatHistory", "enabled": true },
+                { "identifier": "3f0c9a2e-tone", "enabled": true },
+                { "identifier": "jailbreak", "enabled": true }
+            ]
+        }
+    ],
+    "assistant_prefill": "",
+    "seed": 7,
+    "n": 1
+}

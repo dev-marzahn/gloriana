@@ -8,10 +8,10 @@ import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
 import dev.marzahn.gloriana.logic.connection.CustomHeader
 import dev.marzahn.gloriana.logic.connection.Samplers
-import dev.marzahn.gloriana.logic.connection.nameKey
 import dev.marzahn.gloriana.logic.keys.SealedSecret
 import dev.marzahn.gloriana.logic.storage.EntityType
 import dev.marzahn.gloriana.logic.storage.StoredJson
+import dev.marzahn.gloriana.logic.storage.nameKey
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject

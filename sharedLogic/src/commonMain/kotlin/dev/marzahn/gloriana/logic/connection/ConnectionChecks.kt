@@ -18,7 +18,7 @@ internal fun ConnectionFields.problems(): Set<ConnectionProblem> = buildSet {
   addAll(samplerProblems(samplers, format.samplerRanges))
 }
 
-private fun samplerProblems(samplers: Samplers, ranges: Map<Sampler, SamplerRange>): List<ConnectionProblem> =
+internal fun samplerProblems(samplers: Samplers, ranges: Map<Sampler, SamplerRange>): List<ConnectionProblem> =
   Sampler.entries.mapNotNull { sampler ->
     val value = sampler.valueIn(samplers) ?: return@mapNotNull null
     val range = ranges[sampler]

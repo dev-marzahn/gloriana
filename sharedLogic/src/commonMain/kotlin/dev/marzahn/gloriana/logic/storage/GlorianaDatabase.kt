@@ -13,13 +13,18 @@ import dev.marzahn.gloriana.logic.characters.storage.CharacterEntity
 import dev.marzahn.gloriana.logic.characters.storage.CharacterGreetingEntity
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionEntity
+import dev.marzahn.gloriana.logic.presets.storage.AddPresets
+import dev.marzahn.gloriana.logic.presets.storage.PresetDao
+import dev.marzahn.gloriana.logic.presets.storage.PresetEntity
+import dev.marzahn.gloriana.logic.presets.storage.PresetEntryEntity
+import dev.marzahn.gloriana.logic.presets.storage.PresetGroupEntity
 import dev.marzahn.gloriana.logic.settings.storage.LibrarySettingDao
 import dev.marzahn.gloriana.logic.settings.storage.LibrarySettingEntity
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 internal const val DATABASE_FILE_NAME = "library.db"
-internal const val DATABASE_VERSION = 3
+internal const val DATABASE_VERSION = 4
 
 @Database(
   entities = [
@@ -29,6 +34,9 @@ internal const val DATABASE_VERSION = 3
     CharacterAssetEntity::class,
     ConnectionEntity::class,
     LibrarySettingEntity::class,
+    PresetEntity::class,
+    PresetEntryEntity::class,
+    PresetGroupEntity::class,
   ],
   version = DATABASE_VERSION,
 )
@@ -43,9 +51,11 @@ abstract class GlorianaDatabase : RoomDatabase() {
   internal abstract fun connectionDao(): ConnectionDao
 
   internal abstract fun librarySettingDao(): LibrarySettingDao
+
+  internal abstract fun presetDao(): PresetDao
 }
 
-internal val migrations: List<Migration> = listOf(AddCharacters, AddConnectionsAndLibrarySettings)
+internal val migrations: List<Migration> = listOf(AddCharacters, AddConnectionsAndLibrarySettings, AddPresets)
 
 internal fun RoomDatabase.Builder<GlorianaDatabase>.buildGlorianaDatabase(): GlorianaDatabase =
   setDriver(BundledSQLiteDriver())

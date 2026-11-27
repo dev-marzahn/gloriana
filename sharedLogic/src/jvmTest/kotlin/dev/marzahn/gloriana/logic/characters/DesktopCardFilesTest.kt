@@ -1,5 +1,9 @@
 package dev.marzahn.gloriana.logic.characters
 
+import dev.marzahn.gloriana.logic.files.ExportFailure
+import dev.marzahn.gloriana.logic.files.ExportProblem
+import dev.marzahn.gloriana.logic.files.ExportWrite
+import dev.marzahn.gloriana.logic.files.OpenedFile
 import org.junit.jupiter.api.io.TempDir
 import java.io.IOException
 import java.nio.file.Files

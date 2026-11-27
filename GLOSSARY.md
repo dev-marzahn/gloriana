@@ -69,12 +69,17 @@ _Avoid_: API, provider, endpoint
 An ordered set of prompt entries that decides how a prompt is assembled.
 _Avoid_: Prompt template, jailbreak
 
+**Group**:
+A named header among a Preset's entries that organises the list only: it sends nothing, and an entry belongs to
+the nearest group above it. Not a group chat (a chat with several Characters), which is a different thing.
+_Avoid_: Folder, section, group header
+
 **Tag**:
 A label that any Character, Persona, Lorebook or preset can carry many of, used for filtering.
 
 **Folder**:
 A nestable container that holds each item in exactly one place, used for browsing.
-_Avoid_: Group, category
+_Avoid_: Category, Group (a Group is a header among a Preset's entries)
 
 **Side Chat**:
 An out-of-character conversation beside a chat whose messages never enter that chat's prompt or Summary.
