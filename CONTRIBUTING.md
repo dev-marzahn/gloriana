@@ -82,6 +82,10 @@ stack trace and exit code 1. The file is `library.db`:
   test run never touches a real library: `~/Library/Application Support/` on macOS, `%APPDATA%` on Windows,
   `$XDG_DATA_HOME` (or `~/.local/share`) on Linux.
 
+Files a row points to (avatars, a Character Card's assets) are in `assets/<first two hex digits>/<SHA-256>` beside
+`library.db`. `AssetStore` writes a file to `assets/staging` while hashing it, syncs it, and renames it into place only
+after the import has read the whole file, so a stored file is never partial and is never changed; rows hold the hash.
+
 Rules for every table:
 
 - **IDs and timestamps come only from `IdFactory` and `UpdatedAtClock`.** Every row's `id` is a UUIDv7 from the
