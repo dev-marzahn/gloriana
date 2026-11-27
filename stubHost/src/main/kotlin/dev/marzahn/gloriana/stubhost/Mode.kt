@@ -26,6 +26,7 @@ internal data class Mode(
   val midwayPause: Duration = Duration.ZERO,
   val lingerPause: Duration = Duration.ZERO,
   val malformedContentType: Boolean = false,
+  val listing: Listing = Listing.MODELS,
 )
 
 internal class Modes(defaultDelay: Duration, defaultSlowPause: Duration) {
@@ -51,6 +52,8 @@ internal class Modes(defaultDelay: Duration, defaultSlowPause: Duration) {
     "linger" to Mode(Outcome.Replied(Reply.plain), lingerPause = defaultDelay),
     "bad-type" to Mode(Outcome.Replied(Reply.plain), malformedContentType = true),
     "redirect" to Mode(Outcome.Redirects),
+    "empty-list" to Mode(Outcome.Replied(Reply.plain), listing = Listing.EMPTY),
+    "no-list" to Mode(Outcome.Replied(Reply.plain), listing = Listing.NONE),
   )
 
   private val timed: Map<String, (Duration) -> Mode> = mapOf(DELAY to ::delayed, SLOW to ::slowed)

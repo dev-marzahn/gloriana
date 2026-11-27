@@ -35,6 +35,8 @@ sealed interface ConnectionProblem {
 
   data object KeyBadCharacter : ConnectionProblem
 
+  data object KeyMissing : ConnectionProblem
+
   data class HeaderNameEmpty(val index: Int) : ConnectionProblem
 
   data class HeaderNameNotToken(val index: Int) : ConnectionProblem

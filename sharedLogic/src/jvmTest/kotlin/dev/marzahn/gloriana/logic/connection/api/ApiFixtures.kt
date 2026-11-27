@@ -4,6 +4,10 @@ import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.keys.HeaderName
+import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.OpenResult
+import dev.marzahn.gloriana.logic.keys.SealedSecret
+import dev.marzahn.gloriana.logic.keys.SecretSlot
 import dev.marzahn.gloriana.stubhost.RunningStubHost
 import dev.marzahn.gloriana.stubhost.startStubHost
 import kotlinx.coroutines.flow.toList
@@ -18,6 +22,8 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 internal const val TEST_KEY = "sk-stub/MARKER-1"
+internal const val PLAIN = "Hello from the stub host. This reply arrives in parts."
+internal val STUB_MODEL_IDS = listOf("stub-model-large", "stub-model-small")
 
 internal val greeting = listOf(
   PromptSection(SectionRole.System, "You are Wren."),
@@ -35,6 +41,10 @@ internal fun openedConnection(
 ) = OpenedConnection(fields(ConnectionFields("Stub", format, baseUrl, "model-1")), key, headers)
 
 internal fun json(text: String): JsonObject = Json.parseToJsonElement(text).jsonObject
+
+internal class AnsweringVault(vault: KeyVault, private val answer: OpenResult) : KeyVault by vault {
+  override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = answer
+}
 
 internal class StubHostReplies(directory: Path, delay: Duration = 3.seconds) : AutoCloseable {
   val host: RunningStubHost = runBlocking { startStubHost(directory.resolve("record.jsonl"), delay = delay) }

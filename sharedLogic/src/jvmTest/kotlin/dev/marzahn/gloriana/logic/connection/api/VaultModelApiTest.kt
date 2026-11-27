@@ -11,8 +11,6 @@ import dev.marzahn.gloriana.logic.connection.entered
 import dev.marzahn.gloriana.logic.keys.KeyFileResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.OpenResult
-import dev.marzahn.gloriana.logic.keys.SealedSecret
-import dev.marzahn.gloriana.logic.keys.SecretSlot
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
@@ -87,14 +85,10 @@ class VaultModelApiTest {
 
     mapOf(OpenResult.Locked to ModelApiError.KeysLocked, OpenResult.Unavailable to ModelApiError.KeysUnavailable)
       .forEach { (answer, refusal) ->
-        val events = api(Answering(library.vault, answer)).reply(greeting, connection).toList()
+        val events = api(AnsweringVault(library.vault, answer)).reply(greeting, connection).toList()
 
         assertEquals(listOf<ModelEvent>(ModelEvent.Failed(refusal)), events, "$answer")
       }
     assertEquals(emptyList(), stub.recordedRequests())
-  }
-
-  private class Answering(vault: KeyVault, private val answer: OpenResult) : KeyVault by vault {
-    override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = answer
   }
 }

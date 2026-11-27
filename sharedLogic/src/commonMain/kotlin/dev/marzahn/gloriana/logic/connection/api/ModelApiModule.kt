@@ -11,4 +11,5 @@ val modelApiModule = module {
   single { HostCalls(get()) }
   single { ModelReplies(get()) }
   single { VaultModelApi(get(), get(), get()) } bind ModelApi::class
+  single { VaultConnectionProbe(get(), get(), get(), get()) } bind ConnectionProbe::class
 }

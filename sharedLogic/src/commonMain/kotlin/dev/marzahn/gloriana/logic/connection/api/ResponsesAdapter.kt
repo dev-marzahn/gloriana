@@ -12,6 +12,7 @@ import kotlinx.serialization.json.put
 
 internal object ResponsesAdapter : FormatAdapter {
   override val path = "responses"
+  override val modelListTarget = "models"
   override val fixedHeaders = emptyList<HostHeader>()
 
   override val keyHeaderName = AuthorizationHeader

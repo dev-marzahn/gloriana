@@ -34,6 +34,16 @@ class EndpointsTest {
   }
 
   @Test
+  fun `a GET of models in a mode is the model list, anything else there is nowhere`() {
+    assertEquals(Target.ModelList(normal), endpoints.resolve(HttpMethod.Get, "/summary/normal/v1/models"))
+    listOf(
+      HttpMethod.Post to "/normal/v1/models",
+      HttpMethod.Get to "/v1/models",
+      HttpMethod.Get to "/fast/v1/models",
+    ).forEach { (method, path) -> assertEquals(Target.Nowhere, endpoints.resolve(method, path), "$method $path") }
+  }
+
+  @Test
   fun `a path that names no format is nowhere`() {
     listOf("/normal/v2/messages", "/normal/v1/completions", "/normal/v1", "/", "/record").forEach {
       assertEquals(Target.Nowhere, endpoints.resolve(HttpMethod.Post, it), it)

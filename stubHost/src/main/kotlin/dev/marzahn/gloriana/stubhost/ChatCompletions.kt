@@ -51,14 +51,16 @@ internal data object ChatCompletions : ApiFormat {
 
   override fun error(failure: Failure): String = openAiError(failure)
 
+  override fun modelList(models: List<StubModel>): String = openAiModelList(models)
+
   private fun delta(segment: Segment, text: String): ChatDelta = when (segment) {
     is Segment.Reasoning -> ChatDelta(reasoningContent = text)
     is Segment.Text -> ChatDelta(content = text)
     is Segment.Refusal -> ChatDelta(refusal = text)
   }
-
-  private fun List<String>.joinedOrNull(): String? = if (isEmpty()) null else joinToString("")
-
-  private fun usage(tokens: Tokens) =
-    ChatUsage(promptTokens = tokens.input, completionTokens = tokens.output, totalTokens = tokens.total)
 }
+
+private fun List<String>.joinedOrNull(): String? = if (isEmpty()) null else joinToString("")
+
+private fun usage(tokens: Tokens) =
+  ChatUsage(promptTokens = tokens.input, completionTokens = tokens.output, totalTokens = tokens.total)

@@ -213,15 +213,24 @@ Keys and custom header values go through `KeyVault` (`logic.keys`) and nothing e
 
 ## Calling a model
 
-`ModelApi` (`logic.connection.api`) is the one way to reach a model: it takes the prompt as role-tagged sections and a
-`Connection`, opens the key and header values from `KeyVault` just for the request, and returns a flow of events (text,
-reasoning, usage, then one finish or one failure). Every failure is a `ModelApiError`; nothing throws to the caller.
+`ModelApi` (`logic.connection.api`) is the one way to ask a saved Connection for a reply: it takes the prompt as
+role-tagged sections and a `Connection`, opens the key and header values from `KeyVault` just for the request, and
+returns a flow of events (text, reasoning, usage, then one finish or one failure). Every failure is a `ModelApiError`;
+nothing throws to the caller. `ConnectionProbe` (same package) is the one way to try a Connection form before or
+without saving: Test and the host's model list take a `ConnectionDraft` and the stored `Connection`, if any, refuse
+what the save would refuse (the name aside; the model list also lets an empty model through), and store nothing.
+`Connection.asDraft()` is the form as saved.
 
-- Each API format is one `FormatAdapter`: its path, its own headers, its key header, the request body (the
-  Connection's custom body JSON merged over it with `mergedWith`) and the readers for a stream and a whole reply. A
-  `StreamReader` keeps its own `ReplyState` and decides the final events, also when a stream ends early (`ended`).
-  Custom headers come after the adapter's and replace one of the same name. Whether a reply streams is read from the
-  merged body's `stream`, which must be a JSON boolean.
+- `ConnectionDraft.check` (`logic.connection`) is the one check of what the save refuses, for the save and the probe:
+  its `Ready` result holds the normalised fields and the `SecretSources`, where each key or header value comes from
+  (typed, or a stored secret and its slot). Only the save turns sources into a `secretsPlan` for its target. Secret
+  values are opened in one place, `openSecrets`, from sources, mapping a locked, missing or unavailable vault to its
+  `ModelApiError`; `Connection.secretSources()` gives a saved Connection's.
+- Each API format is one `FormatAdapter`: its path and model list target, its own headers, its key header, the
+  request body (the Connection's custom body JSON merged over it with `mergedWith`) and the readers for a stream and a
+  whole reply. A `StreamReader` keeps its own `ReplyState` and decides the final events, also when a stream ends early
+  (`ended`). Custom headers come after the adapter's and replace one of the same name. Whether a reply streams is read
+  from the merged body's `stream`, which must be a JSON boolean.
 - `Sampler`, `SamplerRange` and each `ApiFormat`'s `samplerRanges` (`logic.connection`) are the one sampler model:
   the save checks and `mergeSamplers` both use them. A format sends only its own samplers; the Connection's value wins,
   and a global value goes only where it is inside the format's range.

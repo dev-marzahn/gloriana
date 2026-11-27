@@ -43,7 +43,8 @@ class ModesTest {
     assertEquals(
       listOf(
         "normal", "reasoning", "status", "refusal", "length", "delay", "slow", "401", "403", "429", "500", "key-echo",
-        "key-echo-429", "stream-error", "cut-off", "stall", "linger", "bad-type", "redirect", "delay-<ms>", "slow-<ms>",
+        "key-echo-429", "stream-error", "cut-off", "stall", "linger", "bad-type", "redirect", "empty-list", "no-list",
+        "delay-<ms>", "slow-<ms>",
       ),
       modes.names,
     )

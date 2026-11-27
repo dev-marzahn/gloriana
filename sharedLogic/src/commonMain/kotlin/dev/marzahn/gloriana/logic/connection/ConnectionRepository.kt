@@ -122,14 +122,10 @@ private suspend fun ConnectionWrites.prepared(dao: ConnectionDao, request: SaveR
   }
 
 private suspend fun ConnectionWrites.ready(target: SaveTarget, draft: ConnectionDraft): Prepared {
-  val fields = draft.fields.normalised()
-  val plan = secretsPlan(target.id, target.stored, draft)
-  val problems = fields.problems() + draft.key.problems() + draft.headers.problems() + plan.gone +
-    setOfNotNull(ConnectionProblem.NameTaken.takeIf { nameTakenByAnother(target.id, fields.name) })
-  return if (problems.isEmpty()) {
-    Prepared.Ready(target, fields, plan)
-  } else {
-    Prepared.Stop(ConnectionSaveResult.Refused(problems))
+  val nameTaken = nameTakenByAnother(target.id, draft.fields.normalised().name)
+  return when (val check = draft.check(target.stored, setOfNotNull(ConnectionProblem.NameTaken.takeIf { nameTaken }))) {
+    is DraftCheck.Ready -> Prepared.Ready(target, check.fields, secretsPlan(target.id, check.sources))
+    is DraftCheck.Refused -> Prepared.Stop(ConnectionSaveResult.Refused(check.problems))
   }
 }
 

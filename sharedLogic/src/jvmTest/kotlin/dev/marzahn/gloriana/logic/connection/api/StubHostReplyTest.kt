@@ -17,8 +17,6 @@ import kotlin.test.assertTrue
 import kotlin.time.Duration.Companion.seconds
 import kotlin.time.TimeSource
 
-private const val PLAIN = "Hello from the stub host. This reply arrives in parts."
-
 class StubHostReplyTest {
   @TempDir
   lateinit var directory: Path

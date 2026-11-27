@@ -59,6 +59,8 @@ internal data object OpenAiResponses : ApiFormat {
 
   override fun error(failure: Failure): String = openAiError(failure)
 
+  override fun modelList(models: List<StubModel>): String = openAiModelList(models)
+
   private fun numbered(sequenceNumber: Int, event: ResponsesEvent): SseEvent {
     val json = wireJson.encodeToJsonElement(ResponsesEvent.serializer(), event).jsonObject
     return SseEvent.named(JsonObject(json + (SEQUENCE_NUMBER to JsonPrimitive(sequenceNumber))))

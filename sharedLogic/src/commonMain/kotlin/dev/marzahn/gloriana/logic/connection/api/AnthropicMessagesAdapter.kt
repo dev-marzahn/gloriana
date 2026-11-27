@@ -12,10 +12,12 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
 private const val VERSION = "2023-06-01"
+private const val MODEL_PAGE_LIMIT = 1_000
 internal const val OPENING_USER_TURN = "Let's get started."
 
 internal object AnthropicMessagesAdapter : FormatAdapter {
   override val path = "messages"
+  override val modelListTarget = "models?limit=$MODEL_PAGE_LIMIT"
   override val fixedHeaders = listOf(HostHeader(HeaderName.of("anthropic-version"), VERSION))
 
   override val keyHeaderName = HeaderName.of("x-api-key")

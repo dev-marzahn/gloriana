@@ -39,12 +39,12 @@ internal fun headersWith(own: List<HostHeader>, custom: List<HostHeader>): List<
 internal fun hostRequest(
   connection: OpenedConnection,
   method: HttpMethod,
-  path: String,
+  target: String,
   body: JsonObject?,
 ): HostRequest? {
   val adapter = connection.fields.format.adapter
   val ownHeaders = adapter.fixedHeaders + listOfNotNull(connection.key?.let { adapter.keyHeader(it) })
-  val url = parseUrl("${connection.fields.baseUrl}/$path") ?: return null
+  val url = parseUrl("${connection.fields.baseUrl}/$target") ?: return null
   return HostRequest(
     method = method,
     url = url,

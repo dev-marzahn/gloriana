@@ -2,8 +2,22 @@ package dev.marzahn.gloriana.stubhost
 
 import io.ktor.http.Headers
 import kotlinx.serialization.Serializable
+import java.time.Instant
 
 private const val BEARER = "Bearer "
+private const val MODEL_OWNER = "stub-host"
+private val modelCreatedSeconds = Instant.parse(CREATED_AT).epochSecond
+
+@Serializable
+internal data class OpenAiModelList(val `object`: String = "list", val data: List<OpenAiModel>)
+
+@Serializable
+internal data class OpenAiModel(val id: String, val `object`: String = "model", val created: Long, val ownedBy: String)
+
+internal fun openAiModelList(models: List<StubModel>): String = wireJson.encodeToString(
+  OpenAiModelList.serializer(),
+  OpenAiModelList(data = models.map { OpenAiModel(id = it.id, created = modelCreatedSeconds, ownedBy = MODEL_OWNER) }),
+)
 
 @Serializable
 internal data class OpenAiError(val error: OpenAiErrorDetail)

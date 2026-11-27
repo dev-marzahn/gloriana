@@ -10,6 +10,7 @@ import kotlinx.serialization.json.JsonObject
 
 internal interface FormatAdapter {
   val path: String
+  val modelListTarget: String
   val fixedHeaders: List<HostHeader>
   val keyHeaderName: HeaderName
 

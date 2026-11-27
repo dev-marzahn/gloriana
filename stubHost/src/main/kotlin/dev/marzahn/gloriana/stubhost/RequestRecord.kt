@@ -27,6 +27,7 @@ internal data class RecordedRequest(
   @Serializable(with = InstantText::class) val receivedAt: Instant,
   val method: String,
   val path: String,
+  val query: String,
   val headers: Map<String, List<String>>,
   val body: JsonElement,
 )
@@ -38,8 +39,9 @@ internal class RequestRecord private constructor(
 ) {
   private val lock = Mutex()
 
-  suspend fun append(method: String, path: String, headers: Map<String, List<String>>, body: String) {
-    val request = RecordedRequest(clock.instant(), method, path, headers.mapKeys { it.key.lowercase() }, bodyJson(body))
+  suspend fun append(method: String, path: String, query: String, headers: Map<String, List<String>>, body: String) {
+    val lowerCaseHeaders = headers.mapKeys { it.key.lowercase() }
+    val request = RecordedRequest(clock.instant(), method, path, query, lowerCaseHeaders, bodyJson(body))
     val line = Json.encodeToString(RecordedRequest.serializer(), request) + "\n"
     lock.withLock { withContext(io) { Files.writeString(file, line, APPEND) } }
   }

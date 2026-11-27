@@ -31,6 +31,16 @@ internal data object AnthropicMessages : ApiFormat {
   override fun streamError(failure: Failure, request: ModelRequest, sent: Int): SseEvent =
     SseEvent(ERROR_EVENT, error(failure))
 
+  override fun modelList(models: List<StubModel>): String = wireJson.encodeToString(
+    AnthropicModelPage.serializer(),
+    AnthropicModelPage(
+      data = models.map { AnthropicModel(id = it.id, displayName = it.displayName, createdAt = CREATED_AT) },
+      hasMore = false,
+      firstId = models.firstOrNull()?.id,
+      lastId = models.lastOrNull()?.id,
+    ),
+  )
+
   override fun error(failure: Failure): String = wireJson.encodeToString(
     AnthropicError.serializer(),
     AnthropicError(error = AnthropicErrorDetail(errorType(failure.kind), failure.message)),

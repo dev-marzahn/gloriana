@@ -17,6 +17,8 @@ internal sealed interface ApiFormat {
 
   fun error(failure: Failure): String
 
+  fun modelList(models: List<StubModel>): String
+
   companion object {
     val all: List<ApiFormat> = listOf(AnthropicMessages, ChatCompletions, OpenAiResponses)
     val byPath: Map<String, ApiFormat> = all.associateBy(ApiFormat::path)

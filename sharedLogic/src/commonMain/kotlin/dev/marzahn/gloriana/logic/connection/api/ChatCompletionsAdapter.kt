@@ -17,6 +17,7 @@ private const val STREAM_OPTIONS = "stream_options"
 
 internal object ChatCompletionsAdapter : FormatAdapter {
   override val path = "chat/completions"
+  override val modelListTarget = "models"
   override val fixedHeaders = emptyList<HostHeader>()
 
   override val keyHeaderName = AuthorizationHeader

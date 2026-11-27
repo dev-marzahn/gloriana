@@ -29,6 +29,24 @@ internal fun samplerProblems(samplers: Samplers, ranges: Map<Sampler, SamplerRan
     }
   }
 
+internal sealed interface DraftCheck {
+  class Ready(val fields: ConnectionFields, val sources: SecretSources) : DraftCheck
+
+  class Refused(val problems: Set<ConnectionProblem>) : DraftCheck
+}
+
+internal fun ConnectionDraft.check(
+  stored: Connection?,
+  alsoRefused: Set<ConnectionProblem> = emptySet(),
+  waivedFieldProblems: Set<ConnectionProblem> = emptySet(),
+): DraftCheck {
+  val normalised = fields.normalised()
+  val lookup = lookUpSources(stored, this)
+  val problems =
+    (normalised.problems() - waivedFieldProblems) + key.problems() + headers.problems() + lookup.gone + alsoRefused
+  return if (problems.isEmpty()) DraftCheck.Ready(normalised, lookup.sources) else DraftCheck.Refused(problems)
+}
+
 internal fun KeyInput.problems(): Set<ConnectionProblem> =
   setOfNotNull(ConnectionProblem.KeyBadCharacter.takeIf { this is KeyInput.Entered && !isSendableHeaderValue(value) })
 

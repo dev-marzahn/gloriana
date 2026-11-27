@@ -11,6 +11,9 @@ data class ConnectionDraft(
   val headers: List<HeaderDraft> = emptyList(),
 )
 
+fun Connection.asDraft(): ConnectionDraft =
+  ConnectionDraft(fields, KeyInput.Kept, headers.map { HeaderDraft(it.name, HeaderValueInput.Kept(it.name)) })
+
 data class HeaderDraft(val name: String, val value: HeaderValueInput)
 
 sealed interface KeyInput {

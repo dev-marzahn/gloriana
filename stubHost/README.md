@@ -48,6 +48,8 @@ still get their own base URLs and the record tells them apart: `/chat/normal/v1`
 | `bad-type` | the normal reply under a malformed `Content-Type` |
 | `redirect` | 307 to the same path in `normal` mode |
 | `stream-error` | streamed: the normal reply's text, then the format's error in the stream (Anthropic `error`, a Chat Completions `error` chunk with no `[DONE]`, Responses `response.failed`); whole: `500` |
+| `empty-list` | the normal reply; its model list is empty |
+| `no-list` | the normal reply; its model list answers 404 in the format's error shape |
 
 A request body needs `model`, which the reply names again. A reply streams when the body has `"stream": true` and
 comes whole when it is `false`, `null` or missing; any other value is refused. Both carry usage; a streamed Chat
@@ -55,17 +57,33 @@ Completions reply sends its usage chunk only when the body sets `stream_options.
 a request gets 400 in the format's error shape. A format's path with an unknown mode, or a method other than POST, gets
 404 in that format's error shape; any other path gets 404 with how to call the host.
 
+## The model list
+
+`GET {base}/models` answers with two models, `stub-model-large` and `stub-model-small`. A request that carries
+`anthropic-version` gets an Anthropic model page, any other an OpenAI list:
+
+```json
+{"data":[{"type":"model","id":"stub-model-large","display_name":"Stub Model Large","created_at":"2026-01-01T00:00:00Z"},…],"has_more":false,"first_id":"stub-model-large","last_id":"stub-model-small"}
+{"object":"list","data":[{"id":"stub-model-large","object":"model","created":1767225600,"owned_by":"stub-host"},…]}
+```
+
+`empty-list` lists no models and `no-list` answers 404, as above. A failing mode (`401`, `403`, `429`, `500`,
+`stream-error`, `key-echo`, `key-echo-429`) answers with its failure in that shape, `delay` pauses first, and
+`redirect` redirects. Every other mode lists the two models: `slow`, `stall`, `linger`, `bad-type` and `cut-off` change
+nothing here.
+
 ## The record
 
 Every request, to any path but `/record`, is one JSON line appended to the record file:
 
 ```json
-{"receivedAt":"2026-01-01T12:00:00Z","method":"POST","path":"/summary/normal/v1/messages","headers":{"x-api-key":["MARKER-KEY-1"]},"body":{"model":"…"}}
+{"receivedAt":"2026-01-01T12:00:00Z","method":"POST","path":"/summary/normal/v1/messages","query":"","headers":{"x-api-key":["MARKER-KEY-1"]},"body":{"model":"…"}}
 ```
 
-Header names are lower case, each with its list of values. `body` is the parsed JSON, the raw text when it isn't
-JSON, or `null` when empty. `GET /record` serves the same lines (`application/x-ndjson`), so a marker string can be
-searched for with `curl -s http://127.0.0.1:<port>/record | grep MARKER-`.
+`query` is the text after `?`, empty when there is none. Header names are lower case, each with its list of values.
+`body` is the parsed JSON, the raw text when it isn't JSON, or `null` when empty. `GET /record` serves the same lines
+(`application/x-ndjson`), so a marker string can be searched for with
+`curl -s http://127.0.0.1:<port>/record | grep MARKER-`.
 
 A record file named with `--record` is appended to, never cleared, so it also holds earlier runs' requests. Use a new
 file, or the default temporary one, for a search that must see only this run.
