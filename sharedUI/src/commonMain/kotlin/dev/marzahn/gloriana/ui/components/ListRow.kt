@@ -1,0 +1,179 @@
+package dev.marzahn.gloriana.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import dev.marzahn.gloriana.ui.resources.Res
+import dev.marzahn.gloriana.ui.resources.ic_add
+import dev.marzahn.gloriana.ui.theme.GlorianaIndication
+import dev.marzahn.gloriana.ui.theme.GlorianaTheme
+import dev.marzahn.gloriana.ui.theme.Spacing
+import org.jetbrains.compose.resources.painterResource
+
+enum class ListDensity { Screen, Pane }
+
+enum class RowSelection { NotSelectable, Unselected, Selected }
+
+sealed interface RowLine {
+  data class Plain(val text: String) : RowLine
+
+  data class Running(val text: String) : RowLine
+}
+
+private val ListDensity.rowHeight: Dp
+  get() = when (this) {
+    ListDensity.Screen -> 72.dp
+    ListDensity.Pane -> 56.dp
+  }
+
+private val ListDensity.addRowHeight: Dp
+  get() = when (this) {
+    ListDensity.Screen -> 48.dp
+    ListDensity.Pane -> 40.dp
+  }
+
+private fun ListDensity.rowSidePadding(spacing: Spacing): Dp = when (this) {
+  ListDensity.Screen -> spacing.s8
+  ListDensity.Pane -> spacing.s10
+}
+
+private val DotSlot = 14.dp
+private val Dot = 8.dp
+private val DotHalo = 3.dp
+
+private fun Modifier.rowClick(selection: RowSelection, shape: Shape, onClick: () -> Unit): Modifier {
+  val indication = GlorianaIndication(shape)
+  return if (selection == RowSelection.NotSelectable) {
+    clickable(interactionSource = null, indication = indication, role = Role.Button, onClick = onClick)
+  } else {
+    selectable(
+      selected = selection == RowSelection.Selected,
+      interactionSource = null,
+      indication = indication,
+      onClick = onClick,
+    )
+  }
+}
+
+@Composable
+fun ListRow(
+  name: String,
+  line: RowLine,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  selection: RowSelection = RowSelection.NotSelectable,
+  density: ListDensity = ListDensity.Screen,
+  time: String? = null,
+  avatar: @Composable () -> Unit = {},
+) {
+  val colors = GlorianaTheme.colors
+  val spacing = GlorianaTheme.spacing
+  val shape = GlorianaTheme.shapes.control
+  val type = GlorianaTheme.type.material
+  val selected = selection == RowSelection.Selected
+  val fill by animateLookColor(if (selected) colors.accentSoft else Color.Transparent)
+  val ring by animateLookColor(if (selected) colors.accentRing else Color.Transparent)
+  Row(
+    modifier
+      .fillMaxWidth()
+      .rowClick(selection, shape, onClick)
+      .background(fill, shape)
+      .border(1.dp, ring, shape)
+      .heightIn(min = density.rowHeight)
+      .padding(horizontal = density.rowSidePadding(spacing), vertical = spacing.s10),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(spacing.s12),
+  ) {
+    avatar()
+    Column(Modifier.weight(1f)) {
+      Text(name, style = type.titleMedium, color = colors.text, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      RowLineText(line)
+    }
+    if (time != null) Text(time, style = type.labelSmall, color = colors.textSubtle)
+  }
+}
+
+@Composable
+private fun RowLineText(line: RowLine) {
+  val colors = GlorianaTheme.colors
+  val style = GlorianaTheme.type.material.bodyMedium
+  when (line) {
+    is RowLine.Plain ->
+      Text(line.text, style = style, color = colors.textMuted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    is RowLine.Running -> Row(verticalAlignment = Alignment.CenterVertically) {
+      Box(Modifier.size(DotSlot), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(Dot + DotHalo * 2).background(colors.accentRing, GlorianaTheme.shapes.pill))
+        Box(Modifier.size(Dot).background(colors.accent, GlorianaTheme.shapes.pill))
+      }
+      Spacer(Modifier.width(GlorianaTheme.spacing.s6))
+      Text(line.text, style = style, color = colors.accentText, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+  }
+}
+
+private val DashOn = 4.dp
+private val DashOff = 3.dp
+
+@Composable
+fun AddRow(
+  label: String,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+  density: ListDensity = ListDensity.Screen,
+) {
+  val colors = GlorianaTheme.colors
+  val spacing = GlorianaTheme.spacing
+  val shape = GlorianaTheme.shapes.control
+  val radius = GlorianaTheme.shapes.controlRadius
+  Row(
+    modifier
+      .fillMaxWidth()
+      .rowClick(RowSelection.NotSelectable, shape, onClick)
+      .drawBehind {
+        val stroke = 1.dp.toPx()
+        drawRoundRect(
+          color = colors.borderStrong,
+          topLeft = Offset(stroke / 2, stroke / 2),
+          size = Size(size.width - stroke, size.height - stroke),
+          cornerRadius = CornerRadius(radius.toPx()),
+          style = Stroke(stroke, pathEffect = PathEffect.dashPathEffect(floatArrayOf(DashOn.toPx(), DashOff.toPx()))),
+        )
+      }
+      .heightIn(min = density.addRowHeight)
+      .padding(spacing.s12),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(spacing.s10),
+  ) {
+    Icon(painterResource(Res.drawable.ic_add), null, tint = colors.textMuted)
+    Text(label, style = GlorianaTheme.type.material.labelLarge, color = colors.textMuted)
+  }
+}

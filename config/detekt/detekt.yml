@@ -8,3 +8,8 @@ naming:
 Compose:
   Material2:
     active: true
+  CompositionLocalAllowlist:
+    allowedCompositionLocals:
+      - LocalLook
+      - LocalShellNavigator
+      - LocalWorkbenchPanes
