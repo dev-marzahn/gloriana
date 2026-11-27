@@ -110,7 +110,7 @@ class ConnectionRepository internal constructor(
 private suspend fun ConnectionWrites.ready(target: SaveTarget, draft: ConnectionDraft): Prepared {
   val fields = draft.fields.normalised()
   val plan = secretsPlan(target.id, target.stored, draft)
-  val problems = fields.problems() + draft.headers.problems() + plan.gone +
+  val problems = fields.problems() + draft.key.problems() + draft.headers.problems() + plan.gone +
     setOfNotNull(ConnectionProblem.NameTaken.takeIf { nameTakenByAnother(target.id, fields.name) })
   return if (problems.isEmpty()) {
     Prepared.Ready(target, fields, plan)

@@ -3,6 +3,8 @@ package dev.marzahn.gloriana.stubhost
 import io.ktor.http.Headers
 
 private const val SIGNATURE = "stub-signature"
+private const val ERROR_EVENT = "error"
+private val closingEvents = setOf("message_delta", "message_stop")
 
 internal data object AnthropicMessages : ApiFormat {
   override val path = "messages"
@@ -23,6 +25,12 @@ internal data object AnthropicMessages : ApiFormat {
     return events.map { SseEvent.namedByType(AnthropicEvent.serializer(), it) }
   }
 
+  override fun unfinishedStream(reply: Reply, request: ModelRequest): List<SseEvent> =
+    stream(reply, request).filterNot { it.name in closingEvents }
+
+  override fun streamError(failure: Failure, request: ModelRequest, sent: Int): SseEvent =
+    SseEvent(ERROR_EVENT, error(failure))
+
   override fun error(failure: Failure): String = wireJson.encodeToString(
     AnthropicError.serializer(),
     AnthropicError(error = AnthropicErrorDetail(errorType(failure.kind), failure.message)),
@@ -41,8 +49,11 @@ internal data object AnthropicMessages : ApiFormat {
     usage = AnthropicUsage(inputTokens = tokens.input, outputTokens = tokens.output),
   )
 
-  private fun stopReason(reply: Reply): AnthropicStopReason =
-    if (reply.refused) AnthropicStopReason.REFUSAL else AnthropicStopReason.END_TURN
+  private fun stopReason(reply: Reply): AnthropicStopReason = when {
+    reply.refused -> AnthropicStopReason.REFUSAL
+    reply.hitLimit -> AnthropicStopReason.MAX_TOKENS
+    else -> AnthropicStopReason.END_TURN
+  }
 }
 
 private class BlockShape(val start: AnthropicBlock, val deltas: List<AnthropicDelta>, val full: AnthropicBlock) {
@@ -68,6 +79,7 @@ private fun shape(segment: Segment): BlockShape = when (segment) {
 private fun errorType(kind: FailureKind): String = when (kind) {
   FailureKind.BAD_REQUEST -> "invalid_request_error"
   FailureKind.KEY_REJECTED -> "authentication_error"
+  FailureKind.FORBIDDEN -> "permission_error"
   FailureKind.NOT_FOUND -> "not_found_error"
   FailureKind.RATE_LIMITED -> "rate_limit_error"
   FailureKind.HOST_ERROR -> "api_error"

@@ -2,13 +2,6 @@ package dev.marzahn.gloriana.logic.connection
 
 import kotlinx.serialization.Serializable
 
-enum class DecimalSampler {
-  Temperature,
-  TopP,
-  FrequencyPenalty,
-  PresencePenalty,
-}
-
 @Serializable
 data class Samplers(
   val temperature: Double? = null,
@@ -17,11 +10,66 @@ data class Samplers(
   val frequencyPenalty: Double? = null,
   val presencePenalty: Double? = null,
   val seed: Long? = null,
-) {
-  fun notFinite(): Set<DecimalSampler> = mapOf(
-    DecimalSampler.Temperature to temperature,
-    DecimalSampler.TopP to topP,
-    DecimalSampler.FrequencyPenalty to frequencyPenalty,
-    DecimalSampler.PresencePenalty to presencePenalty,
-  ).filterValues { it != null && !it.isFinite() }.keys
+)
+
+enum class SamplerKind {
+  Decimal,
+  Whole,
+  ;
+
+  fun isNonFinite(value: Number): Boolean = this == Decimal && !value.toDouble().isFinite()
 }
+
+enum class Sampler(val wireName: String, val kind: SamplerKind, val valueIn: (Samplers) -> Number?) {
+  Temperature("temperature", SamplerKind.Decimal, Samplers::temperature),
+  TopP("top_p", SamplerKind.Decimal, Samplers::topP),
+  TopK("top_k", SamplerKind.Whole, Samplers::topK),
+  FrequencyPenalty("frequency_penalty", SamplerKind.Decimal, Samplers::frequencyPenalty),
+  PresencePenalty("presence_penalty", SamplerKind.Decimal, Samplers::presencePenalty),
+  Seed("seed", SamplerKind.Whole, Samplers::seed),
+}
+
+sealed interface SamplerRange {
+  fun holds(value: Number): Boolean
+
+  data class Decimal(val range: ClosedFloatingPointRange<Double>) : SamplerRange {
+    override fun holds(value: Number) = value is Double && value in range
+  }
+
+  data class Whole(val range: LongRange) : SamplerRange {
+    override fun holds(value: Number) = value is Long && value in range
+  }
+}
+
+private fun Sampler.within(least: Number, most: Number): Pair<Sampler, SamplerRange> = this to when (kind) {
+  SamplerKind.Decimal -> SamplerRange.Decimal(least.toDouble()..most.toDouble())
+  SamplerKind.Whole -> SamplerRange.Whole(least.toLong()..most.toLong())
+}
+
+private const val UNIT = 1.0
+private const val OPENAI_TEMPERATURE = 2.0
+private const val OPENAI_PENALTY = 2.0
+
+internal val anthropicSamplerRanges: Map<Sampler, SamplerRange> = mapOf(
+  Sampler.Temperature.within(0.0, UNIT),
+  Sampler.TopP.within(0.0, UNIT),
+  Sampler.TopK.within(0L, Long.MAX_VALUE),
+)
+
+internal val chatCompletionsSamplerRanges: Map<Sampler, SamplerRange> = mapOf(
+  Sampler.Temperature.within(0.0, OPENAI_TEMPERATURE),
+  Sampler.TopP.within(0.0, UNIT),
+  Sampler.FrequencyPenalty.within(-OPENAI_PENALTY, OPENAI_PENALTY),
+  Sampler.PresencePenalty.within(-OPENAI_PENALTY, OPENAI_PENALTY),
+  Sampler.Seed.within(Long.MIN_VALUE, Long.MAX_VALUE),
+)
+
+internal val responsesSamplerRanges: Map<Sampler, SamplerRange> = mapOf(
+  Sampler.Temperature.within(0.0, OPENAI_TEMPERATURE),
+  Sampler.TopP.within(0.0, UNIT),
+)
+
+internal fun Samplers.outsideEveryFormat(): Set<Sampler> = Sampler.entries.filter { sampler ->
+  val value = sampler.valueIn(this) ?: return@filter false
+  ApiFormat.entries.none { format -> format.samplerRanges[sampler]?.holds(value) ?: false }
+}.toSet()

@@ -68,10 +68,11 @@ fun draft(
   key: KeyInput = KeyInput.Kept,
   headers: List<HeaderDraft> = emptyList(),
   samplers: Samplers = Samplers(),
+  format: ApiFormat = ApiFormat.OpenAiChatCompletions,
 ) = ConnectionDraft(
   fields = ConnectionFields(
     name = name,
-    format = ApiFormat.OpenAiChatCompletions,
+    format = format,
     baseUrl = baseUrl,
     model = model,
     samplers = samplers,

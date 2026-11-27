@@ -53,6 +53,9 @@ internal data class ChatDelta(
 internal enum class ChatFinishReason {
   @SerialName("stop")
   STOP,
+
+  @SerialName("length")
+  LENGTH,
 }
 
 @Serializable

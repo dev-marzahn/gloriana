@@ -16,6 +16,7 @@ import java.awt.Dimension
 
 private const val SLF4J_VERBOSITY = "slf4j.internal.verbosity"
 private const val ONLY_ERRORS = "ERROR"
+private const val USE_SYSTEM_PROXIES = "java.net.useSystemProxies"
 private val OpeningSize = DpSize(1280.dp, 800.dp)
 private val MinimumSize = DpSize(400.dp, 600.dp)
 
@@ -23,6 +24,7 @@ private fun DpSize.inAwtUnits() = Dimension(width.value.toInt(), height.value.to
 
 fun main() {
   System.setProperty(SLF4J_VERBOSITY, ONLY_ERRORS)
+  System.setProperty(USE_SYSTEM_PROXIES, true.toString())
   startKoin { modules(desktopAppModule) }
   application {
     Window(

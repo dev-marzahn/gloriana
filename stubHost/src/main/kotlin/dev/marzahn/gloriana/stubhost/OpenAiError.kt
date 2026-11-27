@@ -11,18 +11,19 @@ internal data class OpenAiError(val error: OpenAiErrorDetail)
 @Serializable
 internal data class OpenAiErrorDetail(val message: String, val type: String, val param: String?, val code: String?)
 
-internal fun openAiError(failure: Failure): String {
+internal fun openAiError(failure: Failure): String =
+  wireJson.encodeToString(OpenAiError.serializer(), OpenAiError(openAiErrorDetail(failure)))
+
+internal fun openAiErrorDetail(failure: Failure): OpenAiErrorDetail {
   val (type, code) = when (failure.kind) {
     FailureKind.BAD_REQUEST -> "invalid_request_error" to null
     FailureKind.KEY_REJECTED -> "invalid_request_error" to "invalid_api_key"
+    FailureKind.FORBIDDEN -> "invalid_request_error" to "unsupported_country_region_territory"
     FailureKind.NOT_FOUND -> "invalid_request_error" to "unknown_url"
     FailureKind.RATE_LIMITED -> "requests" to "rate_limit_exceeded"
     FailureKind.HOST_ERROR -> "server_error" to null
   }
-  return wireJson.encodeToString(
-    OpenAiError.serializer(),
-    OpenAiError(OpenAiErrorDetail(failure.message, type, param = null, code = code)),
-  )
+  return OpenAiErrorDetail(failure.message, type, param = null, code = code)
 }
 
 internal fun bearerToken(headers: Headers): String? = headers["Authorization"]

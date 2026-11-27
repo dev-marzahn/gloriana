@@ -1,11 +1,9 @@
 package dev.marzahn.gloriana.logic.characters.card
 
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonNull
+import dev.marzahn.gloriana.logic.json.holds
+import dev.marzahn.gloriana.logic.json.objectAt
+import dev.marzahn.gloriana.logic.json.string
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.contentOrNull
 
 private const val SPEC_KEY = "spec"
 private const val DATA_KEY = "data"
@@ -22,22 +20,12 @@ internal sealed interface CardShape {
 
   companion object {
     fun of(root: JsonObject): CardShape {
-      val data = root[DATA_KEY] as? JsonObject
-      val hasSpec = root[SPEC_KEY].let { it != null && it != JsonNull }
-      return if (hasSpec && data?.string(CardTextField.Name.key) != null) WithData(root, data) else Ccv1(root)
+      val data = root.objectAt(DATA_KEY)
+        ?.takeIf { root.holds(SPEC_KEY) && it.string(CardTextField.Name.key) != null }
+      return if (data != null) WithData(root, data) else Ccv1(root)
     }
   }
 }
 
 internal fun JsonObject.hasKnownSpec() = string(SPEC_KEY) in setOf(SPEC_V2, SPEC_V3)
 
-internal fun JsonObject.string(key: String): String? = this[key].asString()
-
-internal fun JsonElement?.asString(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
-
-internal fun JsonObject.strings(key: String): List<String> =
-  (this[key] as? JsonArray).orEmpty().mapNotNull { it.asString() }
-
-internal fun JsonObject.objectAt(key: String): JsonObject? = this[key] as? JsonObject
-
-internal fun JsonObject?.orNone(): JsonObject = this ?: JsonObject(emptyMap())

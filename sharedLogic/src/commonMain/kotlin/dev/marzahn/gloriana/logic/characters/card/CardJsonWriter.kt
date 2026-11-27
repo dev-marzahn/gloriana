@@ -3,6 +3,8 @@ package dev.marzahn.gloriana.logic.characters.card
 import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.CharacterNote
 import dev.marzahn.gloriana.logic.characters.Pronouns
+import dev.marzahn.gloriana.logic.json.objectAt
+import dev.marzahn.gloriana.logic.json.orNone
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject

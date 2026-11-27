@@ -4,6 +4,8 @@ import io.ktor.http.Headers
 
 private const val ID = "chatcmpl-stub"
 
+private fun finishReason(reply: Reply) = if (reply.hitLimit) ChatFinishReason.LENGTH else ChatFinishReason.STOP
+
 internal data object ChatCompletions : ApiFormat {
   override val path = "chat/completions"
 
@@ -21,23 +23,31 @@ internal data object ChatCompletions : ApiFormat {
       ChatCompletion(
         id = ID,
         model = request.model,
-        choices = listOf(ChatChoice(index = 0, message = message, finishReason = ChatFinishReason.STOP)),
+        choices = listOf(ChatChoice(index = 0, message = message, finishReason = finishReason(reply))),
         usage = usage(reply.tokens),
       ),
     )
   }
 
   override fun stream(reply: Reply, request: ModelRequest): List<SseEvent> {
-    fun chunk(delta: ChatDelta, finishReason: ChatFinishReason? = null) =
-      ChatChunk(id = ID, model = request.model, choices = listOf(ChatChunkChoice(0, delta, finishReason)))
-
-    val chunks = listOf(chunk(ChatDelta(role = "assistant", content = ""))) +
-      reply.segments.flatMap { segment -> segment.pieces.map { chunk(delta(segment, it)) } } +
-      chunk(ChatDelta(), finishReason = ChatFinishReason.STOP)
+    val chunks = contentChunks(reply, request) + chunk(request, ChatDelta(), finishReason = finishReason(reply))
     val usageChunk = ChatChunk(id = ID, model = request.model, choices = emptyList(), usage = usage(reply.tokens))
     val sent = if (request.includesUsage) chunks + usageChunk else chunks
     return sent.map { SseEvent.unnamed(ChatChunk.serializer(), it) } + SseEvent(name = null, data = "[DONE]")
   }
+
+  override fun unfinishedStream(reply: Reply, request: ModelRequest): List<SseEvent> =
+    contentChunks(reply, request).map { SseEvent.unnamed(ChatChunk.serializer(), it) }
+
+  override fun streamError(failure: Failure, request: ModelRequest, sent: Int): SseEvent =
+    SseEvent(name = null, data = error(failure))
+
+  private fun contentChunks(reply: Reply, request: ModelRequest): List<ChatChunk> =
+    listOf(chunk(request, ChatDelta(role = "assistant", content = ""))) +
+      reply.segments.flatMap { segment -> segment.pieces.map { chunk(request, delta(segment, it)) } }
+
+  private fun chunk(request: ModelRequest, delta: ChatDelta, finishReason: ChatFinishReason? = null) =
+    ChatChunk(id = ID, model = request.model, choices = listOf(ChatChunkChoice(0, delta, finishReason)))
 
   override fun error(failure: Failure): String = openAiError(failure)
 

@@ -15,7 +15,7 @@ class EndpointsTest {
       endpoints.resolve(HttpMethod.Post, "/summary/normal/v1/chat/completions"),
     )
     assertEquals(
-      Target.Model(Mode(Outcome.EchoesKey), OpenAiResponses),
+      Target.Model(Mode(Outcome.EchoesKey(FailureKind.KEY_REJECTED)), OpenAiResponses),
       endpoints.resolve(HttpMethod.Post, "/a/b/key-echo/v1/responses"),
     )
     assertEquals(Target.Model(normal, AnthropicMessages), endpoints.resolve(HttpMethod.Post, "/v1/normal/v1/messages"))

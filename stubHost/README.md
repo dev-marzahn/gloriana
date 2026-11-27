@@ -39,8 +39,15 @@ still get their own base URLs and the record tells them apart: `/chat/normal/v1`
 | `refusal` | the format's own refusal: Anthropic `stop_reason: "refusal"`, a Chat Completions `refusal` message, a Responses `refusal` content part |
 | `delay`, `delay-<ms>` | the normal reply after a pause before anything is sent: `--delay-ms`, or the length in the name (`delay-2000`) |
 | `slow`, `slow-<ms>` | the normal reply, streamed with a pause between events: `--slow-ms`, or the length in the name |
-| `401`, `429`, `500` | that status with the format's own error body; `429` also sends `Retry-After: 1` |
-| `key-echo` | 401 with an error body that holds the request's key, or says none was sent |
+| `401`, `403`, `429`, `500` | that status with the format's own error body; `429` also sends `Retry-After: 1` |
+| `key-echo`, `key-echo-429` | 401 (or 429) with an error body that holds the request's key, or says none was sent |
+| `length` | a short reply stopped at the token limit: Anthropic `max_tokens`, Chat Completions `length`, Responses `incomplete` with `max_output_tokens` |
+| `cut-off` | streamed: the normal reply's text, then the stream closes without its closing events; whole: the normal reply |
+| `stall` | the normal reply, streamed with a `--delay-ms` pause halfway through its events |
+| `linger` | the normal reply, then the connection stays open for `--delay-ms` after the last event |
+| `bad-type` | the normal reply under a malformed `Content-Type` |
+| `redirect` | 307 to the same path in `normal` mode |
+| `stream-error` | streamed: the normal reply's text, then the format's error in the stream (Anthropic `error`, a Chat Completions `error` chunk with no `[DONE]`, Responses `response.failed`); whole: `500` |
 
 A request body needs `model`, which the reply names again. A reply streams when the body has `"stream": true` and
 comes whole when it is `false`, `null` or missing; any other value is refused. Both carry usage; a streamed Chat
@@ -62,6 +69,11 @@ searched for with `curl -s http://127.0.0.1:<port>/record | grep MARKER-`.
 
 A record file named with `--record` is appended to, never cleared, so it also holds earlier runs' requests. Use a new
 file, or the default temporary one, for a search that must see only this run.
+
+## In a test
+
+`startStubHost(recordFile)` starts the host in the test's own JVM on a free port and returns its `address`,
+`baseUrl(mode)` and `recorded()`; `close()` stops it.
 
 ## Tests
 

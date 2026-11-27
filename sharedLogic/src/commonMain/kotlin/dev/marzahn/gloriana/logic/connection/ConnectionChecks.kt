@@ -2,8 +2,6 @@ package dev.marzahn.gloriana.logic.connection
 
 import dev.marzahn.gloriana.logic.keys.HeaderName
 
-private const val HEADER_TOKEN_SYMBOLS = "!#$%&'*+-.^_`|~"
-
 internal fun ConnectionFields.normalised(): ConnectionFields =
   copy(name = name.trim(), model = model.trim(), baseUrl = withoutTrailingSlash(baseUrl.trim()))
 
@@ -17,23 +15,40 @@ internal fun ConnectionFields.problems(): Set<ConnectionProblem> = buildSet {
     add(ConnectionProblem.MaxReplyTokensNotBelowContextSize)
   }
   if (timeoutSeconds <= 0) add(ConnectionProblem.TimeoutNotPositive)
-  samplers.notFinite().forEach { add(ConnectionProblem.SamplerNotFinite(it)) }
+  addAll(samplerProblems(samplers, format.samplerRanges))
 }
+
+private fun samplerProblems(samplers: Samplers, ranges: Map<Sampler, SamplerRange>): List<ConnectionProblem> =
+  Sampler.entries.mapNotNull { sampler ->
+    val value = sampler.valueIn(samplers) ?: return@mapNotNull null
+    val range = ranges[sampler]
+    if (range != null) {
+      ConnectionProblem.SamplerOutOfRange(sampler, range).takeUnless { range.holds(value) }
+    } else {
+      ConnectionProblem.SamplerNotFinite(sampler).takeIf { sampler.kind.isNonFinite(value) }
+    }
+  }
+
+internal fun KeyInput.problems(): Set<ConnectionProblem> =
+  setOfNotNull(ConnectionProblem.KeyBadCharacter.takeIf { this is KeyInput.Entered && !isSendableHeaderValue(value) })
 
 internal fun List<HeaderDraft>.problems(): Set<ConnectionProblem> = buildSet {
   val seen = mutableSetOf<HeaderName>()
   this@problems.forEachIndexed { index, header ->
-    when {
-      header.name.isEmpty() -> add(ConnectionProblem.HeaderNameEmpty(index))
-      !header.name.all(::isHeaderTokenCharacter) -> add(ConnectionProblem.HeaderNameNotToken(index))
-      !seen.add(HeaderName.of(header.name)) -> add(ConnectionProblem.HeaderNameRepeated(index))
-    }
-    val value = header.value
-    if (value is HeaderValueInput.Entered && value.value.any { it == '\r' || it == '\n' }) {
-      add(ConnectionProblem.HeaderValueLineBreak(index))
-    }
+    val entered = (header.value as? HeaderValueInput.Entered)?.value
+    val faults = headerFaults(header.name, entered)
+    faults.forEach { add(it.problem(index)) }
+    val nameIsUsable = faults.none { it in nameFaults }
+    if (nameIsUsable && !seen.add(HeaderName.of(header.name))) add(ConnectionProblem.HeaderNameRepeated(index))
   }
 }
 
-private fun isHeaderTokenCharacter(character: Char): Boolean =
-  character in 'a'..'z' || character in 'A'..'Z' || character in '0'..'9' || character in HEADER_TOKEN_SYMBOLS
+private val nameFaults = setOf(HeaderFault.NameEmpty, HeaderFault.NameNotToken, HeaderFault.NameReserved)
+
+private fun HeaderFault.problem(index: Int): ConnectionProblem = when (this) {
+  HeaderFault.NameEmpty -> ConnectionProblem.HeaderNameEmpty(index)
+  HeaderFault.NameNotToken -> ConnectionProblem.HeaderNameNotToken(index)
+  HeaderFault.NameReserved -> ConnectionProblem.HeaderNameReserved(index)
+  HeaderFault.ValueBadCharacter -> ConnectionProblem.HeaderValueBadCharacter(index)
+  HeaderFault.ContentTypeInvalid -> ConnectionProblem.HeaderContentTypeInvalid(index)
+}

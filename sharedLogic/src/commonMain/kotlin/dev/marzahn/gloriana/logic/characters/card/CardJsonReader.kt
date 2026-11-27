@@ -4,6 +4,10 @@ import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.CharacterNote
 import dev.marzahn.gloriana.logic.characters.KeptCardFields
 import dev.marzahn.gloriana.logic.characters.Pronouns
+import dev.marzahn.gloriana.logic.json.asString
+import dev.marzahn.gloriana.logic.json.objectAt
+import dev.marzahn.gloriana.logic.json.string
+import dev.marzahn.gloriana.logic.json.strings
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray

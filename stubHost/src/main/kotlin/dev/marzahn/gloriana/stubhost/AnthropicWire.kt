@@ -54,6 +54,9 @@ internal enum class AnthropicStopReason {
 
   @SerialName("refusal")
   REFUSAL,
+
+  @SerialName("max_tokens")
+  MAX_TOKENS,
 }
 
 @Serializable

@@ -29,7 +29,11 @@ sealed interface ConnectionProblem {
 
   data object TimeoutNotPositive : ConnectionProblem
 
-  data class SamplerNotFinite(val sampler: DecimalSampler) : ConnectionProblem
+  data class SamplerOutOfRange(val sampler: Sampler, val range: SamplerRange) : ConnectionProblem
+
+  data class SamplerNotFinite(val sampler: Sampler) : ConnectionProblem
+
+  data object KeyBadCharacter : ConnectionProblem
 
   data class HeaderNameEmpty(val index: Int) : ConnectionProblem
 
@@ -37,7 +41,11 @@ sealed interface ConnectionProblem {
 
   data class HeaderNameRepeated(val index: Int) : ConnectionProblem
 
-  data class HeaderValueLineBreak(val index: Int) : ConnectionProblem
+  data class HeaderNameReserved(val index: Int) : ConnectionProblem
+
+  data class HeaderValueBadCharacter(val index: Int) : ConnectionProblem
+
+  data class HeaderContentTypeInvalid(val index: Int) : ConnectionProblem
 
   data class HeaderValueGone(val index: Int) : ConnectionProblem
 

@@ -11,14 +11,18 @@ import dev.marzahn.gloriana.logic.connection.ConnectionProblem.ContextSizeNotPos
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameEmpty
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameNotToken
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameRepeated
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderContentTypeInvalid
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderNameReserved
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderValueBadCharacter
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderValueGone
-import dev.marzahn.gloriana.logic.connection.ConnectionProblem.HeaderValueLineBreak
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.MaxReplyTokensNotBelowContextSize
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.MaxReplyTokensNotPositive
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.ModelEmpty
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.NameEmpty
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.NameTaken
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.KeyBadCharacter
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.SamplerNotFinite
+import dev.marzahn.gloriana.logic.connection.ConnectionProblem.SamplerOutOfRange
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.TimeoutNotPositive
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonObject
@@ -86,9 +90,19 @@ class ConnectionRefusalTest {
       draft(headers = listOf(HeaderDraft("X-Org", entered("a")), HeaderDraft("x-org", entered("b")))),
       HeaderNameRepeated(1)),
     Refusal("CR in a header value", draft(headers = listOf(HeaderDraft("X-Org", entered("a\rb")))),
-      HeaderValueLineBreak(0)),
+      HeaderValueBadCharacter(0)),
     Refusal("LF in a header value", draft(headers = listOf(HeaderDraft("X-Org", entered("a\nb")))),
-      HeaderValueLineBreak(0)),
+      HeaderValueBadCharacter(0)),
+    Refusal("a non-ASCII header value", draft(headers = listOf(HeaderDraft("X-Org", entered("café")))),
+      HeaderValueBadCharacter(0)),
+    Refusal("a control character in a header value", draft(headers = listOf(HeaderDraft("X-Org", entered("a\u0000")))),
+      HeaderValueBadCharacter(0)),
+    Refusal("a header the app sets itself", draft(headers = listOf(HeaderDraft("Accept-Encoding", entered("br")))),
+      HeaderNameReserved(0)),
+    Refusal("a Host header", draft(headers = listOf(HeaderDraft("host", entered("example.com")))),
+      HeaderNameReserved(0)),
+    Refusal("a malformed Content-Type", draft(headers = listOf(HeaderDraft("Content-Type", entered("json")))),
+      HeaderContentTypeInvalid(0)),
     Refusal("a kept value no header holds",
       draft(headers = listOf(HeaderDraft("X-Org", HeaderValueInput.Kept("X-Gone")))), HeaderValueGone(0)),
     Refusal("a context size of 0", numbers(contextSize = 0), ContextSizeNotPositive),
@@ -99,9 +113,14 @@ class ConnectionRefusalTest {
       MaxReplyTokensNotBelowContextSize),
     Refusal("a timeout of 0", numbers(timeoutSeconds = 0), TimeoutNotPositive),
     Refusal("a temperature that is not a number", draft(samplers = Samplers(temperature = Double.NaN)),
-      SamplerNotFinite(DecimalSampler.Temperature)),
+      SamplerOutOfRange(Sampler.Temperature, SamplerRange.Decimal(0.0..2.0))),
     Refusal("an infinite penalty", draft(samplers = Samplers(presencePenalty = Double.POSITIVE_INFINITY)),
-      SamplerNotFinite(DecimalSampler.PresencePenalty)),
+      SamplerOutOfRange(Sampler.PresencePenalty, SamplerRange.Decimal(-2.0..2.0))),
+    Refusal("a temperature above the format's range", draft(samplers = Samplers(temperature = 2.5)),
+      SamplerOutOfRange(Sampler.Temperature, SamplerRange.Decimal(0.0..2.0))),
+    Refusal("a non-finite sampler the format doesn't show",
+      draft(samplers = Samplers(frequencyPenalty = Double.NaN), format = ApiFormat.AnthropicMessages),
+      SamplerNotFinite(Sampler.FrequencyPenalty)),
   )
 
   private fun refusalTests(vararg refusals: Refusal) = refusals.map { refusal ->
@@ -117,6 +136,16 @@ class ConnectionRefusalTest {
         }
       }
     }
+  }
+
+  @Test
+  fun aKeyHttpCannotCarryIsRefused() = runTest {
+    listOf("café", "sk-1\n", "sk\u0000").forEach { key ->
+      val result = library.repository.create(draft(key = KeyInput.Entered(key)))
+
+      assertEquals(setOf(KeyBadCharacter), assertIs<ConnectionSaveResult.Refused>(result).problems, key)
+    }
+    assertEquals(emptyList(), library.list())
   }
 
   @Test

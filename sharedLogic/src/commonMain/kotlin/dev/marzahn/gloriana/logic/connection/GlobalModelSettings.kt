@@ -9,7 +9,7 @@ import kotlinx.coroutines.flow.map
 sealed interface GlobalSamplersSave {
   data object Saved : GlobalSamplersSave
 
-  data class Refused(val notFinite: Set<DecimalSampler>) : GlobalSamplersSave
+  data class Refused(val outsideEveryFormat: Set<Sampler>) : GlobalSamplersSave
 
   data object Failed : GlobalSamplersSave
 }
@@ -17,9 +17,11 @@ sealed interface GlobalSamplersSave {
 class GlobalModelSettings(private val settings: LibrarySettings) {
   fun samplers(): Flow<Samplers> = settings.observe(GlobalSamplersSetting).map { it ?: Samplers() }
 
+  suspend fun currentSamplers(): Samplers = settings.read(GlobalSamplersSetting) ?: Samplers()
+
   suspend fun setSamplers(samplers: Samplers): GlobalSamplersSave {
-    val notFinite = samplers.notFinite()
-    if (notFinite.isNotEmpty()) return GlobalSamplersSave.Refused(notFinite)
+    val outside = samplers.outsideEveryFormat()
+    if (outside.isNotEmpty()) return GlobalSamplersSave.Refused(outside)
     return failingAs(GlobalSamplersSave.Failed) {
       settings.write(GlobalSamplersSetting, samplers)
       GlobalSamplersSave.Saved

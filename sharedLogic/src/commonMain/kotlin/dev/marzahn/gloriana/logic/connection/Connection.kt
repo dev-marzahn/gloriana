@@ -4,10 +4,10 @@ import dev.marzahn.gloriana.logic.keys.SealedSecret
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
 
-enum class ApiFormat {
-  AnthropicMessages,
-  OpenAiChatCompletions,
-  OpenAiResponses,
+enum class ApiFormat(val samplerRanges: Map<Sampler, SamplerRange>) {
+  AnthropicMessages(anthropicSamplerRanges),
+  OpenAiChatCompletions(chatCompletionsSamplerRanges),
+  OpenAiResponses(responsesSamplerRanges),
 }
 
 data class ConnectionFields(

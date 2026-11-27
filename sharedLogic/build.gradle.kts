@@ -64,6 +64,7 @@ kotlin {
       implementation(libs.kotlinx.coroutines.test)
       implementation(libs.konsist)
       implementation(libs.androidx.room.testing)
+      implementation(project(":stubHost"))
     }
     getByName("androidDeviceTest").dependencies {
       implementation(libs.kotlin.test)

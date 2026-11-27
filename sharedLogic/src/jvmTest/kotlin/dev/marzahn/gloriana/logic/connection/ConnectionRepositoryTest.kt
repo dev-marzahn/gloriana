@@ -338,14 +338,15 @@ class ConnectionRepositoryTest {
   }
 
   @Test
-  fun globalSamplersStartUnsetKeepWhatIsSetAndRefuseValuesThatAreNotFinite() = runTest {
+  fun globalSamplersStartUnsetKeepWhatIsSetAndRefuseValuesNoFormatTakes() = runTest {
     val global = GlobalModelSettings(library.settings)
     assertEquals(Samplers(), global.samplers().first())
 
     assertEquals(GlobalSamplersSave.Saved, global.setSamplers(Samplers(temperature = 1.1, seed = 42)))
+    assertEquals(Samplers(temperature = 1.1, seed = 42), global.currentSamplers())
     assertEquals(
-      GlobalSamplersSave.Refused(setOf(DecimalSampler.TopP)),
-      global.setSamplers(Samplers(temperature = 0.5, topP = Double.NaN)),
+      GlobalSamplersSave.Refused(setOf(Sampler.TopP, Sampler.Temperature, Sampler.TopK)),
+      global.setSamplers(Samplers(temperature = 2.5, topP = Double.NaN, topK = -1)),
     )
 
     assertEquals(Samplers(temperature = 1.1, seed = 42), global.samplers().first())

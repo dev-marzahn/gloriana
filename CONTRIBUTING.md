@@ -211,6 +211,43 @@ Keys and custom header values go through `KeyVault` (`logic.keys`) and nothing e
   dev.marzahn.gloriana.desktop.MainKt` twice: the seal succeeds and the second launch opens
   `keys/keyset-device.json` unchanged. Remove the call and the `Gloriana Debug` keychain entries afterwards.
 
+## Calling a model
+
+`ModelApi` (`logic.connection.api`) is the one way to reach a model: it takes the prompt as role-tagged sections and a
+`Connection`, opens the key and header values from `KeyVault` just for the request, and returns a flow of events (text,
+reasoning, usage, then one finish or one failure). Every failure is a `ModelApiError`; nothing throws to the caller.
+
+- Each API format is one `FormatAdapter`: its path, its own headers, its key header, the request body (the
+  Connection's custom body JSON merged over it with `mergedWith`) and the readers for a stream and a whole reply. A
+  `StreamReader` keeps its own `ReplyState` and decides the final events, also when a stream ends early (`ended`).
+  Custom headers come after the adapter's and replace one of the same name. Whether a reply streams is read from the
+  merged body's `stream`, which must be a JSON boolean.
+- `Sampler`, `SamplerRange` and each `ApiFormat`'s `samplerRanges` (`logic.connection`) are the one sampler model:
+  the save checks and `mergeSamplers` both use them. A format sends only its own samplers; the Connection's value wins,
+  and a global value goes only where it is inside the format's range.
+- `headerFaults` (`logic.connection`) is the one header rule: the save refuses what it finds, and `HostCalls` refuses
+  it again before sending. The key itself must pass `isSendableHeaderValue`.
+- `HostCalls` sends every request, streamed or whole, and returns every failure as a `ModelApiError` (`HostReply`,
+  `HostEvent`); nothing it calls throws past it. It reads an event stream from the response body itself
+  (`readEventData`), because Ktor's SSE plugin ends its flow quietly on a read error. The Connection's timeout is the
+  connect and idle timeout, with no total timeout, and no redirect is followed. A request that isn't a chat reply (a
+  model list) is built with `hostRequest` and sent through it too.
+- Every host body that becomes an error (`KeyRejected`, `RateLimited`, `HostError`) goes through `Scrubber` where the
+  error is made: `HostCalls` for a status, the `StreamReader` for an error in the stream, `ModelReplies` for an error
+  in a 200 body. A successful reply is never scrubbed, since a short key would cut into its JSON. The scrubber is
+  built from the secrets the request carries: every value sent under a credential header (each format's key header,
+  `api-key`, `x-goog-api-key`), the Connection's key or a custom header that replaces it, and the token after an
+  `Authorization` scheme, also JSON-escaped and percent-encoded. Other custom header values are not searched for.
+- A stream stops being read at its format's last event (`StreamReader.over`), so nothing a host sends or fails after
+  it reaches the caller.
+- Plain `http` reaches private-network addresses only. The plain client never uses a proxy (`Proxy.NO_PROXY` and
+  sockets made with it, since a bare `Socket` still asks the system for a SOCKS proxy), refuses an address literal
+  that isn't private, and resolves names through `PrivateAddressesOnly`, which refuses a name unless every address
+  is private; OkHttp connects only to the addresses it returns. Android's network security config permits
+  cleartext and trusts system CAs only, so this check is the rule. Desktop sets `java.net.useSystemProxies` first
+  thing in `main`, so `https` requests take the system proxy.
+- Tests run the adapters against the stub host in-process (`startStubHost`), never a mock engine.
+
 ## Versions
 
 Exact versions live only in `gradle/libs.versions.toml`; build files refer to the catalog. Each library is on its
