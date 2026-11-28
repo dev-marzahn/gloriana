@@ -13,6 +13,7 @@ dependencies {
   implementation(libs.compose.components.resources)
   implementation(libs.kotlinx.coroutines.swing)
   implementation(libs.java.keyring)
+  implementation(libs.jna)
   testImplementation(libs.koin.test)
 }
 

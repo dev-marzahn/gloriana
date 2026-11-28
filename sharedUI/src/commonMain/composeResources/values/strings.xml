@@ -36,6 +36,8 @@
     <string name="import_needs_answer">Already in your library</string>
     <string name="import_choose">Choose</string>
     <string name="import_announce">Importing %1$s, %2$d of %3$d</string>
+    <string name="import_notice_title">Importing Character Cards</string>
+    <string name="import_notice_detail">%1$d of %2$d</string>
 
     <string name="already_title">%1$s is already in your library</string>
     <string name="already_text">Import %1$s as a second Character, or update the one you have. Updating replaces its fields, pictures and assets with the file's, and keeps its place and its pronouns. This can't be undone.</string>

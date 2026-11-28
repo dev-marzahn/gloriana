@@ -35,6 +35,10 @@ import dev.marzahn.gloriana.logic.presets.PresetSummary
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
+import dev.marzahn.gloriana.logic.tasks.KeepAlive
+import dev.marzahn.gloriana.logic.tasks.KeepAliveLosses
+import dev.marzahn.gloriana.logic.tasks.TaskHold
+import dev.marzahn.gloriana.logic.tasks.TaskNotice
 import dev.marzahn.gloriana.ui.di.uiModule
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
@@ -94,6 +98,14 @@ object NoKeychain : OsKeychain {
   override fun write(account: String, secret: ByteArray): KeychainWrite = KeychainWrite.NoKeychain
 
   override fun delete(account: String) = Unit
+}
+
+private object HeldInProcess : KeepAlive {
+  override fun start(opening: TaskNotice, shown: Flow<TaskNotice?>, losses: KeepAliveLosses) = Unit
+
+  override fun stop() = Unit
+
+  override fun holdWhileRunning(): TaskHold = TaskHold { }
 }
 
 private class QueryThreads {
@@ -241,6 +253,7 @@ class LiveLibrary private constructor(private val directory: Path, private val d
       single<DeviceKeyStore> { device }
       single<Faults> { Faults(::failKeysetWrite) }
       single { UpdatedAtClock(writes) }
+      single<KeepAlive> { HeldInProcess }
     }
     return koinApplication { modules(logicModule, uiModule, platform) }
       .also { started -> runBlocking { started.koin.get<ShippedDefaultsAtStart>().missing.await() } }

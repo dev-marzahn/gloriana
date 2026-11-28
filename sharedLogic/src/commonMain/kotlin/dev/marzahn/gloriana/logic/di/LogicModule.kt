@@ -10,6 +10,7 @@ import dev.marzahn.gloriana.logic.personas.personasModule
 import dev.marzahn.gloriana.logic.presets.presetsModule
 import dev.marzahn.gloriana.logic.settings.settingsModule
 import dev.marzahn.gloriana.logic.storage.storageModule
+import dev.marzahn.gloriana.logic.tasks.tasksModule
 import org.koin.dsl.module
 
 val logicModule = module {
@@ -24,5 +25,6 @@ val logicModule = module {
     presetsModule,
     personasModule,
     shippedDefaultsModule,
+    tasksModule,
   )
 }

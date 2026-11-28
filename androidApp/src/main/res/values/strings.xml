@@ -1,3 +1,4 @@
 <resources>
     <string name="app_name">Gloriana</string>
+    <string name="task_channel_name">Background work</string>
 </resources>
