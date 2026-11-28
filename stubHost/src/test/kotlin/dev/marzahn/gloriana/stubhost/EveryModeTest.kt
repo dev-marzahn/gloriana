@@ -52,7 +52,7 @@ class EveryModeTest {
     val toEnd: Duration,
   )
 
-  private val plainAnswer = answer(ReceivedTokens(10, 10, 20, 0), ReceivedPart(TEXT, PLAIN))
+  private val plainAnswer = answer(ReceivedTokens(10, 10, 20, 0), ReceivedPart(TEXT, PLAIN_REPLY))
 
   private val cases = listOf(
     Case("normal", plainAnswer),
@@ -146,7 +146,6 @@ class EveryModeTest {
     const val PAUSE_MS = 160
     val SLACK = 120.milliseconds
     val GAP_JITTER = 30.milliseconds
-    const val PLAIN = "Hello from the stub host. This reply arrives in parts."
     const val STATUS = "The scene goes on.\n\n<details><summary>Status</summary>Health: 10/10\nMood: calm</details>"
 
     fun answer(tokens: ReceivedTokens, vararg parts: ReceivedPart) = Expected.Answer(Received(parts.toList(), tokens))

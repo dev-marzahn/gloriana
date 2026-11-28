@@ -10,6 +10,8 @@ import dev.marzahn.gloriana.logic.connection.asDraft
 import dev.marzahn.gloriana.logic.connection.entered
 import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.logic.keys.OpenResult
+import dev.marzahn.gloriana.stubhost.PLAIN_REPLY
+import dev.marzahn.gloriana.stubhost.stubModelIds
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.io.TempDir
@@ -17,7 +19,6 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertContentEquals
 import kotlin.test.assertEquals
-import kotlin.test.assertIs
 import kotlin.test.assertNull
 
 private const val STORED_KEY = "sk-stored-1"
@@ -57,7 +58,7 @@ class ProbeDraftTest {
   fun aConnectionAsSavedSendsItsStoredValues() = runBlocking {
     val stored = stored()
 
-    assertEquals(ProbeResult.Done(PLAIN), harness.probe().test(stored.asDraft(), stored))
+    assertEquals(ProbeResult.Done(PLAIN_REPLY), harness.probe().test(stored.asDraft(), stored))
 
     val request = harness.stub.recordedRequests().single()
     assertEquals(STORED_KEY, request.recordedHeader("x-api-key"))
@@ -74,8 +75,8 @@ class ProbeDraftTest {
       headers = listOf(kept("X-Team"), HeaderDraft("X-Org", entered("org-typed"))),
     ) { it.copy(name = "Renamed", model = "model-typed") }
 
-    assertEquals(ProbeResult.Done(PLAIN), harness.probe().test(draft, stored))
-    assertEquals(ProbeResult.Done(STUB_MODEL_IDS), harness.probe().models(draft, stored))
+    assertEquals(ProbeResult.Done(PLAIN_REPLY), harness.probe().test(draft, stored))
+    assertEquals(ProbeResult.Done(stubModelIds), harness.probe().models(draft, stored))
 
     val requests = harness.stub.recordedRequests()
     assertEquals(2, requests.size)
@@ -100,7 +101,7 @@ class ProbeDraftTest {
 
     val draft = harness.draftFor(ApiFormat.AnthropicMessages, "normal", KeyInput.Removed)
 
-    assertEquals(ProbeResult.Done(PLAIN), harness.probe().test(draft, stored))
+    assertEquals(ProbeResult.Done(PLAIN_REPLY), harness.probe().test(draft, stored))
     val request = harness.stub.recordedRequests().single()
     assertNull(request.recordedHeader("x-api-key"))
     assertNull(request.recordedHeader("x-org"))
@@ -111,7 +112,7 @@ class ProbeDraftTest {
     val probe = harness.probe()
 
     val keptOnNew = harness.draftFor(ApiFormat.AnthropicMessages, "normal", KeyInput.Kept)
-    assertEquals(ProbeResult.Done(PLAIN), probe.test(keptOnNew, stored = null))
+    assertEquals(ProbeResult.Done(PLAIN_REPLY), probe.test(keptOnNew, stored = null))
     assertNull(harness.stub.recordedRequests().single().recordedHeader("x-api-key"))
 
     val orphan = harness.draftFor(ApiFormat.AnthropicMessages, "normal", headers = listOf(kept()))

@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.settings
 
+import dev.marzahn.gloriana.logic.json.decodedOrNull
 import dev.marzahn.gloriana.logic.settings.storage.LibrarySettingEntity
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.StoredJson
@@ -9,7 +10,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.KSerializer
-import kotlinx.serialization.SerializationException
 
 class LibrarySetting<T : Any>(val key: String, val serializer: KSerializer<T>)
 
@@ -35,10 +35,5 @@ class LibrarySettings(private val database: GlorianaDatabase, private val clock:
   }
 }
 
-private fun <T : Any> LibrarySetting<T>.decodeOrNull(stored: String): T? = try {
-  StoredJson.decodeFromString(serializer, stored)
-} catch (_: SerializationException) {
-  null
-} catch (_: IllegalArgumentException) {
-  null
-}
+private fun <T : Any> LibrarySetting<T>.decodeOrNull(stored: String): T? =
+  StoredJson.decodedOrNull(serializer, stored)

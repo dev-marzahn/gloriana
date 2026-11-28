@@ -1,7 +1,7 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.characters.CorpusFile
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.files.CorpusFile
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -90,6 +90,23 @@ class PresetReaderTest {
 
     PresetLibrary(directory).use { library ->
       assertIs<PresetImportResult.Imported>(library.import.import(CorpusFile("marked.json", withMark)))
+    }
+  }
+
+  @Test
+  fun aQuotedEnabledOrMarkerReadsAsItsBoolean() = runTest {
+    val file = """
+      {"prompts": [{"identifier": "main", "marker": "true"}, {"identifier": "aside"}],
+       "prompt_order": [{"character_id": 100001, "order": [
+         {"identifier": "main", "enabled": "true"}, {"identifier": "aside", "enabled": "false"}]}]}
+    """
+
+    PresetLibrary(directory).use { library ->
+      val result = library.import.import(CorpusFile("quoted.json", file.encodeToByteArray()))
+      val entries = library.stored(assertIs<PresetImportResult.Imported>(result).id).content.entries
+
+      assertEquals(listOf(true, false), entries.map { it.enabled })
+      assertEquals(listOf(true, false), entries.map { it.filledByApp })
     }
   }
 

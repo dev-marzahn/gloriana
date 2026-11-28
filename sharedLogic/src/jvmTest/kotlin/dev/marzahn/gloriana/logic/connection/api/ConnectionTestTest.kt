@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.connection.HeaderDraft
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.MASK
 import dev.marzahn.gloriana.logic.connection.entered
+import dev.marzahn.gloriana.stubhost.PLAIN_REPLY
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
@@ -38,7 +39,7 @@ class ConnectionTestTest {
   @Test
   fun aTestReturnsTheHostsReplyInEveryFormatStreamedOrWhole() {
     everyWay.forEach { (format, streams) ->
-      assertEquals(ProbeResult.Done(PLAIN), test(format, "normal", streams), "$format streaming=$streams")
+      assertEquals(ProbeResult.Done(PLAIN_REPLY), test(format, "normal", streams), "$format streaming=$streams")
     }
   }
 
@@ -123,7 +124,7 @@ class ConnectionTestTest {
 
     assertEquals(ProbeResult.Failed(ModelApiError.PlainHttpToPublicHost), probe.test(public, stored = null))
     assertEquals(emptyList(), harness.stub.recordedRequests())
-    assertEquals(ProbeResult.Done(PLAIN), probe.test(nameless, stored = null))
+    assertEquals(ProbeResult.Done(PLAIN_REPLY), probe.test(nameless, stored = null))
   }
 
   @Test
@@ -157,7 +158,7 @@ class ConnectionTestTest {
   fun aBaseUrlWithATrailingSlashReachesTheFormatsPath() = runBlocking {
     val draft = harness.draftFor(ApiFormat.AnthropicMessages, "normal") { it.copy(baseUrl = "${it.baseUrl}/") }
 
-    assertEquals(ProbeResult.Done(PLAIN), harness.probe().test(draft, stored = null))
+    assertEquals(ProbeResult.Done(PLAIN_REPLY), harness.probe().test(draft, stored = null))
     assertEquals(TEST_KEY, harness.stub.recordedRequests().single().recordedHeader("x-api-key"))
   }
 }

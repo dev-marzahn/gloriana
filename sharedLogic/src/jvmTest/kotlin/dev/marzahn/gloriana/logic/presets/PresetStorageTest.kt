@@ -1,8 +1,8 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.characters.MemoryDestination
 import dev.marzahn.gloriana.logic.debug.FaultInjected
 import dev.marzahn.gloriana.logic.debug.Faults
+import dev.marzahn.gloriana.logic.files.MemoryDestination
 import dev.marzahn.gloriana.logic.presets.storage.PresetEntriesEntityType
 import dev.marzahn.gloriana.logic.presets.storage.PresetGroupsEntityType
 import dev.marzahn.gloriana.logic.presets.storage.PresetsEntityType

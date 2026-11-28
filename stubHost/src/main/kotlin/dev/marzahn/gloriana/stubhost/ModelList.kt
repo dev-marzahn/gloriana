@@ -22,7 +22,10 @@ internal val stubModels = listOf(
   StubModel("stub-model-small", "Stub Model Small"),
 )
 
-internal suspend fun ApplicationCall.listModels(mode: Mode) {
+val stubModelIds: List<String> = stubModels.map { it.id }
+
+internal suspend fun ApplicationCall.listModels(target: Target.ModelList) {
+  val mode = target.mode
   val format = listingFormat(request.headers)
   delay(mode.startPause)
   when (val outcome = mode.outcome) {
@@ -30,7 +33,7 @@ internal suspend fun ApplicationCall.listModels(mode: Mode) {
     is Outcome.Failed -> respondFailure(format, outcome.failure)
     is Outcome.BreaksOff -> respondFailure(format, outcome.failure)
     is Outcome.EchoesKey -> respondEcho(format, outcome)
-    Outcome.Redirects -> respondRedirect()
+    Outcome.Redirects -> respondRedirect(target.path)
   }
 }
 

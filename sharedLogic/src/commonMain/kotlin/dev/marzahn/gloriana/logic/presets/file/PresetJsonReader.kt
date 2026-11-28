@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.presets.file
 
+import dev.marzahn.gloriana.logic.json.parsedElement
 import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
 import dev.marzahn.gloriana.logic.presets.PresetGroup
@@ -7,8 +8,6 @@ import dev.marzahn.gloriana.logic.presets.PresetRow
 import dev.marzahn.gloriana.logic.presets.PresetSamplers
 import dev.marzahn.gloriana.logic.presets.WrapperPrompts
 import dev.marzahn.gloriana.logic.storage.IdFactory
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
@@ -30,7 +29,7 @@ internal sealed interface PresetFileRead {
 }
 
 internal class PresetJsonReader(private val ids: IdFactory) {
-  fun read(text: String): PresetFileRead = when (val root = parsed(text)) {
+  fun read(text: String): PresetFileRead = when (val root = parsedElement(text)) {
     null -> PresetFileRead.Damaged
     is JsonObject -> when (root[PROMPTS_KEY]) {
       null -> PresetFileRead.NotAPreset
@@ -66,10 +65,4 @@ private fun JsonElement?.isSet(): Boolean = when (this) {
   null, JsonNull -> false
   is JsonPrimitive -> if (isString) content.isNotEmpty() else content != "false" && content != "0"
   else -> true
-}
-
-private fun parsed(text: String): JsonElement? = try {
-  Json.parseToJsonElement(text)
-} catch (_: SerializationException) {
-  null
 }

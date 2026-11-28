@@ -6,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import dev.marzahn.gloriana.logic.json.decodedOrNull
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.EntryRole
 import dev.marzahn.gloriana.logic.presets.Preset
@@ -18,7 +19,6 @@ import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.logic.presets.WrapperPrompts
 import dev.marzahn.gloriana.logic.storage.EntityType
 import dev.marzahn.gloriana.logic.storage.StoredJson
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
 
@@ -127,11 +127,7 @@ internal sealed interface DecodedPreset {
   }
 }
 
-private fun decodedSource(stored: String): JsonObject? = try {
-  StoredJson.decodeFromString<JsonObject>(stored)
-} catch (_: SerializationException) {
-  null
-}
+private fun decodedSource(stored: String): JsonObject? = StoredJson.decodedOrNull<JsonObject>(stored)
 
 internal data class PresetSummaryRow(val id: Uuid, val name: String, val entries: Int, val entriesOn: Int)
 
@@ -141,11 +137,7 @@ internal fun storedWrappers(wrappers: WrapperPrompts): String =
 private val wrappersByKey = WrapperPrompt.entries.associateBy { it.key }
 
 private fun decodedWrappers(stored: String): WrapperPrompts? {
-  val texts = try {
-    StoredJson.decodeFromString<Map<String, String>>(stored)
-  } catch (_: SerializationException) {
-    return null
-  }
+  val texts = StoredJson.decodedOrNull<Map<String, String>>(stored) ?: return null
   return if (wrappersByKey.keys.containsAll(texts.keys)) {
     WrapperPrompts.of(texts.mapKeys { (key) -> wrappersByKey.getValue(key) })
   } else {

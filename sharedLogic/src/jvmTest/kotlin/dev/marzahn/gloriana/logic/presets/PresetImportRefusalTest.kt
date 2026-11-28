@@ -1,8 +1,8 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.characters.CorpusFile
-import dev.marzahn.gloriana.logic.files.OpenedFile
-import dev.marzahn.gloriana.logic.files.PickedFile
+import dev.marzahn.gloriana.logic.files.CorpusFile
+import dev.marzahn.gloriana.logic.files.FailingToOpenFile
+import dev.marzahn.gloriana.logic.files.GoneFile
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
@@ -18,16 +18,8 @@ class PresetImportRefusalTest {
 
   @Test
   fun eachFailingFileNamesItsReasonAndAddsNoPreset() = runTest {
-    val gone = object : PickedFile {
-      override val name = "gone.json"
-
-      override fun open() = OpenedFile.Unavailable
-    }
-    val failing = object : PickedFile {
-      override val name = "failing.json"
-
-      override fun open(): OpenedFile = error("revoked")
-    }
+    val gone = GoneFile("gone.json")
+    val failing = FailingToOpenFile("failing.json")
     val cases = listOf(
       PresetCorpus.file("damaged.json") to PresetImportFailure.Damaged,
       CorpusFile("latin1.json", byteArrayOf(0x7B, 0xFF.toByte(), 0x7D)) to PresetImportFailure.Damaged,

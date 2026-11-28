@@ -1,10 +1,10 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.characters.CorpusFile
-import dev.marzahn.gloriana.logic.characters.MemoryDestination
 import dev.marzahn.gloriana.logic.connection.ConnectionLibrary
 import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
 import dev.marzahn.gloriana.logic.debug.Faults
+import dev.marzahn.gloriana.logic.files.CorpusFile
+import dev.marzahn.gloriana.logic.files.MemoryDestination
 import dev.marzahn.gloriana.logic.presets.storage.PresetWrites
 import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase

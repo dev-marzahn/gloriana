@@ -7,12 +7,12 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class ScrubberTest {
-  private fun secretsOf(connection: OpenedConnection) =
-    checkNotNull(hostRequest(connection, HttpMethod.Post, "chat/completions", body = null)).secrets
+  private fun scrubberOf(connection: OpenedConnection) =
+    checkNotNull(hostRequest(connection, HttpMethod.Post, "chat/completions", body = null)).scrubber
 
   @Test
   fun everyExactOccurrenceOfTheKeyInABodyIsMasked() {
-    val scrubber = Scrubber(secretsOf(openedConnection(ApiFormat.AnthropicMessages, key = "sk-1")))
+    val scrubber = scrubberOf(openedConnection(ApiFormat.AnthropicMessages, key = "sk-1"))
 
     val echoed = scrubber.scrub("""{"error":"key sk-1 and sk-1 rejected"}""")
 
@@ -38,13 +38,15 @@ class ScrubberTest {
       ),
     )
 
-    assertEquals(setOf("Bearer proxy-token", "proxy-token", "azure-key"), secretsOf(connection))
-    assertEquals("$MASK $MASK turn it off", Scrubber(secretsOf(connection)).scrub("proxy-token azure-key turn it off"))
+    assertEquals(
+      "$MASK, $MASK $MASK turn it off",
+      scrubberOf(connection).scrub("Bearer proxy-token, proxy-token azure-key turn it off"),
+    )
   }
 
   @Test
   fun aConnectionWithNoKeyLeavesABodyAsItIs() {
-    val scrubber = Scrubber(secretsOf(openedConnection(ApiFormat.AnthropicMessages, key = null)))
+    val scrubber = scrubberOf(openedConnection(ApiFormat.AnthropicMessages, key = null))
 
     assertEquals("body", scrubber.scrub("body"))
   }

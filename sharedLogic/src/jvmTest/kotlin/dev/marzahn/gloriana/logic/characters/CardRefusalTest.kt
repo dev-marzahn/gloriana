@@ -4,9 +4,9 @@ import dev.marzahn.gloriana.logic.characters.CardFixtures.base64
 import dev.marzahn.gloriana.logic.characters.CardFixtures.image
 import dev.marzahn.gloriana.logic.characters.CardFixtures.png
 import dev.marzahn.gloriana.logic.characters.CardFixtures.zip
-import dev.marzahn.gloriana.logic.files.ByteSource
-import dev.marzahn.gloriana.logic.files.OpenedFile
-import dev.marzahn.gloriana.logic.files.PickedFile
+import dev.marzahn.gloriana.logic.files.CorpusFile
+import dev.marzahn.gloriana.logic.files.FailingToReadFile
+import dev.marzahn.gloriana.logic.files.GoneFile
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.AfterEach
 import org.junit.jupiter.api.BeforeEach
@@ -21,7 +21,6 @@ import java.nio.file.Path
 import java.util.zip.ZipEntry
 import kotlin.test.Test
 import kotlin.test.assertEquals
-import kotlin.test.assertTrue
 
 class CardRefusalTest {
   @TempDir
@@ -61,30 +60,14 @@ class CardRefusalTest {
 
   @Test
   fun aFileThatCannotBeOpenedIsNamedSo() = runTest {
-    val gone = object : PickedFile {
-      override val name = "gone.png"
-
-      override fun open(): OpenedFile = OpenedFile.Unavailable
-    }
-
-    assertEquals(FileImportResult.Failed(ImportFailure.CantBeOpened), library.importOne(gone))
+    assertEquals(FileImportResult.Failed(ImportFailure.CantBeOpened), library.importOne(GoneFile("gone.png")))
   }
 
   @Test
   fun aFileThatFailsWhileBeingReadIsNamedAsUnopenable() = runTest {
-    val failing = object : PickedFile {
-      override val name = "failing.png"
+    val result = library.importOne(FailingToReadFile("failing.png"))
 
-      override fun open(): OpenedFile = OpenedFile.Opened(
-        object : ByteSource {
-          override fun read(into: ByteArray, offset: Int, length: Int): Int = throw java.io.IOException("unplugged")
-
-          override fun close() = Unit
-        },
-      )
-    }
-
-    assertEquals(FileImportResult.Failed(ImportFailure.CantBeOpened), library.importOne(failing))
+    assertEquals(FileImportResult.Failed(ImportFailure.CantBeOpened), result)
     assertEquals(emptyList(), stagedOrStoredFiles())
   }
 

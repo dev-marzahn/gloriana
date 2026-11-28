@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.connection
 
+import dev.marzahn.gloriana.logic.json.NoFields
 import dev.marzahn.gloriana.logic.keys.SealedSecret
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
@@ -21,10 +22,8 @@ data class ConnectionFields(
   val includeUsage: Boolean = true,
   val samplers: Samplers = Samplers(),
   val timeoutSeconds: Int = DEFAULT_TIMEOUT_SECONDS,
-  val customBody: JsonObject = JsonObject(emptyMap()),
+  val customBody: JsonObject = NoFields,
 ) {
-  fun switchedTo(format: ApiFormat): ConnectionFields = copy(format = format)
-
   companion object {
     const val DEFAULT_CONTEXT_SIZE = 16_384
     const val DEFAULT_MAX_REPLY_TOKENS = 1_024

@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.logic.characters
 
 import dev.marzahn.gloriana.logic.assets.AssetHash
+import dev.marzahn.gloriana.logic.json.NoFields
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
@@ -61,7 +62,7 @@ data class CharacterAsset(
   val name: String,
   val extension: String,
   val source: AssetSource,
-  val otherKeys: JsonObject = JsonObject(emptyMap()),
+  val otherKeys: JsonObject = NoFields,
 )
 
 sealed interface AssetSource {

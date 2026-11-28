@@ -1,15 +1,11 @@
 package dev.marzahn.gloriana.ui.characters
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -37,8 +33,6 @@ import dev.marzahn.gloriana.ui.resources.panel_model
 import dev.marzahn.gloriana.ui.resources.panel_private
 import dev.marzahn.gloriana.ui.resources.pronouns_not_set
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
-import dev.marzahn.gloriana.ui.theme.lookShadow
-import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 

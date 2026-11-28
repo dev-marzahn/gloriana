@@ -22,8 +22,6 @@ import kotlin.time.Duration
 import kotlin.time.Duration.Companion.seconds
 
 internal const val TEST_KEY = "sk-stub/MARKER-1"
-internal const val PLAIN = "Hello from the stub host. This reply arrives in parts."
-internal val STUB_MODEL_IDS = listOf("stub-model-large", "stub-model-small")
 
 internal val greeting = listOf(
   PromptSection(SectionRole.System, "You are Wren."),

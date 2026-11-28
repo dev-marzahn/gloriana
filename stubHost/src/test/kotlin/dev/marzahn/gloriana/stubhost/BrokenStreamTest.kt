@@ -10,7 +10,6 @@ import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 private const val BROKE_OFF = "The stub host broke off this reply."
-private val PLAIN = Reply.plain.segments.single().text
 
 class BrokenStreamTest {
   @TempDir
@@ -27,7 +26,7 @@ class BrokenStreamTest {
     assertEquals("error", last.name)
     assertEquals(BROKE_OFF, parseObject(last.data).obj("error").text("message"))
     assertFalse(events.any { it.name == "message_delta" || it.name == "message_stop" })
-    assertEquals(PLAIN, events.filter { it.name == "content_block_delta" }.joinToString("") {
+    assertEquals(PLAIN_REPLY, events.filter { it.name == "content_block_delta" }.joinToString("") {
       parseObject(it.data).obj("delta").text("text")
     })
   }
@@ -41,7 +40,7 @@ class BrokenStreamTest {
     val text = events.dropLast(1).mapNotNull {
       parseObject(it.data).objects("choices").single().obj("delta").textOrNull("content")
     }
-    assertEquals(PLAIN, text.joinToString(""))
+    assertEquals(PLAIN_REPLY, text.joinToString(""))
   }
 
   @Test

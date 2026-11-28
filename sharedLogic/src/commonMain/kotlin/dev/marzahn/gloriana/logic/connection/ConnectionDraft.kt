@@ -1,6 +1,8 @@
 package dev.marzahn.gloriana.logic.connection
 
-import kotlinx.serialization.SerializationException
+import dev.marzahn.gloriana.logic.json.JsonParse
+import dev.marzahn.gloriana.logic.json.NoFields
+import dev.marzahn.gloriana.logic.json.parseJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -44,17 +46,16 @@ sealed interface CustomBodyText {
   data object NotAnObject : CustomBodyText
 
   companion object {
-    val Empty = Object(JsonObject(emptyMap()))
+    val Empty = Object(NoFields)
 
     fun parse(text: String): CustomBodyText = if (text.isBlank()) {
       Empty
     } else {
-      try {
-        Json.parseToJsonElement(text).asBody()
-      } catch (error: SerializationException) {
-        NotJson(
-          KotlinxJsonFailure.offset(error)?.let { TextPosition.of(text, it) },
-          KotlinxJsonFailure.fault(error, text),
+      when (val parse = parseJson(text)) {
+        is JsonParse.Parsed -> parse.element.asBody()
+        is JsonParse.Failed -> NotJson(
+          KotlinxJsonFailure.offset(parse.error)?.let { TextPosition.of(text, it) },
+          KotlinxJsonFailure.fault(parse.error, text),
         )
       }
     }

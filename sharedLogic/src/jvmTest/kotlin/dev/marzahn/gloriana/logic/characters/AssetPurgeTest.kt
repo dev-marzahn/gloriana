@@ -1,8 +1,13 @@
 package dev.marzahn.gloriana.logic.characters
 
 import dev.marzahn.gloriana.logic.assets.AssetPurge
+import dev.marzahn.gloriana.logic.assets.AssetSwitch
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.assets.PurgeRule
+import dev.marzahn.gloriana.logic.assets.purgeRuleAtStart
+import dev.marzahn.gloriana.logic.debug.DebugSignal
+import dev.marzahn.gloriana.logic.debug.DebugSwitch
+import dev.marzahn.gloriana.logic.debug.DebugSwitches
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitCancellation
@@ -53,6 +58,23 @@ class AssetPurgeTest {
     val storedHashes = library.storedFiles()
     assertTrue(checkNotNull(kept.avatar).hex in storedHashes)
     assertFalse(checkNotNull(tamsin.avatar).hex in storedHashes)
+  }
+
+  @Test
+  fun thePurgeNowSwitchRunsTheStartPurgeNowWhetherOrNotOneIsDue() {
+    assertEquals(PurgeRule.Now, purgeRuleAtStart(switches(purgeNow = true)) { false })
+  }
+
+  @Test
+  fun withoutTheSwitchTheStartPurgeRunsOnScheduleOnlyWhenDue() {
+    assertEquals(PurgeRule.Scheduled, purgeRuleAtStart(switches(purgeNow = false)) { true })
+    assertNull(purgeRuleAtStart(switches(purgeNow = false)) { false })
+  }
+
+  private fun switches(purgeNow: Boolean) = object : DebugSwitches {
+    override fun isOn(switch: DebugSwitch) = purgeNow && switch == AssetSwitch.PurgeNow
+
+    override fun take(signal: DebugSignal) = false
   }
 
   @Test

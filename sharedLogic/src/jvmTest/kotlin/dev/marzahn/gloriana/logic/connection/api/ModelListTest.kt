@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.connection.HeaderDraft
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.MASK
 import dev.marzahn.gloriana.logic.connection.entered
+import dev.marzahn.gloriana.stubhost.stubModelIds
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.jsonPrimitive
@@ -19,7 +20,7 @@ import kotlin.test.assertFalse
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
-private val stubModels = ProbeResult.Done(STUB_MODEL_IDS)
+private val stubModels = ProbeResult.Done(stubModelIds)
 private val noneListed = ProbeResult.Done(emptyList<String>())
 
 class ModelListTest {

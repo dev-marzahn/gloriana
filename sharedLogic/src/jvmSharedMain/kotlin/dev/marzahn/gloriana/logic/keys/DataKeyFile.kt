@@ -1,12 +1,13 @@
 package dev.marzahn.gloriana.logic.keys
 
+import dev.marzahn.gloriana.logic.json.asString
+import dev.marzahn.gloriana.logic.json.parsedObject
 import dev.marzahn.gloriana.logic.storage.createDirectoriesDurably
 import dev.marzahn.gloriana.logic.storage.writeAtomically
-import kotlinx.serialization.json.Json
+import dev.marzahn.gloriana.logic.text.parsedOrNull
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.jsonObject
 import java.nio.file.Files
 import java.nio.file.Path
 import java.util.Base64
@@ -16,14 +17,8 @@ internal class DataKeyFile(private val path: Path) {
   fun read(): Map<Uuid, ByteArray> =
     filed()?.entries?.mapNotNull { (id, key) -> entry(id, key) }?.toMap().orEmpty()
 
-  private fun filed(): JsonObject? {
-    if (!Files.isRegularFile(path)) return null
-    return try {
-      Json.parseToJsonElement(Files.readAllBytes(path).decodeToString()).jsonObject
-    } catch (_: IllegalArgumentException) {
-      null
-    }
-  }
+  private fun filed(): JsonObject? =
+    if (Files.isRegularFile(path)) parsedObject(Files.readAllBytes(path).decodeToString()) else null
 
   fun write(keys: Map<Uuid, ByteArray>) {
     val filed = JsonObject(
@@ -34,11 +29,8 @@ internal class DataKeyFile(private val path: Path) {
   }
 
   private fun entry(id: String, key: JsonElement): Pair<Uuid, ByteArray>? {
-    val encoded = (key as? JsonPrimitive)?.takeIf { it.isString }?.content ?: return null
-    return try {
-      Uuid.parse(id) to Base64.getDecoder().decode(encoded)
-    } catch (_: IllegalArgumentException) {
-      null
-    }
+    val connection = Uuid.parseOrNull(id)
+    val bytes = key.asString()?.let { encoded -> parsedOrNull { Base64.getDecoder().decode(encoded) } }
+    return if (connection == null || bytes == null) null else connection to bytes
   }
 }

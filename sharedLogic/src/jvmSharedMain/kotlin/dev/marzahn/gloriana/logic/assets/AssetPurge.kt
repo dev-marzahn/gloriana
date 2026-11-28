@@ -1,6 +1,8 @@
 package dev.marzahn.gloriana.logic.assets
 
 import dev.marzahn.gloriana.logic.app.ApplicationScope
+import dev.marzahn.gloriana.logic.debug.DebugSwitch
+import dev.marzahn.gloriana.logic.debug.DebugSwitches
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
 import kotlinx.coroutines.launch
 import java.nio.file.Files
@@ -40,15 +42,18 @@ internal class AssetPurge(
   }
 }
 
-internal class AssetPurgeAtStart(purge: AssetPurge, hooks: DebugPurge, scope: ApplicationScope) {
+enum class AssetSwitch(override val key: String) : DebugSwitch {
+  PurgeNow("assets.purge.now"),
+}
+
+internal class AssetPurgeAtStart(purge: AssetPurge, switches: DebugSwitches, scope: ApplicationScope) {
   init {
-    val rule = if (hooks.purgeNow()) PurgeRule.Now else PurgeRule.Scheduled
-    if (rule == PurgeRule.Now || purge.isDue()) {
-      scope.launch { runCatching { purge.run(rule) } }
-    }
+    purgeRuleAtStart(switches, purge::isDue)?.let { rule -> scope.launch { runCatching { purge.run(rule) } } }
   }
 }
 
-fun interface DebugPurge {
-  fun purgeNow(): Boolean
+internal fun purgeRuleAtStart(switches: DebugSwitches, isDue: () -> Boolean): PurgeRule? = when {
+  switches.isOn(AssetSwitch.PurgeNow) -> PurgeRule.Now
+  isDue() -> PurgeRule.Scheduled
+  else -> null
 }

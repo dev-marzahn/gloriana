@@ -11,6 +11,7 @@ import dev.marzahn.gloriana.logic.characters.storage.CharacterChildDao
 import dev.marzahn.gloriana.logic.characters.storage.CharacterDao
 import dev.marzahn.gloriana.logic.characters.storage.CharacterEntity
 import dev.marzahn.gloriana.logic.characters.storage.CharacterGreetingEntity
+import dev.marzahn.gloriana.logic.connection.storage.AddConnectionsAndLibrarySettings
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionEntity
 import dev.marzahn.gloriana.logic.presets.storage.AddPresets

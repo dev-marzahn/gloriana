@@ -1,6 +1,6 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.characters.CorpusFile
+import dev.marzahn.gloriana.logic.files.CorpusFile
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement

@@ -56,4 +56,11 @@ class LimitCutAndRedirectTest {
     assertEquals(HttpStatusCode.TemporaryRedirect, response.status)
     assertEquals("/a/normal/v1/responses", response.headers[HttpHeaders.Location])
   }
+
+  @Test
+  fun redirectKeepsALabelThatSharesTheModesName() = stubHostTest(folder) {
+    val response = client.config { followRedirects = false }.send("/redirect/redirect/v1/responses", WHOLE)
+
+    assertEquals("/redirect/normal/v1/responses", response.headers[HttpHeaders.Location])
+  }
 }

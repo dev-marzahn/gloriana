@@ -1,7 +1,7 @@
 package dev.marzahn.gloriana.logic.presets.file
 
-import dev.marzahn.gloriana.logic.json.boolean
 import dev.marzahn.gloriana.logic.json.int
+import dev.marzahn.gloriana.logic.json.quotedOrBareBoolean
 import dev.marzahn.gloriana.logic.json.string
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.EntryRole
@@ -49,23 +49,13 @@ internal data class PromptFields(
     return JsonObject(prompt + changes)
   }
 
-  fun newPrompt(identifier: String): JsonObject = JsonObject(
-    mapOf(
-      IDENTIFIER_KEY to JsonPrimitive(identifier),
-      NAME_KEY to JsonPrimitive(name),
-      CONTENT_KEY to JsonPrimitive(text),
-      MARKER_KEY to JsonPrimitive(filledByApp),
-      ROLE_KEY to JsonPrimitive(role.fileValue),
-    ) + placement.fileFields(),
-  )
-
   companion object {
     fun of(entry: PresetEntry) = PromptFields(entry.name, entry.text, entry.filledByApp, entry.role, entry.placement)
 
     fun of(prompt: JsonObject, identifier: String) = PromptFields(
       name = prompt.string(NAME_KEY) ?: identifier,
       text = prompt.string(CONTENT_KEY).orEmpty(),
-      filledByApp = prompt.boolean(MARKER_KEY) == true,
+      filledByApp = prompt.quotedOrBareBoolean(MARKER_KEY) == true,
       role = roleOf(prompt.string(ROLE_KEY)),
       placement = if (prompt.int(POSITION_KEY) == IN_CHAT_POSITION) {
         EntryPlacement.InChat((prompt.int(DEPTH_KEY) ?: PINNED_DEFAULT_DEPTH).coerceAtLeast(0))

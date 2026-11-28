@@ -61,16 +61,6 @@ class ConnectionRepositoryTest {
   }
 
   @Test
-  fun aFormatSwitchKeepsEverySamplerUntilTheOwnerDecidesOtherwise() {
-    val samplers = Samplers(temperature = 0.4, topK = 40, frequencyPenalty = 0.1, seed = 7)
-
-    val switched = draft(samplers = samplers).fields.switchedTo(ApiFormat.AnthropicMessages)
-
-    assertEquals(ApiFormat.AnthropicMessages, switched.format)
-    assertEquals(samplers, switched.samplers)
-  }
-
-  @Test
   fun everyFieldIsStoredAndTheListIsOrderedByNameLetterCaseAside() = runTest {
     val fields = ConnectionFields(
       name = "beta",

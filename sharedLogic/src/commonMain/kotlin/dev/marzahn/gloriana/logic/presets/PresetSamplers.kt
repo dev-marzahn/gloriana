@@ -5,6 +5,7 @@ import dev.marzahn.gloriana.logic.connection.SamplerKind
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.setValues
 import dev.marzahn.gloriana.logic.connection.with
+import dev.marzahn.gloriana.logic.json.asLiteral
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
@@ -60,10 +61,10 @@ private fun Sampler.fileNumber(primitive: JsonPrimitive): Number? = when (kind) 
   SamplerKind.Whole -> primitive.wholeNumber()
 }
 
-private fun JsonPrimitive.finiteNumber(): Double? = takeUnless { it.isString }?.doubleOrNull?.takeIf(Double::isFinite)
+private fun JsonPrimitive.finiteNumber(): Double? = asLiteral()?.doubleOrNull?.takeIf(Double::isFinite)
 
 private fun JsonPrimitive.wholeNumber(): Long? =
-  takeUnless { it.isString }?.let { number -> number.longOrNull ?: number.doubleOrNull?.wholeLongOrNull() }
+  asLiteral()?.let { number -> number.longOrNull ?: number.doubleOrNull?.wholeLongOrNull() }
 
 private val FIRST_DOUBLE_BEYOND_LONG = -Long.MIN_VALUE.toDouble()
 
