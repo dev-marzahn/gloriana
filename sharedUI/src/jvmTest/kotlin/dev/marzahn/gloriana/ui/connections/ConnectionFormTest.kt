@@ -156,7 +156,7 @@ class ConnectionFormTest {
     val form = ConnectionForm.of(ConnectionTemplate.OpenAi).copy(
       headers = listOf(
         HeaderRow(4, "", null, ValueEdit.Entering),
-        HeaderRow(9, "X Bad", null, ValueEdit.Typed(SecretText("v"))),
+        HeaderRow(9, "X Bad", null, ValueEdit.typing(SecretText("v"))),
       ),
     )
 

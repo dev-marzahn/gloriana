@@ -185,7 +185,7 @@ class ConnectionViewModelTest {
   fun anEditMadeWhileThePassphrasePromptHoldsTheSaveIsSaved() = LiveLibrary.use(NoKeychain) { library ->
     runBlocking {
       val page = shownPage(library, "Work")
-      page.on(PageIntent.Edit(FormField.Key) { it.copy(key = KeyEdit.Typed(SecretText("sk-made-up"))) })
+      page.on(PageIntent.Edit(FormField.Key) { it.copy(key = KeyEdit.typing(SecretText("sk-made-up"))) })
       page.on(PageIntent.Save)
       withTimeout(WAIT_MILLIS) {
         page.state.first { (it as? ConnectionPageState.Shown)?.activity is PageActivity.SettingPassphrase }

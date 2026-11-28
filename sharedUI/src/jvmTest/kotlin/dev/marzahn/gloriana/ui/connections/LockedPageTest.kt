@@ -151,7 +151,7 @@ class LockedPageTest {
       val added = page.shown { shown -> shown.form.headers.any { it.storedName == null } }
         .form.headers.single { it.storedName == null }
       val typed: FormChange = {
-        it.withHeaderChanged(added.id) { header -> header.copy(value = ValueEdit.Typed(SecretText("v"))) }
+        it.withHeaderChanged(added.id) { header -> header.copy(value = ValueEdit.typing(SecretText("v"))) }
       }
 
       page.on(PageIntent.Edit(FormField.HeaderValue(added.id), typed))
@@ -159,7 +159,7 @@ class LockedPageTest {
 
       page.shown { shown ->
         shown.activity == PageActivity.Idle &&
-          shown.form.headers.single { it.id == added.id }.value == ValueEdit.Typed(SecretText("v"))
+          shown.form.headers.single { it.id == added.id }.value == ValueEdit.typing(SecretText("v"))
       }
       coroutineContext.cancelChildren()
     }
@@ -171,10 +171,10 @@ class LockedPageTest {
       val page = lockedPage(library, key = KeyInput.Kept)
       page.shown { it.secrets is SecretsState.Locked }
 
-      page.on(PageIntent.Edit(FormField.Key) { it.copy(key = KeyEdit.Typed(SecretText("s"))) })
+      page.on(PageIntent.Edit(FormField.Key) { it.copy(key = KeyEdit.typing(SecretText("s"))) })
       assertEquals(FormField.Key, assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
 
-      page.shown { it.activity == PageActivity.Idle && it.form.key == KeyEdit.Typed(SecretText("s")) }
+      page.shown { it.activity == PageActivity.Idle && it.form.key == KeyEdit.typing(SecretText("s")) }
       coroutineContext.cancelChildren()
     }
   }
