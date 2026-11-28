@@ -18,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.HeldSecrets
-import dev.marzahn.gloriana.logic.connection.api.hostOf
 import dev.marzahn.gloriana.logic.connection.heldSecrets
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.Confirmation

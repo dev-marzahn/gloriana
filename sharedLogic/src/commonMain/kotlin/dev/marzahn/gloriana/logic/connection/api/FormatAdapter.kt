@@ -13,6 +13,7 @@ internal interface FormatAdapter {
   val modelListTarget: String
   val fixedHeaders: List<HostHeader>
   val keyHeaderName: HeaderName
+  val reportsUsageOnRequest: Boolean get() = false
 
   fun keyValue(key: String): String
 
@@ -33,6 +34,8 @@ internal val ApiFormat.adapter: FormatAdapter
     ApiFormat.OpenAiChatCompletions -> ChatCompletionsAdapter
     ApiFormat.OpenAiResponses -> ResponsesAdapter
   }
+
+val ApiFormat.reportsUsageOnRequest: Boolean get() = adapter.reportsUsageOnRequest
 
 internal val AuthorizationHeader: HeaderName = HeaderName.of(HttpHeaders.Authorization)
 

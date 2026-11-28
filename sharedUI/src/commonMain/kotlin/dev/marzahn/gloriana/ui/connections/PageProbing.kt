@@ -3,12 +3,10 @@ package dev.marzahn.gloriana.ui.connections
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.api.ConnectionProbe
 import dev.marzahn.gloriana.logic.connection.api.ProbeResult
+import dev.marzahn.gloriana.logic.connection.api.ProbeWaives
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.time.TimeSource
-
-private val testWaives = setOf(ConnectionProblem.NameEmpty)
-private val modelListWaives = testWaives + ConnectionProblem.ModelEmpty
 
 internal class PageProbing(
   private val context: PageContext,
@@ -19,7 +17,7 @@ internal class PageProbing(
 
   fun test() {
     val page = context.idlePage() ?: return
-    val draft = context.ready(page.form, testWaives) ?: return
+    val draft = context.ready(page.form, ProbeWaives.test) ?: return
     val probed = Probed(page.form.keyContext, draft.fields.timeoutSeconds)
     session.update { it.copy(activity = PageActivity.Testing, note = null, test = null) }
     context.scope.launch {
@@ -48,7 +46,7 @@ internal class PageProbing(
 
   fun openModelList() {
     val page = context.idlePage() ?: return
-    val draft = context.ready(page.form, modelListWaives) ?: return
+    val draft = context.ready(page.form, ProbeWaives.modelList) ?: return
     val probed = Probed(page.form.keyContext, draft.fields.timeoutSeconds)
     val asking = PageActivity.PickingModel(ModelList.Asking)
     session.update { it.copy(activity = asking, modelListNote = null) }

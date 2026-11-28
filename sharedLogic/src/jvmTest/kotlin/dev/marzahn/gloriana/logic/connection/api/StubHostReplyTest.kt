@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.ApiFormat
+import dev.marzahn.gloriana.logic.connection.MASK
 import dev.marzahn.gloriana.logic.connection.Samplers
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject

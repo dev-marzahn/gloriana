@@ -15,8 +15,6 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.getString
 
-fun List<Connection>.inListOrder(): List<Connection> = sortedBy { it.fields.name.lowercase() }
-
 enum class CommandResult { Done, Failed }
 
 class ConnectionCommands(private val repository: ConnectionRepository, private val messages: AppMessages) {
@@ -30,7 +28,7 @@ class ConnectionCommands(private val repository: ConnectionRepository, private v
   }
 
   suspend fun delete(connection: Connection): CommandResult {
-    val index = repository.connections().catch { emit(emptyList()) }.first().inListOrder()
+    val index = repository.connections().catch { emit(emptyList()) }.first()
       .indexOfFirst { it.id == connection.id }
     return when (repository.delete(connection.id)) {
       ConnectionDeleteResult.Deleted,

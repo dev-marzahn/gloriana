@@ -5,6 +5,8 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+internal const val MASK = "•••"
+
 data class ConnectionDraft(
   val fields: ConnectionFields,
   val key: KeyInput = KeyInput.Kept,
@@ -21,16 +23,16 @@ sealed interface KeyInput {
 
   data object Removed : KeyInput
 
-  class Entered(val value: String) : KeyInput {
-    override fun toString() = "Entered(•••)"
+  data class Entered(val value: String) : KeyInput {
+    override fun toString() = "Entered($MASK)"
   }
 }
 
 sealed interface HeaderValueInput {
   data class Kept(val storedName: String) : HeaderValueInput
 
-  class Entered(val value: String) : HeaderValueInput {
-    override fun toString() = "Entered(•••)"
+  data class Entered(val value: String) : HeaderValueInput {
+    override fun toString() = "Entered($MASK)"
   }
 }
 

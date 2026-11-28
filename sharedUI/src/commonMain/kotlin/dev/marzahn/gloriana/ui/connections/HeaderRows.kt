@@ -81,29 +81,30 @@ private fun HeaderLine(page: ConnectionPageState.Shown, editing: FormEditing, ro
     Row(horizontalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8), verticalAlignment = Alignment.Top) {
       HeaderNameField(editing, row, nameError)
       when (val value = row.value) {
-        is ValueEdit.Typed -> Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-          SecretField(
-            value.text,
-            { setValue(ValueEdit.Typed(it)) },
-            SecretLabels(stringResource(Res.string.show_value), stringResource(Res.string.hide_value)),
-            Modifier.weight(1f).focusRequester(editing.focus(valueField)),
-            enabled = editing.enabled,
-            error = valueError,
-            placeholder = stringResource(Res.string.header_value),
-          )
-          if (stored != null) {
-            GlorianaIconButton(
-              Res.drawable.ic_undo_20,
-              stringResource(Res.string.cancel_replace_value),
-              { setValue(ValueEdit.Kept) },
+        ValueEdit.Entering, is ValueEdit.Typed ->
+          Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            SecretField(
+              value.typedText,
+              { setValue(ValueEdit.typing(it)) },
+              SecretLabels(stringResource(Res.string.show_value), stringResource(Res.string.hide_value)),
+              Modifier.weight(1f).focusRequester(editing.focus(valueField)),
               enabled = editing.enabled,
+              error = valueError,
+              placeholder = stringResource(Res.string.header_value),
             )
+            if (stored != null) {
+              GlorianaIconButton(
+                Res.drawable.ic_undo_20,
+                stringResource(Res.string.cancel_replace_value),
+                { setValue(ValueEdit.Kept) },
+                enabled = editing.enabled,
+              )
+            }
           }
-        }
         ValueEdit.Kept -> KeptHeaderValue(
           stored ?: StoredSecret.Saved,
           enabled = editing.enabled,
-          onEnter = { setValue(ValueEdit.Typed(SecretText.Empty)) },
+          onEnter = { setValue(ValueEdit.Entering) },
           enterFocus = editing.focus(valueField),
         )
       }

@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.connection.api
 
+import dev.marzahn.gloriana.logic.connection.MASK
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

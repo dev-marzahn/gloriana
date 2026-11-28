@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.logic.connection
 
 import dev.marzahn.gloriana.logic.keys.HeaderName
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.logic.keys.OpenResult
 import dev.marzahn.gloriana.logic.keys.SealResult
 import dev.marzahn.gloriana.logic.keys.SealedSecret
@@ -83,11 +84,7 @@ internal sealed interface Sealing {
 
   data object NeedsPassphrase : Sealing
 
-  data object Locked : Sealing
-
-  data object Unavailable : Sealing
-
-  data object Unreadable : Sealing
+  class Blocked(val why: KeysBlocked) : Sealing
 }
 
 private sealed interface Step {
@@ -127,17 +124,13 @@ internal class ConnectionSecrets(private val vault: KeyVault) {
     is SecretPlan.Move -> when (val opened = vault.open(plan.from, plan.secret)) {
       is OpenResult.Opened -> sealed(plan.to, opened.value)
       OpenResult.Missing -> Step.Stop(Sealing.Refused(setOf(refusedAs)))
-      OpenResult.Locked -> Step.Stop(Sealing.Locked)
-      OpenResult.Unavailable -> Step.Stop(Sealing.Unavailable)
-      OpenResult.Unreadable -> Step.Stop(Sealing.Unreadable)
+      is OpenResult.Blocked -> Step.Stop(Sealing.Blocked(opened.why))
     }
   }
 
   private suspend fun sealed(slot: SecretSlot, value: String): Step = when (val sealed = vault.seal(slot, value)) {
     is SealResult.Sealed -> Step.Value(sealed.secret)
     SealResult.NeedsPassphrase -> Step.Stop(Sealing.NeedsPassphrase)
-    SealResult.Locked -> Step.Stop(Sealing.Locked)
-    SealResult.Unavailable -> Step.Stop(Sealing.Unavailable)
-    SealResult.Unreadable -> Step.Stop(Sealing.Unreadable)
+    is SealResult.Blocked -> Step.Stop(Sealing.Blocked(sealed.why))
   }
 }

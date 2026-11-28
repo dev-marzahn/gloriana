@@ -8,6 +8,7 @@ import dev.marzahn.gloriana.logic.connection.HeaderValueInput
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.asDraft
 import dev.marzahn.gloriana.logic.connection.entered
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.logic.keys.OpenResult
 import kotlinx.coroutines.runBlocking
 import org.junit.jupiter.api.AfterEach
@@ -125,11 +126,9 @@ class ProbeDraftTest {
     val stored = stored()
     val draft = harness.draftFor(ApiFormat.AnthropicMessages, "normal", KeyInput.Kept)
 
-    mapOf(
-      OpenResult.Missing to ModelApiError.KeysMissing(HeldSecrets.Key),
-      OpenResult.Locked to ModelApiError.KeysLocked,
-      OpenResult.Unavailable to ModelApiError.KeysUnavailable(HeldSecrets.Key),
-    ).forEach { (answer, refusal) ->
+    val blocked = listOf(KeysBlocked.Locked, KeysBlocked.Unavailable)
+      .associate { OpenResult.Blocked(it) to ModelApiError.KeysNotOpened(it, HeldSecrets.Key) }
+    (mapOf(OpenResult.Missing to ModelApiError.KeysMissing(HeldSecrets.Key)) + blocked).forEach { (answer, refusal) ->
       val probe = harness.probe(AnsweringVault(harness.library.vault, answer))
       assertEquals(ProbeResult.Failed(refusal), probe.test(draft, stored), "$answer")
       assertEquals(ProbeResult.Failed(refusal), probe.models(draft, stored), "$answer")

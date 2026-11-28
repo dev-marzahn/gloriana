@@ -53,8 +53,8 @@ internal class TinkKeyVault(
   override fun deferUnlock() = holder.deferUnlock()
 
   override suspend fun seal(slot: SecretSlot, value: String): SealResult = sweep.thenRun {
-    holder.withAead(SealOutcomes) { aead ->
-      unlessFilesFail(SealResult.Unavailable) {
+    holder.withAead(noKeychain = { SealResult.NeedsPassphrase }, blocked = SealResult::Blocked) { aead ->
+      unlessFilesFail(SealResult.Blocked(KeysBlocked.Unavailable)) {
         val dataKey = dataKeys.findOrMake(slot.connectionId, aead)
         sweep.giveUpForThisRun()
         SealResult.Sealed(dataKey.sealSecret(slot, value)).also { foundMissing.update { it - slot } }
@@ -63,8 +63,8 @@ internal class TinkKeyVault(
   }
 
   override suspend fun open(slot: SecretSlot, secret: SealedSecret): OpenResult = sweep.thenRun {
-    holder.withAead(OpenOutcomes) { aead ->
-      unlessFilesFail(OpenResult.Unavailable) {
+    holder.withAead(noKeychain = { OpenResult.Missing }, blocked = OpenResult::Blocked) { aead ->
+      unlessFilesFail(OpenResult.Blocked(KeysBlocked.Unavailable)) {
         val opened = dataKeys.find(slot.connectionId, aead)?.openSecret(slot, secret) ?: OpenResult.Missing
         opened.also { result -> foundMissing.update { if (result == OpenResult.Missing) it + slot else it - slot } }
       }
@@ -132,36 +132,20 @@ internal class TinkKeyVault(
   }
 }
 
-private class WithoutAead<T>(val needsPassphrase: T, val locked: T, val unreadable: T, val unavailable: T)
-
-private val SealOutcomes = WithoutAead<SealResult>(
-  needsPassphrase = SealResult.NeedsPassphrase,
-  locked = SealResult.Locked,
-  unreadable = SealResult.Unreadable,
-  unavailable = SealResult.Unavailable,
-)
-
-private val OpenOutcomes = WithoutAead<OpenResult>(
-  needsPassphrase = OpenResult.Missing,
-  locked = OpenResult.Locked,
-  unreadable = OpenResult.Unreadable,
-  unavailable = OpenResult.Unavailable,
-)
-
-private suspend inline fun <T> KeysetHolder.withAead(without: WithoutAead<T>, crossinline use: (Aead) -> T): T =
-  withKeyset { current ->
-    current.withAead(without, lockedWhileUnavailable = readsAsLocked, use)
-  }
-
-private inline fun <T> Keyset.withAead(without: WithoutAead<T>, lockedWhileUnavailable: Boolean, use: (Aead) -> T): T =
-  when (val current = this) {
+private suspend inline fun <T> KeysetHolder.withAead(
+  crossinline noKeychain: () -> T,
+  crossinline blocked: (KeysBlocked) -> T,
+  crossinline use: (Aead) -> T,
+): T = withKeyset { current ->
+  when (current) {
     is Keyset.DeviceUnlocked -> use(current.aead)
     is Keyset.PassphraseUnlocked -> use(current.aead)
-    Keyset.NoKeychain -> without.needsPassphrase
-    is Keyset.Locked, Keyset.PassphraseDamaged -> without.locked
-    is Keyset.DeviceDamaged, is Keyset.DeviceKeyNotFound -> without.unreadable
-    Keyset.Closed, Keyset.Unavailable -> if (lockedWhileUnavailable) without.locked else without.unavailable
+    Keyset.NoKeychain -> noKeychain()
+    is Keyset.Locked, Keyset.PassphraseDamaged -> blocked(KeysBlocked.Locked)
+    is Keyset.DeviceDamaged, is Keyset.DeviceKeyNotFound -> blocked(KeysBlocked.Unreadable)
+    Keyset.Closed, Keyset.Unavailable -> blocked(if (readsAsLocked) KeysBlocked.Locked else KeysBlocked.Unavailable)
   }
+}
 
 private inline fun <T> unlessFilesFail(unavailable: T, work: () -> T): T = try {
   work()

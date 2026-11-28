@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.SecretsState
-import dev.marzahn.gloriana.logic.connection.holdsOpenableSecrets
+import dev.marzahn.gloriana.logic.connection.countHolding
 import dev.marzahn.gloriana.logic.connection.secretChecks
 import dev.marzahn.gloriana.logic.connection.secretsState
 import dev.marzahn.gloriana.logic.keys.KeyFindings
@@ -20,7 +20,6 @@ import dev.marzahn.gloriana.ui.connections.UnlockPrompt
 import dev.marzahn.gloriana.ui.connections.UnlockPromptSlot
 import dev.marzahn.gloriana.ui.connections.WriteFailure
 import dev.marzahn.gloriana.ui.connections.failure
-import dev.marzahn.gloriana.ui.connections.inListOrder
 import dev.marzahn.gloriana.ui.lists.Deleted
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
@@ -103,6 +102,7 @@ sealed interface RowActivity {
 data class SettingsState(
   val connections: ConnectionsList = ConnectionsList.Loading,
   val showsPassphrase: Boolean = false,
+  val holding: Int? = null,
   val keys: KeysNote = KeysNote.None,
   val locked: List<String> = emptyList(),
   val unlock: UnlockPrompt? = null,
@@ -172,7 +172,7 @@ class SettingsViewModel(
       val list = loaded.fold(
         onSuccess = { stored ->
           ConnectionsList.Loaded(
-            stored.connections.inListOrder().map { connection ->
+            stored.connections.map { connection ->
               val secrets = connection.secretsState(vaultState, findings)
               ConnectionRowState(connection, connection.id == stored.default, secrets)
             },
@@ -180,10 +180,12 @@ class SettingsViewModel(
         },
         onFailure = { ConnectionsList.CouldNotLoad },
       )
+      val holding = list.holding(findings)
       SettingsState(
         connections = list,
         showsPassphrase = vaultState.hasPassphrase,
-        keys = keysNote(list.holding(findings), vaultState, current.startOver),
+        holding = holding,
+        keys = keysNote(holding, vaultState, current.startOver),
         locked = list.lockedNames(),
         unlock = current.unlock,
         startOver = current.startOver.sheet(),
@@ -194,7 +196,7 @@ class SettingsViewModel(
 
   private val unlocking = UnlockFlow(
     vault,
-    repository,
+    { state.value.holding },
     viewModelScope,
     object : UnlockPromptSlot {
       override val prompt: UnlockPrompt? get() = session.value.unlock
@@ -288,7 +290,7 @@ class SettingsViewModel(
 }
 
 private fun ConnectionsList.holding(findings: KeyFindings): Int? = when (this) {
-  is ConnectionsList.Loaded -> rows.count { findings.holdsOpenableSecrets(it.connection) }
+  is ConnectionsList.Loaded -> findings.countHolding(rows.map { it.connection })
   ConnectionsList.Loading, ConnectionsList.CouldNotLoad -> null
 }
 

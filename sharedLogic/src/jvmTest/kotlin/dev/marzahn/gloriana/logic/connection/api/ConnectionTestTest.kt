@@ -4,6 +4,7 @@ import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.HeaderDraft
 import dev.marzahn.gloriana.logic.connection.KeyInput
+import dev.marzahn.gloriana.logic.connection.MASK
 import dev.marzahn.gloriana.logic.connection.entered
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonPrimitive

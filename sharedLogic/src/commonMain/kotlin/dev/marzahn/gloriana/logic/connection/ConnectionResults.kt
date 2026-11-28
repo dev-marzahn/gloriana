@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.connection
 
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import kotlin.uuid.Uuid
 
 sealed interface ConnectionSaveResult {
@@ -9,11 +10,7 @@ sealed interface ConnectionSaveResult {
 
   data object NeedsPassphrase : ConnectionSaveResult
 
-  data object Locked : ConnectionSaveResult
-
-  data object KeysUnavailable : ConnectionSaveResult
-
-  data object KeysUnreadable : ConnectionSaveResult
+  data class Blocked(val keys: KeysBlocked) : ConnectionSaveResult
 
   data object Gone : ConnectionSaveResult
 

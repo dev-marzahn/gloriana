@@ -5,6 +5,7 @@ import dev.marzahn.gloriana.logic.connection.HeldSecrets
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.logic.connection.api.ModelApiError
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import kotlin.time.Duration
 
 enum class KeyContext { SavedKey, TypedKey, HeadersOnly, NoKey }
@@ -82,15 +83,15 @@ fun ModelApiError.refusal(probed: Probed): Refusal {
     ModelApiError.BadHeader -> host(HostProblem.BadHeader)
     ModelApiError.StreamNotBoolean -> host(HostProblem.StreamNotBoolean)
     ModelApiError.Unexpected -> host(HostProblem.Unexpected)
-    is ModelApiError.KeysNotOpened -> Refusal.Keys(blockedNote())
-    ModelApiError.KeysLocked -> Refusal.Locked
+    is ModelApiError.KeysMissing -> Refusal.Keys(PageNote.KeysMissing(held))
+    is ModelApiError.KeysNotOpened -> refusal()
   }
 }
 
-private fun ModelApiError.KeysNotOpened.blockedNote(): PageNote.BlockedSend = when (this) {
-  is ModelApiError.KeysMissing -> PageNote.KeysMissing(held)
-  is ModelApiError.KeysUnavailable -> PageNote.KeysBlockedSend(KeysProblem.KeychainUnavailable, held)
-  is ModelApiError.KeysUnreadable -> PageNote.KeysBlockedSend(KeysProblem.Unreadable, held)
+private fun ModelApiError.KeysNotOpened.refusal(): Refusal = when (why) {
+  KeysBlocked.Locked -> Refusal.Locked
+  KeysBlocked.Unavailable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.KeychainUnavailable, held))
+  KeysBlocked.Unreadable -> Refusal.Keys(PageNote.KeysBlockedSend(KeysProblem.Unreadable, held))
 }
 
 sealed interface TestOutcome {

@@ -12,6 +12,7 @@ import dev.marzahn.gloriana.logic.connection.SamplersUpdateResult
 import dev.marzahn.gloriana.logic.connection.api.SentValue
 import dev.marzahn.gloriana.logic.connection.draft
 import dev.marzahn.gloriana.logic.connection.entered
+import dev.marzahn.gloriana.logic.connection.setValues
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -25,15 +26,9 @@ class SamplerOfferTest {
   @TempDir
   lateinit var directory: Path
 
-  private val fileSamplers = PresetSamplers(
-    mapOf(
-      fileSampler(Sampler.Temperature) to 0.85,
-      fileSampler(Sampler.TopP) to 0.92,
-      fileSampler(Sampler.TopK) to 40.0,
-      fileSampler(Sampler.FrequencyPenalty) to 0.3,
-      fileSampler(Sampler.Seed) to 7.0,
-      PresetSampler.WithoutConnectionField.MinP to 0.05,
-    ),
+  private val fileSamplers = PresetSamplers.of(
+    Samplers(temperature = 0.85, topP = 0.92, topK = 40, frequencyPenalty = 0.3, seed = 7),
+    mapOf(PresetSampler.WithoutConnectionField.MinP to 0.05),
   )
 
   @Test
@@ -53,8 +48,8 @@ class SamplerOfferTest {
             SamplerChange(Sampler.Seed, 7L, SentValue.NotSet),
           ),
           notCopied = listOf(
-            NotCopied(fileSampler(Sampler.TopK), NotCopiedBecause.FormatSendsNone),
-            NotCopied(PresetSampler.WithoutConnectionField.MinP, NotCopiedBecause.FormatSendsNone),
+            NotCopied(fileSampler(Sampler.TopK), 40L, NotCopiedBecause.FormatSendsNone),
+            NotCopied(PresetSampler.WithoutConnectionField.MinP, 0.05, NotCopiedBecause.FormatSendsNone),
           ),
         ),
         found(library, fileSamplers, connection.id),
@@ -67,18 +62,16 @@ class SamplerOfferTest {
     PresetLibrary(directory).use { library ->
       val connection = anthropic(library)
       library.global.setSamplers(Samplers(temperature = 1.5))
-      val samplers = PresetSamplers(
-        mapOf(fileSampler(Sampler.Temperature) to 1.5, fileSampler(Sampler.TopP) to 0.9),
-      )
+      val samplers = PresetSamplers.of(Samplers(temperature = 1.5, topP = 0.9))
 
       val difference = found(library, samplers, connection.id)
 
       assertEquals(listOf(SamplerChange(Sampler.TopP, 0.9, SentValue.NotSet)), difference.changes)
       assertEquals(
-        listOf(NotCopied(fileSampler(Sampler.Temperature), NotCopiedBecause.OutOfRange)),
+        listOf(NotCopied(fileSampler(Sampler.Temperature), 1.5, NotCopiedBecause.OutOfRange)),
         difference.notCopied,
       )
-      val withinRange = PresetSamplers(mapOf(fileSampler(Sampler.Temperature) to 0.4))
+      val withinRange = PresetSamplers.of(Samplers(temperature = 0.4))
       assertEquals(
         listOf(SamplerChange(Sampler.Temperature, 0.4, SentValue.NotSet)),
         found(library, withinRange, connection.id).changes,
@@ -95,30 +88,22 @@ class SamplerOfferTest {
 
       assertEquals(
         listOf(SamplerChange(Sampler.TopK, 40L, SentValue.Global(0L))),
-        found(library, PresetSamplers(mapOf(fileSampler(Sampler.TopK) to 40.0)), anthropic.id).changes,
+        found(library, PresetSamplers.of(Samplers(topK = 40)), anthropic.id).changes,
       )
       assertEquals(
         listOf(SamplerChange(Sampler.Seed, 7L, SentValue.Global(-1L))),
-        found(library, PresetSamplers(mapOf(fileSampler(Sampler.Seed) to 7.0)), chatCompletions.id).changes,
+        found(library, PresetSamplers.of(Samplers(seed = 7)), chatCompletions.id).changes,
       )
     }
   }
 
   @Test
-  fun theOfferHoldsTheSameValidityRuleAsTheReader() = runTest {
-    PresetLibrary(directory).use { library ->
-      val samplers = listOf(-3.0, 0.0, 1e20).map { PresetSamplers(mapOf(fileSampler(Sampler.TopK) to it)) } +
-        listOf(-1.0, 1e20).map { PresetSamplers(mapOf(fileSampler(Sampler.Seed) to it)) }
-      val anthropic = anthropic(library)
-      val chatCompletions = library.connections.created(draft(name = "Chat Completions"))
+  fun topKAtOrBelowZeroAndANegativeSeedSetNothingSoTheOfferNeverSeesThem() {
+    val unset = listOf(-3L, 0L).map { PresetSamplers.of(Samplers(topK = it)) } +
+      listOf(-1L, Long.MIN_VALUE).map { PresetSamplers.of(Samplers(seed = it)) }
 
-      samplers.forEach { offered ->
-        val connection = if (fileSampler(Sampler.TopK) in offered.values) anthropic else chatCompletions
-        val difference = found(library, offered, connection.id)
-        assertEquals(emptyList(), difference.changes, "$offered")
-        assertEquals(listOf(NotCopiedBecause.OutOfRange), difference.notCopied.map { it.because }, "$offered")
-      }
-    }
+    unset.forEach { assertTrue(it.isEmpty, "$it") }
+    assertEquals(Samplers(topK = 1, seed = 0), PresetSamplers.of(Samplers(topK = 1, seed = 0)).onConnection)
   }
 
   @Test
@@ -227,7 +212,9 @@ class SamplerOfferTest {
       val difference = found(library, samplers, connection.id)
 
       val listed = difference.changes.map { fileSampler(it.sampler) } + difference.notCopied.map { it.sampler }
-      assertEquals(samplers.values.keys, listed.toSet())
+      val read = samplers.onConnection.setValues().map { (sampler) -> fileSampler(sampler) } +
+        samplers.withoutConnectionField.keys
+      assertEquals(read.toSet(), listed.toSet())
       library.offer.copy(connection.id, difference.changes)
       val copied = library.connections.stored(connection.id).fields
       assertEquals(connection.fields.contextSize, copied.contextSize)

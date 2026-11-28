@@ -5,6 +5,7 @@ import androidx.test.platform.app.InstrumentationRegistry
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.keys.DeviceKeyStore
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.logic.keys.OpenResult
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
 import dev.marzahn.gloriana.logic.keys.SealResult
@@ -61,7 +62,7 @@ class KeystoreKeyStoreDeviceTest {
     val aliases = appAliases()
 
     val restarted = vault(KeystoreKeyStore(UnrecoverableOnce()))
-    assertEquals(OpenResult.Unavailable, restarted.open(SecretSlot.ApiKey(connection), sealed))
+    assertEquals(OpenResult.Blocked(KeysBlocked.Unavailable), restarted.open(SecretSlot.ApiKey(connection), sealed))
     assertEquals(VaultState.Unavailable, restarted.state.value)
     assertEquals(aliases, appAliases())
 
@@ -88,7 +89,10 @@ class KeystoreKeyStoreDeviceTest {
     val fallback = vault(broken)
 
     assertEquals(VaultState.NoKeychain, fallback.prepare())
-    assertEquals(SealResult.NeedsPassphrase, fallback.seal(SecretSlot.ApiKey(connection), "sk-device"))
+    assertEquals(
+      SealResult.NeedsPassphrase,
+      fallback.seal(SecretSlot.ApiKey(connection), "sk-device"),
+    )
     assertEquals(emptyList(), appAliases())
     assertEquals(emptyList(), keyFiles())
 

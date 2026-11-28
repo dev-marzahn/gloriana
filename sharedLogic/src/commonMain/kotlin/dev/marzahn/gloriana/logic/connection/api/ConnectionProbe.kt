@@ -12,6 +12,12 @@ sealed interface ProbeResult<out T> {
   data class Failed(val error: ModelApiError) : ProbeResult<Nothing>
 }
 
+object ProbeWaives {
+  val test: Set<ConnectionProblem> = setOf(ConnectionProblem.NameEmpty)
+
+  val modelList: Set<ConnectionProblem> = test + ConnectionProblem.ModelEmpty
+}
+
 interface ConnectionProbe {
   suspend fun test(draft: ConnectionDraft, stored: Connection?): ProbeResult<String>
 

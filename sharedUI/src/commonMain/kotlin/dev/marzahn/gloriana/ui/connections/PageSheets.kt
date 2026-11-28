@@ -1,7 +1,6 @@
 package dev.marzahn.gloriana.ui.connections
 
 import androidx.compose.runtime.Composable
-import dev.marzahn.gloriana.logic.connection.api.hostOf
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.passphrase
 import dev.marzahn.gloriana.ui.resources.set_passphrase_and_save

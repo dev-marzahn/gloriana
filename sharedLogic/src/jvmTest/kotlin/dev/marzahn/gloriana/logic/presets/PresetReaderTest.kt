@@ -1,7 +1,7 @@
 package dev.marzahn.gloriana.logic.presets
 
 import dev.marzahn.gloriana.logic.characters.CorpusFile
-import dev.marzahn.gloriana.logic.connection.Sampler
+import dev.marzahn.gloriana.logic.connection.Samplers
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -100,9 +100,19 @@ class PresetReaderTest {
     PresetLibrary(directory).use { library ->
       val result = library.import.import(CorpusFile("odd.json", file.encodeToByteArray()))
       val imported = assertIs<PresetImportResult.Imported>(result)
+      assertEquals(PresetSamplers.of(Samplers(seed = 3)), imported.samplers)
+    }
+  }
+
+  @Test
+  fun aSeedBeyondTheDoublesWholeNumbersKeepsItsExactValue() = runTest {
+    val file = """{"prompts": [], "seed": 9007199254740993, "top_k": 4.0}"""
+
+    PresetLibrary(directory).use { library ->
+      val result = library.import.import(CorpusFile("seed.json", file.encodeToByteArray()))
       assertEquals(
-        mapOf<PresetSampler, Double>(PresetSampler.OnConnection(Sampler.Seed) to 3.0),
-        imported.samplers.values,
+        PresetSamplers.of(Samplers(topK = 4, seed = 9_007_199_254_740_993)),
+        assertIs<PresetImportResult.Imported>(result).samplers,
       )
     }
   }
@@ -113,6 +123,8 @@ class PresetReaderTest {
       """{"prompts": [], "top_k": -3, "seed": -1}""",
       """{"prompts": [], "top_k": 0, "seed": 1e20}""",
       """{"prompts": [], "top_k": 1e20, "seed": -9223372036854775809}""",
+      """{"prompts": [], "top_k": 4.5, "seed": 1.5}""",
+      """{"prompts": [], "seed": 9223372036854775808}""",
     )
 
     PresetLibrary(directory).use { library ->

@@ -3,7 +3,7 @@ package dev.marzahn.gloriana.logic.connection
 import dev.marzahn.gloriana.logic.keys.HeaderName
 
 internal fun ConnectionFields.normalised(): ConnectionFields =
-  copy(name = name.trim(), model = model.trim(), baseUrl = withoutTrailingSlash(baseUrl.trim()))
+  copy(name = name.trim(), model = model.trim(), baseUrl = BaseUrl(baseUrl.trim()).withoutTrailingSlash())
 
 internal fun ConnectionFields.problems(): Set<ConnectionProblem> =
   textProblems(name, model, baseUrl) + numberProblems(contextSize, maxReplyTokens, timeoutSeconds) +
@@ -13,7 +13,7 @@ internal fun ConnectionFields.problems(): Set<ConnectionProblem> =
 fun textProblems(name: String, model: String, baseUrl: String): Set<ConnectionProblem> = buildSet {
   if (name.trim().isEmpty()) add(ConnectionProblem.NameEmpty)
   if (model.trim().isEmpty()) add(ConnectionProblem.ModelEmpty)
-  addAll(baseUrlProblems(withoutTrailingSlash(baseUrl.trim())))
+  addAll(baseUrlProblems(BaseUrl(baseUrl.trim()).withoutTrailingSlash()))
 }
 
 fun numberProblems(contextSize: Int?, maxReplyTokens: Int?, timeoutSeconds: Int?): Set<ConnectionProblem> = buildSet {

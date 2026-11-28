@@ -11,7 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.input.KeyboardType
 import dev.marzahn.gloriana.logic.connection.ApiFormat
-import dev.marzahn.gloriana.logic.connection.api.isPlainHttp
+import dev.marzahn.gloriana.logic.connection.BaseUrl
 import dev.marzahn.gloriana.logic.connection.api.requestAddress
 import dev.marzahn.gloriana.ui.components.FieldNote
 import dev.marzahn.gloriana.ui.components.GlorianaDropdownField
@@ -131,7 +131,7 @@ private fun BaseUrlRow(editing: FormEditing) {
       hint = hint,
       keyboardType = KeyboardType.Uri,
     )
-    if (isPlainHttp(form.baseUrl)) InfoLine(stringResource(Res.string.plain_http_note))
+    if (BaseUrl(form.baseUrl.trim()).isPlainHttp) InfoLine(stringResource(Res.string.plain_http_note))
   }
 }
 

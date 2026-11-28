@@ -8,12 +8,12 @@ import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
 import dev.marzahn.gloriana.logic.connection.CustomHeader
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.connection.holdsSealedValues
 import dev.marzahn.gloriana.logic.keys.SealedSecret
 import dev.marzahn.gloriana.logic.storage.EntityType
 import dev.marzahn.gloriana.logic.storage.StoredJson
 import dev.marzahn.gloriana.logic.storage.nameKey
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlin.io.encoding.Base64
 import kotlin.uuid.Uuid
@@ -52,11 +52,7 @@ internal sealed interface StoredConnection {
 }
 
 internal fun ConnectionEntity.decoded(): StoredConnection = try {
-  ApiFormat.entries.firstOrNull { it.name == format }?.let { apiFormat ->
-    StoredConnection.Readable(readable(apiFormat))
-  } ?: StoredConnection.Unreadable
-} catch (_: SerializationException) {
-  StoredConnection.Unreadable
+  apiFormatOf(format)?.let { StoredConnection.Readable(readable(it)) } ?: StoredConnection.Unreadable
 } catch (_: IllegalArgumentException) {
   StoredConnection.Unreadable
 }
@@ -66,11 +62,21 @@ internal fun ConnectionEntity.readableOrNull(): Connection? = when (val stored =
   StoredConnection.Unreadable -> null
 }
 
-internal val ConnectionEntity.needsDataKey: Boolean
-  get() = when (val stored = decoded()) {
-    is StoredConnection.Readable -> stored.connection.holdsSecrets
-    StoredConnection.Unreadable -> true
+internal data class SecretColumns(val id: Uuid, val format: String, val apiKey: String?, val headers: String)
+
+internal val SecretColumns.needsDataKey: Boolean
+  get() = try {
+    apiFormatOf(format) == null || holdsSealedValues(sealedKey(apiKey), customHeaders(headers))
+  } catch (_: IllegalArgumentException) {
+    true
   }
+
+private fun apiFormatOf(format: String): ApiFormat? = ApiFormat.entries.firstOrNull { it.name == format }
+
+private fun sealedKey(apiKey: String?): SealedSecret? = apiKey?.let(::sealedSecret)
+
+private fun customHeaders(headers: String): List<CustomHeader> =
+  StoredJson.decodeFromString<List<StoredHeader>>(headers).map { CustomHeader(it.name, sealedSecret(it.sealedValue)) }
 
 private fun ConnectionEntity.readable(apiFormat: ApiFormat) = Connection(
   id = id,
@@ -87,9 +93,8 @@ private fun ConnectionEntity.readable(apiFormat: ApiFormat) = Connection(
     timeoutSeconds = timeoutSeconds,
     customBody = StoredJson.decodeFromString<JsonObject>(customBody),
   ),
-  key = apiKey?.let(::sealedSecret),
-  headers = StoredJson.decodeFromString<List<StoredHeader>>(headers)
-    .map { CustomHeader(it.name, sealedSecret(it.sealedValue)) },
+  key = sealedKey(apiKey),
+  headers = customHeaders(headers),
 )
 
 internal fun Connection.toEntity(updatedAt: Long) = ConnectionEntity(

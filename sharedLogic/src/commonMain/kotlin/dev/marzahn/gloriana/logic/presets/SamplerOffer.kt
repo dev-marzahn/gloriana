@@ -5,11 +5,13 @@ import dev.marzahn.gloriana.logic.connection.ConnectionRead
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
 import dev.marzahn.gloriana.logic.connection.Sampler
+import dev.marzahn.gloriana.logic.connection.SamplerRange
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.SamplersUpdateResult
 import dev.marzahn.gloriana.logic.connection.api.SentValue
 import dev.marzahn.gloriana.logic.connection.api.sentValue
-import kotlinx.coroutines.flow.first
+import dev.marzahn.gloriana.logic.connection.setValues
+import dev.marzahn.gloriana.logic.connection.with
 import kotlin.uuid.Uuid
 
 data class SamplerChange(val sampler: Sampler, val presetValue: Number, val sentNow: SentValue)
@@ -19,7 +21,7 @@ enum class NotCopiedBecause {
   OutOfRange,
 }
 
-data class NotCopied(val sampler: PresetSampler, val because: NotCopiedBecause)
+data class NotCopied(val sampler: PresetSampler, val presetValue: Number, val because: NotCopiedBecause)
 
 data class SamplerDifference(val connectionId: Uuid, val changes: List<SamplerChange>, val notCopied: List<NotCopied>) {
   val connectionMatches: Boolean get() = changes.isEmpty()
@@ -39,37 +41,46 @@ class SamplerOffer(private val connections: ConnectionRepository, private val gl
       ConnectionRead.Gone -> DifferenceResult.ConnectionGone
       ConnectionRead.Unreadable -> DifferenceResult.Unreadable
       is ConnectionRead.Readable ->
-        DifferenceResult.Found(samplerDifference(samplers, read.connection, global.samplers().first()))
+        DifferenceResult.Found(samplerDifference(samplers, read.connection, global.currentSamplers()))
     }
 
   suspend fun copy(connectionId: Uuid, accepted: List<SamplerChange>): SamplersUpdateResult =
     connections.updateSamplers(connectionId) { fields ->
-      accepted.filter { fields.format.sends(it.sampler, it.presetValue.toDouble()) }
-        .fold(fields.samplers) { changed, change -> change.sampler.written(changed, change.presetValue) }
+      val ranges = fields.format.samplerRanges
+      accepted.filter { ranges[it.sampler]?.holds(it.presetValue) == true }
+        .fold(fields.samplers) { changed, change -> changed.with(change.sampler, change.presetValue) }
     }
 }
 
 private sealed interface Verdict {
-  class Copyable(val sampler: Sampler, val value: Double) : Verdict
+  class Copyable(val sampler: Sampler, val value: Number) : Verdict
 
   class Skipped(val notCopied: NotCopied) : Verdict
 }
 
+private fun verdict(sampler: Sampler, value: Number, range: SamplerRange?): Verdict = when {
+  range == null -> skipped(sampler, value, NotCopiedBecause.FormatSendsNone)
+  !range.holds(value) -> skipped(sampler, value, NotCopiedBecause.OutOfRange)
+  else -> Verdict.Copyable(sampler, value)
+}
+
+private fun skipped(sampler: Sampler, value: Number, because: NotCopiedBecause) =
+  Verdict.Skipped(NotCopied(PresetSampler.OnConnection(sampler), value, because))
+
 internal fun samplerDifference(samplers: PresetSamplers, connection: Connection, global: Samplers): SamplerDifference {
   val format = connection.fields.format
-  val verdicts = samplers.values.map { (presetSampler, value) ->
-    val sampler = (presetSampler as? PresetSampler.OnConnection)?.sampler
-    when {
-      sampler == null || sampler !in format.samplerRanges ->
-        Verdict.Skipped(NotCopied(presetSampler, NotCopiedBecause.FormatSendsNone))
-      !format.sends(sampler, value) -> Verdict.Skipped(NotCopied(presetSampler, NotCopiedBecause.OutOfRange))
-      else -> Verdict.Copyable(sampler, value)
-    }
-  }
+  val ranges = format.samplerRanges
+  val verdicts = samplers.onConnection.setValues().map { (sampler, value) -> verdict(sampler, value, ranges[sampler]) }
   val changes = verdicts.filterIsInstance<Verdict.Copyable>().mapNotNull { copyable ->
     val sentNow = sentValue(format, copyable.sampler, global, connection.fields.samplers)
-    val presetValue = copyable.sampler.typed(copyable.value)
-    SamplerChange(copyable.sampler, presetValue, sentNow).takeIf { sentNow.value != presetValue }
+    SamplerChange(copyable.sampler, copyable.value, sentNow).takeIf { sentNow.value != copyable.value }
   }
-  return SamplerDifference(connection.id, changes, verdicts.filterIsInstance<Verdict.Skipped>().map { it.notCopied })
+  val notOnConnections = samplers.withoutConnectionField.map { (sampler, value) ->
+    NotCopied(sampler, value, NotCopiedBecause.FormatSendsNone)
+  }
+  return SamplerDifference(
+    connection.id,
+    changes,
+    verdicts.filterIsInstance<Verdict.Skipped>().map { it.notCopied } + notOnConnections,
+  )
 }

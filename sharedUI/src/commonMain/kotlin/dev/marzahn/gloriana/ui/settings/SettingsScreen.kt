@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
-import dev.marzahn.gloriana.logic.connection.api.hostOf
 import dev.marzahn.gloriana.ui.components.AddRow
 import dev.marzahn.gloriana.ui.components.EmptyAction
 import dev.marzahn.gloriana.ui.components.EmptyBlock
@@ -40,6 +39,7 @@ import dev.marzahn.gloriana.ui.connections.DefaultMark
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
 import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
+import dev.marzahn.gloriana.ui.connections.hostOf
 import dev.marzahn.gloriana.ui.connections.label
 import dev.marzahn.gloriana.ui.connections.secretsLine
 import dev.marzahn.gloriana.ui.lists.RowFocus

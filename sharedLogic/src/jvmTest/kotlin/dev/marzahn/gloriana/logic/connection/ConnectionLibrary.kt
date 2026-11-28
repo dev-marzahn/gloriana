@@ -38,7 +38,14 @@ class ConnectionLibrary(
   private val default = DefaultConnection(settings, database.connectionDao())
   val repository = ConnectionRepository(
     dao = database.connectionDao(),
-    writes = ConnectionWrites(database, default, Tombstones(database, updatedAt), updatedAt, faults),
+    writes = ConnectionWrites(
+      database,
+      database.connectionDao(),
+      default,
+      Tombstones(database, updatedAt),
+      updatedAt,
+      faults,
+    ),
     default = default,
     vault = vaultAround(vault),
     ids = ids,

@@ -1,9 +1,13 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.Sampler
 import dev.marzahn.gloriana.logic.connection.SamplerKind
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.connection.setValues
+import dev.marzahn.gloriana.logic.connection.with
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.doubleOrNull
+import kotlinx.serialization.json.longOrNull
 import kotlin.math.floor
 
 sealed interface PresetSampler {
@@ -16,41 +20,52 @@ sealed interface PresetSampler {
   }
 }
 
-data class PresetSamplers(val values: Map<PresetSampler, Double>) {
-  val isEmpty: Boolean get() = values.isEmpty()
-}
+@ConsistentCopyVisibility
+data class PresetSamplers private constructor(
+  val onConnection: Samplers,
+  val withoutConnectionField: Map<PresetSampler.WithoutConnectionField, Double>,
+) {
+  val isEmpty: Boolean get() = onConnection == Samplers() && withoutConnectionField.isEmpty()
 
-private val longRange = Long.MIN_VALUE.toDouble()..Long.MAX_VALUE.toDouble()
+  companion object {
+    fun of(
+      onConnection: Samplers = Samplers(),
+      withoutConnectionField: Map<PresetSampler.WithoutConnectionField, Double> = emptyMap(),
+    ): PresetSamplers = PresetSamplers(
+      onConnection.setValues()
+        .filter { (sampler, value) -> sampler.setsAValue(value) }
+        .fold(Samplers()) { samplers, (sampler, value) -> samplers.with(sampler, value) },
+      withoutConnectionField.filterValues(Double::isFinite),
+    )
 
-internal fun PresetSampler.accepts(value: Double): Boolean = value.isFinite() && when (this) {
-  is PresetSampler.OnConnection -> sampler.accepts(value)
-  is PresetSampler.WithoutConnectionField -> true
-}
-
-private fun Sampler.accepts(value: Double): Boolean {
-  val fitsKind = kind == SamplerKind.Decimal || (value == floor(value) && value in longRange)
-  return fitsKind && when (this) {
-    Sampler.TopK -> value > 0
-    Sampler.Seed -> value >= 0
-    else -> true
+    internal fun read(fileValue: (PresetSampler) -> JsonPrimitive?): PresetSamplers = of(
+      onConnection = Sampler.entries.fold(Samplers()) { samplers, sampler ->
+        samplers.with(sampler, fileValue(PresetSampler.OnConnection(sampler))?.let(sampler::fileNumber))
+      },
+      withoutConnectionField = PresetSampler.WithoutConnectionField.entries.mapNotNull { sampler ->
+        fileValue(sampler)?.finiteNumber()?.let { sampler to it }
+      }.toMap(),
+    )
   }
 }
 
-internal fun ApiFormat.sends(sampler: Sampler, value: Double): Boolean {
-  val range = samplerRanges[sampler]
-  return range != null && value.isFinite() && sampler.accepts(value) && range.holds(sampler.typed(value))
+private fun Sampler.setsAValue(value: Number): Boolean = when (this) {
+  Sampler.TopK -> value.toLong() > 0
+  Sampler.Seed -> value.toLong() >= 0
+  Sampler.Temperature, Sampler.TopP, Sampler.FrequencyPenalty, Sampler.PresencePenalty -> true
 }
 
-internal fun Sampler.written(samplers: Samplers, value: Number): Samplers = when (this) {
-  Sampler.Temperature -> samplers.copy(temperature = value.toDouble())
-  Sampler.TopP -> samplers.copy(topP = value.toDouble())
-  Sampler.TopK -> samplers.copy(topK = value.toLong())
-  Sampler.FrequencyPenalty -> samplers.copy(frequencyPenalty = value.toDouble())
-  Sampler.PresencePenalty -> samplers.copy(presencePenalty = value.toDouble())
-  Sampler.Seed -> samplers.copy(seed = value.toLong())
+private fun Sampler.fileNumber(primitive: JsonPrimitive): Number? = when (kind) {
+  SamplerKind.Decimal -> primitive.finiteNumber()
+  SamplerKind.Whole -> primitive.wholeNumber()
 }
 
-internal fun Sampler.typed(value: Double): Number = when (kind) {
-  SamplerKind.Decimal -> value
-  SamplerKind.Whole -> value.toLong()
-}
+private fun JsonPrimitive.finiteNumber(): Double? = takeUnless { it.isString }?.doubleOrNull?.takeIf(Double::isFinite)
+
+private fun JsonPrimitive.wholeNumber(): Long? =
+  takeUnless { it.isString }?.let { number -> number.longOrNull ?: number.doubleOrNull?.wholeLongOrNull() }
+
+private val FIRST_DOUBLE_BEYOND_LONG = -Long.MIN_VALUE.toDouble()
+
+private fun Double.wholeLongOrNull(): Long? =
+  takeIf { it == floor(it) && it >= -FIRST_DOUBLE_BEYOND_LONG && it < FIRST_DOUBLE_BEYOND_LONG }?.toLong()

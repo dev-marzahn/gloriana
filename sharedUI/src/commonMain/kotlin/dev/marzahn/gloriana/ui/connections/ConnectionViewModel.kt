@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
+import dev.marzahn.gloriana.logic.connection.KeysUnlock
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.logic.connection.api.ConnectionProbe
 import dev.marzahn.gloriana.logic.connection.secretChecks
@@ -87,6 +88,7 @@ class ConnectionViewModel(
   probe: ConnectionProbe,
   private val vault: KeyVault,
   private val globalSettings: GlobalModelSettings,
+  keys: KeysUnlock,
   commands: ConnectionCommands,
 ) : ViewModel() {
   private val inputs = MutableStateFlow<PageInputs?>(null)
@@ -126,6 +128,7 @@ class ConnectionViewModel(
     repository,
     probe,
     vault,
+    keys,
     commands,
   )
 

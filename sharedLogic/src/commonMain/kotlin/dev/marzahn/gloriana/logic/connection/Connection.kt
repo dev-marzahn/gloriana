@@ -4,9 +4,9 @@ import dev.marzahn.gloriana.logic.keys.SealedSecret
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
 
-enum class ApiFormat(val samplerRanges: Map<Sampler, SamplerRange>, val reportsUsageOnRequest: Boolean = false) {
+enum class ApiFormat(val samplerRanges: Map<Sampler, SamplerRange>) {
   AnthropicMessages(anthropicSamplerRanges),
-  OpenAiChatCompletions(chatCompletionsSamplerRanges, reportsUsageOnRequest = true),
+  OpenAiChatCompletions(chatCompletionsSamplerRanges),
   OpenAiResponses(responsesSamplerRanges),
 }
 
@@ -40,8 +40,11 @@ class Connection(
   val key: SealedSecret?,
   val headers: List<CustomHeader>,
 ) {
-  val holdsSecrets: Boolean get() = key != null || headers.isNotEmpty()
+  val holdsSecrets: Boolean get() = holdsSealedValues(key, headers)
 }
+
+internal fun holdsSealedValues(key: SealedSecret?, headers: List<CustomHeader>): Boolean =
+  key != null || headers.isNotEmpty()
 
 enum class ConnectionTemplate(val templateName: String, val format: ApiFormat, val baseUrl: String) {
   Anthropic("Anthropic", ApiFormat.AnthropicMessages, "https://api.anthropic.com/v1"),

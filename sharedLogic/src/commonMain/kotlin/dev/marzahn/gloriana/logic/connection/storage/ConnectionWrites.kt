@@ -23,13 +23,12 @@ internal enum class RowDelete { Deleted, Gone }
 
 internal class ConnectionWrites(
   private val database: GlorianaDatabase,
+  private val dao: ConnectionDao,
   private val default: DefaultConnection,
   private val tombstones: Tombstones,
   private val clock: UpdatedAtClock,
   private val faults: Faults,
 ) {
-  private val dao = database.connectionDao()
-
   suspend fun nameTakenByAnother(id: Uuid, name: String): Boolean =
     dao.idNamed(nameKey(name)).let { it != null && it != id }
 

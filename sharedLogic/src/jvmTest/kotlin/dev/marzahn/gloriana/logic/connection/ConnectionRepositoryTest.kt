@@ -4,6 +4,7 @@ import dev.marzahn.gloriana.logic.connection.storage.ConnectionsEntityType
 import dev.marzahn.gloriana.logic.connection.storage.DefaultConnectionSetting
 import dev.marzahn.gloriana.logic.keys.ErasingResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.logic.keys.KeysOpening
 import dev.marzahn.gloriana.logic.keys.OpenResult
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
@@ -303,18 +304,18 @@ class ConnectionRepositoryTest {
   @Test
   fun theErasureRuleCountsAnUnreadableRowAsNeedingItsKey() = runTest {
     val unreadable = library.created(draft(name = "Unreadable", key = KeyInput.Entered("sk-1")))
+    val newerFormat = library.created(draft(name = "Newer"))
     val readableWithoutValues = library.created(draft(name = "Plain"))
-    library.vault.seal(apiKey(readableWithoutValues.id), "sk-unused")
+    listOf(newerFormat, readableWithoutValues).forEach { library.vault.seal(apiKey(it.id), "sk-unused") }
     val rows = library.database.connectionDao()
     rows.update(checkNotNull(rows.find(unreadable.id)).copy(customBody = "not json"))
+    rows.update(checkNotNull(rows.find(newerFormat.id)).copy(format = "AFormatFromANewerVersion"))
     val erasure = DataKeyErasure(library.vault, rows)
 
-    erasure.oneAtATime {
-      eraseUnlessStoredValuesNeedIt(unreadable.id)
-      eraseUnlessStoredValuesNeedIt(readableWithoutValues.id)
-    }
+    listOf(unreadable, newerFormat, readableWithoutValues).forEach { erasure.eraseUnlessStoredValuesNeedIt(it.id) }
 
     assertTrue(library.dataKeyFileHolds(unreadable.id))
+    assertTrue(library.dataKeyFileHolds(newerFormat.id))
     assertFalse(library.dataKeyFileHolds(readableWithoutValues.id))
   }
 
@@ -329,7 +330,7 @@ class ConnectionRepositoryTest {
 
     val countsBeforeAndAfterAReset = listOf("new horse", "newer horse").map { newPassphrase ->
       ConnectionLibrary(directory, vaults = vaults).use { forgotten ->
-        suspend fun holding() = forgotten.vault.countHoldingOpenableSecrets(forgotten.repository.connections())
+        suspend fun holding() = KeysUnlock(forgotten.vault, forgotten.repository).holding()
         forgotten.vault.prepare(KeysOpening.IfPassphraseProtected)
         val before = holding()
         assertEquals(ErasingResult.Done, forgotten.vault.reset(newPassphrase.passphrase()))
@@ -351,13 +352,11 @@ class ConnectionRepositoryTest {
 
     ConnectionLibrary(directory, vaults = vaults, ids = { newId }).use { locked ->
       val renaming = HeaderDraft("X-Team", HeaderValueInput.Kept(storedName = "X-Org"))
-      assertEquals(ConnectionSaveResult.Locked, locked.repository.update(first.id, draft(headers = listOf(renaming))))
+      val blocked = ConnectionSaveResult.Blocked(KeysBlocked.Locked)
+      assertEquals(blocked, locked.repository.update(first.id, draft(headers = listOf(renaming))))
+      assertEquals(blocked, locked.repository.update(first.id, draft(key = KeyInput.Entered("sk-new"))))
       assertEquals(
-        ConnectionSaveResult.Locked,
-        locked.repository.update(first.id, draft(key = KeyInput.Entered("sk-new"))),
-      )
-      assertEquals(
-        ConnectionSaveResult.Locked,
+        blocked,
         locked.repository.create(draft(name = "New", key = KeyInput.Entered("sk-locked"))),
       )
 

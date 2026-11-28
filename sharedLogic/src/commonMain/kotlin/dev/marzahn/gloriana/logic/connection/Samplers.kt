@@ -50,6 +50,9 @@ fun Samplers.with(sampler: Sampler, value: Number?): Samplers = when (sampler) {
   Sampler.Seed -> copy(seed = value?.toLong())
 }
 
+fun Samplers.setValues(): List<Pair<Sampler, Number>> =
+  Sampler.entries.mapNotNull { sampler -> sampler.valueIn(this)?.let { sampler to it } }
+
 private fun Sampler.within(least: Number, most: Number): Pair<Sampler, SamplerRange> = this to when (kind) {
   SamplerKind.Decimal -> SamplerRange.Decimal(least.toDouble()..most.toDouble())
   SamplerKind.Whole -> SamplerRange.Whole(least.toLong()..most.toLong())
@@ -78,7 +81,6 @@ internal val responsesSamplerRanges: Map<Sampler, SamplerRange> = mapOf(
   Sampler.TopP.within(0.0, UNIT),
 )
 
-internal fun Samplers.outsideEveryFormat(): Set<Sampler> = Sampler.entries.filter { sampler ->
-  val value = sampler.valueIn(this) ?: return@filter false
-  ApiFormat.entries.none { format -> format.samplerRanges[sampler]?.holds(value) ?: false }
-}.toSet()
+internal fun Samplers.outsideEveryFormat(): Set<Sampler> = setValues()
+  .filter { (sampler, value) -> ApiFormat.entries.none { it.samplerRanges[sampler]?.holds(value) == true } }
+  .mapTo(mutableSetOf()) { (sampler) -> sampler }

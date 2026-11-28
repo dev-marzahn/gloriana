@@ -5,9 +5,11 @@ import dev.marzahn.gloriana.logic.connection.ConnectionDraft
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.ConnectionSaveResult
+import dev.marzahn.gloriana.logic.connection.KeysUnlock
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.logic.connection.api.ConnectionProbe
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -103,11 +105,12 @@ internal class PageWork(
   private val repository: ConnectionRepository,
   probe: ConnectionProbe,
   vault: KeyVault,
+  keys: KeysUnlock,
   commands: ConnectionCommands,
 ) {
   private val session = context.session
   private val passphrase =
-    PagePassphrase(context, vault, UnlockFlow(vault, repository, context.scope, PageUnlockSlot(session)))
+    PagePassphrase(context, vault, UnlockFlow(vault, keys::holding, context.scope, PageUnlockSlot(session)))
   private val probing = PageProbing(context, probe, onLocked = passphrase::ask)
   private val subject = PageSubject(context, commands)
 
@@ -235,11 +238,11 @@ internal class PageWork(
         context.showErrors(form.errorsOf(result.problems), form)
       }
       ConnectionSaveResult.NeedsPassphrase -> context.activity(PageActivity.SettingPassphrase(NewPassphraseEntry()))
-      ConnectionSaveResult.Locked -> passphrase.ask(AfterUnlock.Save)
-      ConnectionSaveResult.KeysUnavailable -> idle {
-        it.copy(note = PageNote.KeysBlockedSave(KeysProblem.KeychainUnavailable))
+      is ConnectionSaveResult.Blocked -> when (result.keys) {
+        KeysBlocked.Locked -> passphrase.ask(AfterUnlock.Save)
+        KeysBlocked.Unavailable -> idle { it.copy(note = PageNote.KeysBlockedSave(KeysProblem.KeychainUnavailable)) }
+        KeysBlocked.Unreadable -> idle { it.copy(note = PageNote.KeysBlockedSave(KeysProblem.Unreadable)) }
       }
-      ConnectionSaveResult.KeysUnreadable -> idle { it.copy(note = PageNote.KeysBlockedSave(KeysProblem.Unreadable)) }
       ConnectionSaveResult.StorageFull -> idle { it.copy(note = PageNote.NotSavedStorage) }
       ConnectionSaveResult.Failed, ConnectionSaveResult.Gone, ConnectionSaveResult.Unreadable ->
         idle { it.copy(note = PageNote.NotSaved) }

@@ -250,10 +250,7 @@ private fun SamplerOfferState.notes(copyFailed: CopyFailed? = null) =
 private suspend fun ConnectionRepository.offerChoices(): OfferChoices {
   val default = defaultConnection().catch { emit(null) }.first()
   val read = connections().map<List<Connection>, OfferChoices> { stored ->
-    OfferChoices.Read(
-      stored.sortedBy { it.fields.name.lowercase() }
-        .map { OfferChoice(it.id, it.fields.name, it.fields.format, it.id == default) },
-    )
+    OfferChoices.Read(stored.map { OfferChoice(it.id, it.fields.name, it.fields.format, it.id == default) })
   }
   return read.catch { emit(OfferChoices.Unreadable) }.first()
 }

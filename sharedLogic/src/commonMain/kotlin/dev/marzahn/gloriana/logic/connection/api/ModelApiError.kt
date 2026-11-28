@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.HeldSecrets
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import io.ktor.http.HttpStatusCode
 
 sealed interface ModelApiError {
@@ -24,17 +25,9 @@ sealed interface ModelApiError {
 
   data object Unexpected : ModelApiError
 
-  sealed interface KeysNotOpened : ModelApiError {
-    val held: HeldSecrets
-  }
+  data class KeysMissing(val held: HeldSecrets) : ModelApiError
 
-  data class KeysMissing(override val held: HeldSecrets) : KeysNotOpened
-
-  data object KeysLocked : ModelApiError
-
-  data class KeysUnavailable(override val held: HeldSecrets) : KeysNotOpened
-
-  data class KeysUnreadable(override val held: HeldSecrets) : KeysNotOpened
+  data class KeysNotOpened(val why: KeysBlocked, val held: HeldSecrets) : ModelApiError
 }
 
 internal fun statusError(status: HttpStatusCode, body: String, retryAfter: String?): ModelApiError = when (status) {

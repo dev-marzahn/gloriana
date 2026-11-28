@@ -115,14 +115,14 @@ class LockedPageTest {
       val page = lockedPage(library)
       val row = page.shown { it.secrets is SecretsState.Locked }.header()
       val enter: FormChange = {
-        it.withHeaderChanged(row.id) { header -> header.copy(value = ValueEdit.Typed(SecretText.Empty)) }
+        it.withHeaderChanged(row.id) { header -> header.copy(value = ValueEdit.Entering) }
       }
 
       page.on(PageIntent.Edit(FormField.HeaderValue(row.id), enter))
       assertEquals(ValueEdit.Kept, page.shown { it.activity is PageActivity.Unlocking }.header().value)
       assertEquals(FormField.HeaderValue(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
 
-      page.shown { it.activity == PageActivity.Idle && it.header().value == ValueEdit.Typed(SecretText.Empty) }
+      page.shown { it.activity == PageActivity.Idle && it.header().value == ValueEdit.Entering }
       coroutineContext.cancelChildren()
     }
   }

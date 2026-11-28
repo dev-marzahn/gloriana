@@ -39,14 +39,7 @@ internal val WrapperPrompt.home: WrapperHome
 
 internal val PresetSampler.fileKey: String
   get() = when (this) {
-    is PresetSampler.OnConnection -> when (sampler) {
-      Sampler.Temperature -> "temperature"
-      Sampler.TopP -> "top_p"
-      Sampler.TopK -> "top_k"
-      Sampler.FrequencyPenalty -> "frequency_penalty"
-      Sampler.PresencePenalty -> "presence_penalty"
-      Sampler.Seed -> "seed"
-    }
+    is PresetSampler.OnConnection -> sampler.wireName
     PresetSampler.WithoutConnectionField.TopA -> "top_a"
     PresetSampler.WithoutConnectionField.MinP -> "min_p"
     PresetSampler.WithoutConnectionField.RepetitionPenalty -> "repetition_penalty"

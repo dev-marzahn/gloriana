@@ -28,7 +28,6 @@ import dev.marzahn.gloriana.logic.connection.api.SentValue
 import dev.marzahn.gloriana.logic.presets.NotCopied
 import dev.marzahn.gloriana.logic.presets.NotCopiedBecause
 import dev.marzahn.gloriana.logic.presets.PresetSampler
-import dev.marzahn.gloriana.logic.presets.PresetSamplers
 import dev.marzahn.gloriana.logic.presets.SamplerChange
 import dev.marzahn.gloriana.logic.presets.SamplerDifference
 import dev.marzahn.gloriana.ui.components.ButtonKind
@@ -120,7 +119,7 @@ fun SamplerOfferSheet(
         transitionSpec = { fadeIn(motion.standard.tween()) togetherWith fadeOut(motion.standard.tween()) },
         contentKey = { it?.connectionId },
       ) { difference ->
-        if (difference != null) DifferenceList(difference, offer.samplers, offer.picked)
+        if (difference != null) DifferenceList(difference, offer.picked)
       }
       OfferButtons(offer, onCopy, onDecline)
     }
@@ -128,7 +127,7 @@ fun SamplerOfferSheet(
 }
 
 @Composable
-private fun DifferenceList(difference: SamplerDifference, values: PresetSamplers, picked: OfferChoice) {
+private fun DifferenceList(difference: SamplerDifference, picked: OfferChoice) {
   val spacing = GlorianaTheme.spacing
   Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
     if (difference.connectionMatches) {
@@ -137,7 +136,7 @@ private fun DifferenceList(difference: SamplerDifference, values: PresetSamplers
       GroupHeader(stringResource(Res.string.offer_changes_on, picked.name))
       difference.changes.forEach { ChangeRow(it) }
     }
-    NotCopiedLines(difference.notCopied, values, picked.format)
+    NotCopiedLines(difference.notCopied, picked.format)
   }
 }
 
@@ -208,7 +207,6 @@ private fun AlreadyMatching(connectionName: String) {
 @Composable
 private fun NotCopiedLines(
   notCopied: List<NotCopied>,
-  values: PresetSamplers,
   format: ApiFormat,
   modifier: Modifier = Modifier,
 ) {
@@ -222,11 +220,11 @@ private fun NotCopiedLines(
   Column(modifier, verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8)) {
     GroupHeader(stringResource(Res.string.offer_not_copied))
     if (takesNone.isNotEmpty()) {
-      val line = joined(takesNone.map { valueText(it, values, format = null) })
+      val line = joined(takesNone.map { valueText(it, format = null) })
       Text(stringResource(Res.string.offer_format_takes_none, formatName, line), style = style, color = color)
     }
     if (outOfRange.isNotEmpty()) {
-      val line = joined(outOfRange.map { valueText(it, values, format) })
+      val line = joined(outOfRange.map { valueText(it, format) })
       Text(stringResource(Res.string.offer_out_of_range, formatName, line), style = style, color = color)
     }
   }
@@ -238,9 +236,9 @@ private fun joined(parts: List<String>): String = parts.reduce { joined, part ->
 }
 
 @Composable
-private fun valueText(notCopied: NotCopied, values: PresetSamplers, format: ApiFormat?): String {
+private fun valueText(notCopied: NotCopied, format: ApiFormat?): String {
   val name = stringResource(notCopied.sampler.label)
-  val value = values.values[notCopied.sampler]?.shown().orEmpty()
+  val value = notCopied.presetValue.shown()
   val range = (notCopied.sampler as? PresetSampler.OnConnection)?.sampler?.let { format?.samplerRanges?.get(it) }
   return if (range == null) {
     stringResource(Res.string.offer_sampler_value, name, value)

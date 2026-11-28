@@ -2,13 +2,11 @@ package dev.marzahn.gloriana.ui.connections
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import dev.marzahn.gloriana.logic.connection.ConnectionRepository
-import dev.marzahn.gloriana.logic.connection.countHoldingOpenableSecrets
+import dev.marzahn.gloriana.logic.connection.KeysUnlock
+import dev.marzahn.gloriana.logic.connection.PassphraseAsk
 import dev.marzahn.gloriana.logic.keys.ErasingResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
-import dev.marzahn.gloriana.logic.keys.KeysOpening
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
-import dev.marzahn.gloriana.logic.keys.VaultState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -72,7 +70,7 @@ sealed interface GateIntent {
 }
 
 class KeysGateViewModel(
-  private val repository: ConnectionRepository,
+  private val keys: KeysUnlock,
   private val vault: KeyVault,
 ) : ViewModel() {
   private val mutableGate = MutableStateFlow<KeysGate>(KeysGate.Checking)
@@ -102,13 +100,11 @@ class KeysGateViewModel(
 
   private fun check() {
     viewModelScope.launch {
-      mutableGate.value = when (vault.prepare(KeysOpening.IfPassphraseProtected)) {
-        VaultState.Locked -> holdingSecrets()?.let { KeysGate.Unlocking(it) } ?: KeysGate.CouldNotCheck
-        VaultState.PassphraseDamaged -> holdingSecrets()?.let { KeysGate.Damaged(it) } ?: KeysGate.CouldNotCheck
-        VaultState.Unavailable -> KeysGate.CouldNotCheck
-        VaultState.Closed, VaultState.Unlocked, VaultState.PassphraseUnlocked, VaultState.NoKeychain,
-        VaultState.DeviceDamaged, VaultState.DeviceKeyNotFound,
-        -> KeysGate.Open
+      mutableGate.value = when (val ask = keys.askAtLaunch()) {
+        is PassphraseAsk.Unlock -> KeysGate.Unlocking(ask.holding)
+        is PassphraseAsk.Damaged -> KeysGate.Damaged(ask.holding)
+        PassphraseAsk.CouldNotCheck -> KeysGate.CouldNotCheck
+        PassphraseAsk.None -> KeysGate.Open
       }
     }
   }
@@ -118,8 +114,6 @@ class KeysGateViewModel(
     vault.deferUnlock()
     mutableGate.value = KeysGate.Open
   }
-
-  private suspend fun holdingSecrets(): Int? = vault.countHoldingOpenableSecrets(repository.connections())
 
   private fun unlock() {
     val asking = mutableGate.value as? KeysGate.Unlocking ?: return

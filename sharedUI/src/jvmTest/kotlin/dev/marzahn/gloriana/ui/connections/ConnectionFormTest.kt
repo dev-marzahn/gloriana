@@ -19,7 +19,13 @@ import kotlin.test.assertTrue
 class ConnectionFormTest {
   private fun samplers(vararg texts: Pair<Sampler, String>) = SamplerTexts(texts.toMap())
 
-  private fun typed(text: String) = KeyEdit.Typed(SecretText(text))
+  private fun typed(text: String) = KeyEdit.typing(SecretText(text))
+
+  @Test
+  fun typingNothingIsEnteringAKeyNotTypingOne() {
+    assertEquals(KeyEdit.Entering, typed(""))
+    assertEquals(KeyEdit.Typed(SecretText("s")), typed("s"))
+  }
 
   @Test
   fun aTemplateFillsTheNameFormatAndBaseUrl() {
@@ -76,7 +82,7 @@ class ConnectionFormTest {
   fun clearingAReplacementOfAStoredHeaderValueKeepsTheStoredValue() {
     val form = ConnectionForm.of(ConnectionTemplate.OpenAi).copy(
       model = "gpt",
-      headers = listOf(HeaderRow(0, "X-Org", "X-Org", ValueEdit.Typed(SecretText.Empty))),
+      headers = listOf(HeaderRow(0, "X-Org", "X-Org", ValueEdit.Entering)),
     )
     val saved = form.copy(headers = listOf(HeaderRow(0, "X-Org", "X-Org", ValueEdit.Kept)))
 
@@ -149,7 +155,7 @@ class ConnectionFormTest {
   fun aHeaderProblemPointsAtItsRowPastBlankRows() {
     val form = ConnectionForm.of(ConnectionTemplate.OpenAi).copy(
       headers = listOf(
-        HeaderRow(4, "", null, ValueEdit.Typed(SecretText.Empty)),
+        HeaderRow(4, "", null, ValueEdit.Entering),
         HeaderRow(9, "X Bad", null, ValueEdit.Typed(SecretText("v"))),
       ),
     )

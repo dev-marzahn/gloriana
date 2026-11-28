@@ -4,10 +4,8 @@ import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
 import dev.marzahn.gloriana.logic.presets.PresetGroup
 import dev.marzahn.gloriana.logic.presets.PresetRow
-import dev.marzahn.gloriana.logic.presets.PresetSampler
 import dev.marzahn.gloriana.logic.presets.PresetSamplers
 import dev.marzahn.gloriana.logic.presets.WrapperPrompts
-import dev.marzahn.gloriana.logic.presets.accepts
 import dev.marzahn.gloriana.logic.storage.IdFactory
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
@@ -16,7 +14,6 @@ import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.doubleOrNull
 import kotlin.uuid.Uuid
 
 internal sealed interface PresetFileRead {
@@ -59,15 +56,7 @@ internal class PresetJsonReader(private val ids: IdFactory) {
     return (0..entries.size).flatMap { index -> groupsAt[index].orEmpty() + listOfNotNull(entries.getOrNull(index)) }
   }
 
-  private fun samplers(root: JsonObject) = PresetSamplers(
-    allPresetSamplers.mapNotNull { sampler ->
-      (root[sampler.fileKey] as? JsonPrimitive)
-        ?.takeUnless { it.isString }
-        ?.doubleOrNull
-        ?.takeIf { sampler.accepts(it) }
-        ?.let { sampler to it }
-    }.toMap(),
-  )
+  private fun samplers(root: JsonObject) = PresetSamplers.read { sampler -> root[sampler.fileKey] as? JsonPrimitive }
 }
 
 private fun PromptFields.entry(id: Uuid, identifier: String, enabled: Boolean) =
