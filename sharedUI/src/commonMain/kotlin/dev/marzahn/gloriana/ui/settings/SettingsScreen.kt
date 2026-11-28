@@ -32,6 +32,7 @@ import dev.marzahn.gloriana.ui.components.RowLine
 import dev.marzahn.gloriana.ui.components.RowSelection
 import dev.marzahn.gloriana.ui.components.RowTile
 import dev.marzahn.gloriana.ui.components.Skeleton
+import dev.marzahn.gloriana.ui.components.listMotion
 import dev.marzahn.gloriana.ui.connections.ConnectionMoreMenu
 import dev.marzahn.gloriana.ui.connections.ConnectionRoute
 import dev.marzahn.gloriana.ui.connections.CreateConnectionSheet
@@ -243,16 +244,6 @@ private fun SettingsList(
     item(key = "header", contentType = "header") { header() }
     items(items, key = { it.key }) { item -> Item(scope, item) }
   }
-}
-
-@Composable
-private fun LazyItemScope.listMotion(): Modifier {
-  val motion = GlorianaTheme.motion
-  return Modifier.animateItem(
-    fadeInSpec = motion.enter.tween(),
-    placementSpec = motion.standard.tween(),
-    fadeOutSpec = motion.exit.tween(),
-  )
 }
 
 @Composable

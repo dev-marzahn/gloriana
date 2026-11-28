@@ -9,6 +9,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.BaseUrl
@@ -21,6 +22,8 @@ import dev.marzahn.gloriana.ui.components.InfoLine
 import dev.marzahn.gloriana.ui.components.LabelledField
 import dev.marzahn.gloriana.ui.components.Panel
 import dev.marzahn.gloriana.ui.components.PanelRow
+import dev.marzahn.gloriana.ui.components.textWith
+import dev.marzahn.gloriana.ui.components.textWithCode
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.base_url_hint
 import dev.marzahn.gloriana.ui.resources.base_url_hint_no_format
@@ -68,7 +71,7 @@ private fun TextRow(
   value: String,
   onChange: (ConnectionForm, String) -> ConnectionForm,
   modifier: Modifier = Modifier,
-  hint: String? = null,
+  hint: AnnotatedString? = null,
   placeholder: String? = null,
   keyboardType: KeyboardType = KeyboardType.Text,
   trailing: (@Composable () -> Unit)? = null,
@@ -119,8 +122,8 @@ private fun FormatRow(editing: FormEditing) {
 @Composable
 private fun BaseUrlRow(editing: FormEditing) {
   val form = editing.form
-  val hint = form.format?.let { stringResource(Res.string.base_url_hint, it.requestAddress(form.baseUrl)) }
-    ?: stringResource(Res.string.base_url_hint_no_format)
+  val hint = form.format?.let { textWithCode(Res.string.base_url_hint, it.requestAddress(form.baseUrl)) }
+    ?: AnnotatedString(stringResource(Res.string.base_url_hint_no_format))
   Column(verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s6)) {
     TextRow(
       editing,
@@ -143,11 +146,11 @@ private fun modelRows(editing: FormEditing): List<PanelRow> = listOf(
 @Composable
 private fun ModelRow(editing: FormEditing) {
   val note = when (val listNote = editing.page.modelListNote) {
-    ModelListNote.NoneListed -> stringResource(Res.string.model_list_none)
-    is ModelListNote.Failed -> stringResource(
+    ModelListNote.NoneListed -> AnnotatedString(stringResource(Res.string.model_list_none))
+    is ModelListNote.Failed -> textWith(
       Res.string.two_sentences,
-      stringResource(Res.string.model_list_failed_field, listNote.failure.reason()),
-      listNote.failure.details(StepFor.ModelField),
+      textWith(Res.string.model_list_failed_field, listNote.failure.reason()),
+      AnnotatedString(listNote.failure.details(StepFor.ModelField)),
     )
     null -> null
   }
@@ -194,6 +197,6 @@ private fun TokenRows(editing: FormEditing) {
         keyboardType = KeyboardType.Number,
       )
     }
-    form.promptBudget?.let { FieldNote(stringResource(Res.string.prompt_budget, it.toString()), null) }
+    form.promptBudget?.let { FieldNote(AnnotatedString(stringResource(Res.string.prompt_budget, it.toString())), null) }
   }
 }

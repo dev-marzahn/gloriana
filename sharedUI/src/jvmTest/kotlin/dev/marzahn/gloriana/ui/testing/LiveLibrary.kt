@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.connections
+package dev.marzahn.gloriana.ui.testing
 
 import androidx.compose.runtime.Composable
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver

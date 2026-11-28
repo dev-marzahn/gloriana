@@ -2,9 +2,15 @@ package dev.marzahn.gloriana.ui.connections
 
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
+import dev.marzahn.gloriana.logic.connection.HeaderDraft
+import dev.marzahn.gloriana.logic.connection.HeaderValueInput
 import dev.marzahn.gloriana.logic.connection.Sampler
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.ui.messages.AppMessages
+import dev.marzahn.gloriana.ui.resources.Res
+import dev.marzahn.gloriana.ui.resources.snack_saved
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
+import dev.marzahn.gloriana.ui.testing.NoKeychain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -19,6 +25,7 @@ import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
+import org.jetbrains.compose.resources.getString
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -40,8 +47,12 @@ class ConnectionViewModelTest {
   @AfterTest
   fun reset() = Dispatchers.resetMain()
 
-  private suspend fun CoroutineScope.shownPage(library: LiveLibrary, name: String): ConnectionViewModel {
-    val saved = library.created(name)
+  private suspend fun CoroutineScope.shownPage(
+    library: LiveLibrary,
+    name: String,
+    headers: List<HeaderDraft> = emptyList(),
+  ): ConnectionViewModel {
+    val saved = library.created(name, headers = headers)
     val page = library.koin.get<ConnectionViewModel>()
     launch(Dispatchers.Main) { page.state.collect {} }
     page.show(ConnectionRoute.Saved(saved.id))
@@ -93,7 +104,7 @@ class ConnectionViewModelTest {
 
   private suspend fun ConnectionViewModel.settled(saved: (ConnectionPageState.Shown) -> Boolean) =
     withTimeout(WAIT_MILLIS) {
-      state.first { it is ConnectionPageState.Shown && it.activity == PageActivity.Idle && saved(it) }
+      state.first { it is ConnectionPageState.Shown && it.isIdle && saved(it) }
     }.let { assertIs<ConnectionPageState.Shown>(it) }
 
   @Test
@@ -107,7 +118,7 @@ class ConnectionViewModelTest {
       library.writeHeld()
       page.on(PageIntent.Edit(FormField.Model) { it.copy(model = "model-late") })
       val whileHeld = assertIs<ConnectionPageState.Shown>(page.state.value)
-      assertEquals(PageActivity.Saving, whileHeld.activity)
+      assertTrue(whileHeld.unsaved.isSaving)
       assertTrue(whileHeld.canEdit)
       assertFalse(whileHeld.canSave)
       assertEquals("model-late", whileHeld.form.model)
@@ -117,7 +128,7 @@ class ConnectionViewModelTest {
       assertEquals("model-1", settled.saved?.fields?.model)
       assertEquals("Home", settled.form.name)
       assertEquals("model-late", settled.form.model)
-      assertTrue(settled.copy.hasChanges)
+      assertTrue(settled.unsaved.hasChanges)
       assertTrue(settled.canSave)
       coroutineContext.cancelChildren()
     }
@@ -129,7 +140,7 @@ class ConnectionViewModelTest {
       val saved = library.created("Work")
       val page = library.koin.get<ConnectionViewModel>()
       launch(Dispatchers.Main) { page.state.collect {} }
-      val late: FormChange = { it.copy(model = "model-late") }
+      val late = PageIntent.Edit(FormField.Model) { it.copy(model = "model-late") }
       page.show(ConnectionRoute.Saved(saved.id, editsDuringItsFirstSave = listOf(late)))
       page.settled { it.form.model == "model-late" }
 
@@ -137,7 +148,7 @@ class ConnectionViewModelTest {
 
       val shown = page.settled { it.saved != null }
       assertEquals("model-late", shown.form.model)
-      assertTrue(shown.copy.hasChanges)
+      assertTrue(shown.unsaved.hasChanges)
       coroutineContext.cancelChildren()
     }
   }
@@ -176,7 +187,7 @@ class ConnectionViewModelTest {
 
       val followed = page.settled { it.saved?.fields?.samplers?.temperature == 0.3 }
       assertTrue(followed.form.sameAs(ConnectionForm.of(checkNotNull(followed.saved))))
-      assertFalse(followed.copy.hasChanges)
+      assertFalse(followed.unsaved.hasChanges)
       coroutineContext.cancelChildren()
     }
   }
@@ -198,7 +209,7 @@ class ConnectionViewModelTest {
 
       val settled = page.settled { it.saved?.fields?.name == "Home" }
       assertTrue(checkNotNull(settled.saved).key != null)
-      assertFalse(settled.copy.hasChanges)
+      assertFalse(settled.unsaved.hasChanges)
       coroutineContext.cancelChildren()
     }
   }
@@ -213,7 +224,44 @@ class ConnectionViewModelTest {
 
       val settled = page.settled { it.saved?.fields?.name == "Home" }
       assertEquals("Home", settled.form.name)
-      assertFalse(settled.copy.hasChanges)
+      assertFalse(settled.unsaved.hasChanges)
+      coroutineContext.cancelChildren()
+    }
+  }
+
+  @Test
+  fun anEditMadeWhileARenameIsSavedReachesTheRenamedHeader() = LiveLibrary.use { library ->
+    runBlocking {
+      val page = shownPage(library, "Work", listOf(HeaderDraft("X-Old", HeaderValueInput.Entered("value-1"))))
+      val row = assertIs<ConnectionPageState.Shown>(page.state.value).form.headers.single()
+      val rename = { name: String -> PageIntent.Edit(FormField.HeaderName(row.id)) { form ->
+        form.withHeaderChanged(row.id) { it.copy(name = name) }
+      } }
+      page.on(rename("X-New"))
+
+      library.writes.hold()
+      page.on(PageIntent.Save)
+      library.writeHeld()
+      page.on(rename("X-Newer"))
+      library.writes.release()
+
+      val settled = page.settled { it.saved?.headers?.singleOrNull()?.name == "X-New" }
+      assertEquals(listOf("X-Newer"), settled.form.headers.map { it.name })
+      coroutineContext.cancelChildren()
+    }
+  }
+
+  @Test
+  fun aSaveSaysTheConnectionWasSavedOnceItLeavesSaving() = LiveLibrary.use { library ->
+    runBlocking {
+      val page = shownPage(library, "Work")
+      page.on(PageIntent.Edit(FormField.Name) { it.copy(name = "Home") })
+
+      page.on(PageIntent.Save)
+
+      val message = withTimeout(WAIT_MILLIS) { library.koin.get<AppMessages>().messages.first() }
+      assertEquals(getString(Res.string.snack_saved, "Home"), message.text)
+      assertFalse(assertIs<ConnectionPageState.Shown>(page.state.value).unsaved.isSaving)
       coroutineContext.cancelChildren()
     }
   }
@@ -255,7 +303,7 @@ class ConnectionViewModelTest {
       assertEquals("model-1", shown.saved?.fields?.model)
       assertEquals("model-late", shown.form.model)
       assertEquals("Work", shown.form.name)
-      assertTrue(shown.copy.hasChanges)
+      assertTrue(shown.unsaved.hasChanges)
       coroutineContext.cancelChildren()
     }
   }

@@ -34,7 +34,6 @@ import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.cancel
 import dev.marzahn.gloriana.ui.resources.connection_default_mark
-import dev.marzahn.gloriana.ui.resources.connection_more
 import dev.marzahn.gloriana.ui.resources.create_connection
 import dev.marzahn.gloriana.ui.resources.create_connection_text
 import dev.marzahn.gloriana.ui.resources.delete
@@ -43,7 +42,7 @@ import dev.marzahn.gloriana.ui.resources.delete_connection_both
 import dev.marzahn.gloriana.ui.resources.delete_connection_default
 import dev.marzahn.gloriana.ui.resources.delete_connection_headers
 import dev.marzahn.gloriana.ui.resources.delete_connection_key
-import dev.marzahn.gloriana.ui.resources.delete_connection_title
+import dev.marzahn.gloriana.ui.resources.delete_title
 import dev.marzahn.gloriana.ui.resources.deleting
 import dev.marzahn.gloriana.ui.resources.ic_delete
 import dev.marzahn.gloriana.ui.resources.ic_edit_note_20
@@ -51,6 +50,7 @@ import dev.marzahn.gloriana.ui.resources.ic_hub_20
 import dev.marzahn.gloriana.ui.resources.ic_star
 import dev.marzahn.gloriana.ui.resources.joined_by_dot
 import dev.marzahn.gloriana.ui.resources.make_default
+import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.template_from_nothing
 import dev.marzahn.gloriana.ui.resources.template_from_nothing_text
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
@@ -80,7 +80,7 @@ fun DeleteConnectionConfirmation(
   )
   GlorianaConfirmation(
     Confirmation(
-      title = stringResource(Res.string.delete_connection_title, name),
+      title = stringResource(Res.string.delete_title, name),
       lines = lines,
       confirmLabel = stringResource(if (deleting) Res.string.deleting else Res.string.delete),
     ),
@@ -163,7 +163,7 @@ fun ConnectionMoreMenu(
     MenuItem(stringResource(Res.string.make_default), Res.drawable.ic_star, onMakeDefault).takeUnless { isDefault },
     MenuItem(stringResource(Res.string.delete_connection), Res.drawable.ic_delete, onDelete),
   )
-  GlorianaMoreMenu(stringResource(Res.string.connection_more, name), items, modifier)
+  GlorianaMoreMenu(stringResource(Res.string.more_for, name), items, modifier)
 }
 
 @Composable

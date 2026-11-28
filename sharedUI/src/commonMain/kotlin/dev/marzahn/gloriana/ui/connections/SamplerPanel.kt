@@ -56,7 +56,7 @@ private fun FormatSamplers(page: ConnectionPageState.Shown, editing: FormEditing
         sampler = sampler,
         text = samplers[sampler],
         hint = samplerHint(page, sampler, rangeText(range), samplers.isSet(sampler), format),
-        error = (editing.error(field) as? FieldError.Sampler)?.error,
+        errorText = editing.error(field)?.text(),
         onChange = { text -> editing.edit(field) { it.copy(samplers = it.samplers.with(sampler, text)) } },
         fieldModifier = Modifier.focusRequester(editing.focus(field)),
         enabled = editing.enabled,

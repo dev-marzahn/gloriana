@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.semantics.error
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.TextFieldValue
@@ -152,7 +153,7 @@ private fun glorianaFieldColors(): TextFieldColors {
 fun LabelledField(
   label: String,
   modifier: Modifier = Modifier,
-  hint: String? = null,
+  hint: AnnotatedString? = null,
   error: String? = null,
   labelEnd: String? = null,
   field: @Composable () -> Unit,
@@ -171,7 +172,7 @@ fun LabelledField(
 }
 
 @Composable
-fun FieldNote(hint: String?, error: String?, modifier: Modifier = Modifier) {
+fun FieldNote(hint: AnnotatedString?, error: String?, modifier: Modifier = Modifier) {
   val colors = GlorianaTheme.colors
   val type = GlorianaTheme.type.material
   when {

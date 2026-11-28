@@ -31,7 +31,6 @@ import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.StoredPreset
 import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.ui.App
-import dev.marzahn.gloriana.ui.connections.LiveLibrary
 import dev.marzahn.gloriana.ui.files.SaveTarget
 import dev.marzahn.gloriana.ui.navigation.QuitRequests
 import dev.marzahn.gloriana.ui.resources.Res
@@ -45,13 +44,14 @@ import dev.marzahn.gloriana.ui.resources.export
 import dev.marzahn.gloriana.ui.resources.import_waiting
 import dev.marzahn.gloriana.ui.resources.keep_editing
 import dev.marzahn.gloriana.ui.resources.library_kind_presets
+import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.move_down
 import dev.marzahn.gloriana.ui.resources.offer_copy
 import dev.marzahn.gloriana.ui.resources.offer_dont_copy
-import dev.marzahn.gloriana.ui.resources.preset_more
 import dev.marzahn.gloriana.ui.resources.presets_empty
 import dev.marzahn.gloriana.ui.resources.save
 import dev.marzahn.gloriana.ui.resources.save_changes_first
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -129,7 +129,7 @@ class PresetScreensTest {
   }
 
   private fun draftNames(library: LiveLibrary, id: Uuid): List<String> =
-    library.koin.get<PresetSessions>().current(id).draft?.entries.orEmpty().map { it.name }
+    library.koin.get<PresetSessions>().current(id).unsaved?.draft?.entries.orEmpty().map { it.name }
 
   private fun ComposeUiTest.waitForPreset(library: LiveLibrary): Uuid {
     waitUntil(timeoutMillis = WAIT_MILLIS) { library.presets().isNotEmpty() }
@@ -148,7 +148,7 @@ class PresetScreensTest {
       waitUntil(timeoutMillis = WAIT_MILLIS) {
         library.connections().single { it.id == connection.id }.fields.samplers.temperature == 0.7
       }
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Tuned")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Tuned")))
     }
   }
 
@@ -161,7 +161,7 @@ class PresetScreensTest {
 
       tap(Res.string.offer_dont_copy)
 
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Tuned")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Tuned")))
       assertNull(library.connections().single().fields.samplers.temperature)
       assertEquals(listOf("Tuned"), library.presets().map { it.name })
     }
@@ -173,7 +173,7 @@ class PresetScreensTest {
       openPresets(library)
       library.imported(presetFile("Plain.json"))
       val id = waitForPreset(library)
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Plain")))
 
       onAllNodes(hasText("Main Prompt") and hasClickAction()).onFirst()
         .performCustomAccessibilityActionWithLabel(getString(Res.string.move_down))
@@ -196,7 +196,7 @@ class PresetScreensTest {
       openPresets(library)
       library.imported(presetFile("Plain.json"))
       val id = waitForPreset(library)
-      val menu = hasContentDescription(getString(Res.string.preset_more, "Plain"))
+      val menu = hasContentDescription(getString(Res.string.more_for, "Plain"))
       val export = hasText(getString(Res.string.export)) and hasClickAction()
       waitFor(menu)
       onAllNodes(isToggleable()).onFirst().performClick()
@@ -241,7 +241,7 @@ class PresetScreensTest {
       waitFor(hasText(getString(Res.string.import_waiting)))
       gate.complete(Unit)
 
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Plain")))
       val failures = library.koin.get<PresetImports>().state.value.failures
       assertEquals(listOf("Broken.json" to PresetImportFailure.CantBeOpened), failures.map { it.fileName to it.reason })
     }
@@ -253,7 +253,7 @@ class PresetScreensTest {
       openPresets(library)
       library.imported(presetFile("Plain.json"))
       val id = waitForPreset(library)
-      val page = hasContentDescription(getString(Res.string.preset_more, "Plain"))
+      val page = hasContentDescription(getString(Res.string.more_for, "Plain"))
       waitFor(page)
       onAllNodes(isToggleable()).onFirst().performClick()
       val libraryItem = hasContentDescription(getString(Res.string.destination_library)) and hasClickAction()
@@ -262,12 +262,12 @@ class PresetScreensTest {
       tap(libraryItem)
       tap(Res.string.keep_editing)
       waitFor(page)
-      assertTrue(sessions.hasChanges(id))
+      assertTrue((sessions.current(id).unsaved?.hasChanges == true))
 
       tap(libraryItem)
       tap(Res.string.discard)
       waitUntil(timeoutMillis = WAIT_MILLIS) { onAllNodes(page).fetchSemanticsNodes().isEmpty() }
-      assertFalse(sessions.hasChanges(id))
+      assertFalse((sessions.current(id).unsaved?.hasChanges == true))
       assertTrue(library.entries(id).all { it.enabled })
     }
   }
@@ -278,7 +278,7 @@ class PresetScreensTest {
       openPresets(library)
       library.imported(presetFile("Plain.json"))
       waitForPreset(library)
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Plain")))
       onAllNodes(isToggleable()).onFirst().performClick()
       var quit = false
 
@@ -298,7 +298,7 @@ class PresetScreensTest {
       library.imported(presetFile("Plain.json"))
       val id = waitForPreset(library)
       val sessions = library.koin.get<PresetSessions>()
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Plain")))
       tap(hasText(getString(WrapperPrompt.entries.first().title)) and hasClickAction())
       waitFor(hasSetTextAction())
 
@@ -328,7 +328,7 @@ class PresetScreensTest {
   }
 
   private fun inChatDepths(library: LiveLibrary, id: Uuid): List<Int?> =
-    library.koin.get<PresetSessions>().current(id).draft?.entries.orEmpty()
+    library.koin.get<PresetSessions>().current(id).unsaved?.draft?.entries.orEmpty()
       .map { (it.placement as? EntryPlacement.InChat)?.depth }
 
   @Test
@@ -337,7 +337,7 @@ class PresetScreensTest {
       openPresets(library)
       library.imported(deepFile())
       val id = waitForPreset(library)
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Deep")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Deep")))
       tap(hasText("Auxiliary Prompt") and hasClickAction())
       val depthField = hasSetTextAction() and hasText("4")
       waitFor(depthField)
@@ -363,7 +363,7 @@ class PresetScreensTest {
       openPresets(library)
       library.imported(presetFile("Plain.json"))
       val id = waitForPreset(library)
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Plain")))
 
       tap(Res.string.add_group)
       waitFor(hasSetTextAction())
@@ -371,7 +371,7 @@ class PresetScreensTest {
       tap(Res.string.add_group_confirm)
 
       waitUntil(timeoutMillis = WAIT_MILLIS) {
-        library.koin.get<PresetSessions>().current(id).draft?.rows.orEmpty()
+        library.koin.get<PresetSessions>().current(id).unsaved?.draft?.rows.orEmpty()
           .filterIsInstance<PresetGroup>().map { it.name } == listOf("Extras")
       }
     }
@@ -383,7 +383,7 @@ class PresetScreensTest {
       openPresets(library)
       library.imported(presetFile("Plain.json"))
       val id = waitForPreset(library)
-      waitFor(hasContentDescription(getString(Res.string.preset_more, "Plain")))
+      waitFor(hasContentDescription(getString(Res.string.more_for, "Plain")))
       val row = onAllNodes(hasText("Main Prompt") and hasClickAction()).onFirst()
       val height = row.fetchSemanticsNode().size.height.toFloat()
 

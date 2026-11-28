@@ -92,7 +92,6 @@
 
     <string name="edit">Edit</string>
     <string name="more">More</string>
-    <string name="back">Back</string>
     <string name="delete_character">Delete Character</string>
     <string name="export">Export</string>
     <string name="panel_model">Sent to the model</string>
@@ -168,4 +167,25 @@
     <string name="snack_deleted">%1$s was deleted.</string>
     <string name="delete_failed">%1$s wasn't deleted.</string>
     <string name="delete_failed_detail">Nothing was changed. Retry.</string>
+
+    <string name="library_kind_characters">Characters</string>
+    <string name="library_kind_presets">Presets</string>
+    <string name="more_for">More for %1$s</string>
+    <string name="followed_by_dot">%1$s ·</string>
+    <string name="joined_by_dot">%1$s · %2$s</string>
+    <string name="save">Save</string>
+    <string name="saving">Saving…</string>
+    <string name="snack_saved">%1$s was saved.</string>
+    <string name="not_saved_storage">%1$s wasn't saved: there isn't enough storage.</string>
+    <string name="not_saved">%1$s wasn't saved.</string>
+
+    <string name="discard_title">Discard your changes?</string>
+    <string name="changes_not_saved">Your changes to %1$s aren't saved.</string>
+    <string name="discard_quit_two">Your changes to %1$s and %2$s aren't saved.</string>
+    <plurals name="discard_quit_more">
+        <item quantity="one">Your changes to %1$s, %2$s and %3$d more page aren't saved.</item>
+        <item quantity="other">Your changes to %1$s, %2$s and %3$d more pages aren't saved.</item>
+    </plurals>
+    <string name="discard">Discard</string>
+    <string name="keep_editing">Keep editing</string>
 </resources>

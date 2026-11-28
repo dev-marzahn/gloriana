@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
@@ -33,6 +32,7 @@ import dev.marzahn.gloriana.ui.components.RowSelection
 import dev.marzahn.gloriana.ui.components.RowTile
 import dev.marzahn.gloriana.ui.components.Skeleton
 import dev.marzahn.gloriana.ui.components.boldThenPlain
+import dev.marzahn.gloriana.ui.components.listMotion
 import dev.marzahn.gloriana.ui.files.FileChoice
 import dev.marzahn.gloriana.ui.files.rememberFilePicker
 import dev.marzahn.gloriana.ui.lists.Deleted
@@ -56,15 +56,8 @@ import dev.marzahn.gloriana.ui.resources.ic_view_list
 import dev.marzahn.gloriana.ui.resources.import_importing
 import dev.marzahn.gloriana.ui.resources.import_waiting
 import dev.marzahn.gloriana.ui.resources.preset_entries_on
-import dev.marzahn.gloriana.ui.resources.preset_import_cant_open
-import dev.marzahn.gloriana.ui.resources.preset_import_cant_open_detail
-import dev.marzahn.gloriana.ui.resources.preset_import_could_not_save
-import dev.marzahn.gloriana.ui.resources.preset_import_could_not_save_detail
-import dev.marzahn.gloriana.ui.resources.preset_import_damaged
 import dev.marzahn.gloriana.ui.resources.preset_import_not_a_preset
 import dev.marzahn.gloriana.ui.resources.preset_import_not_a_preset_detail
-import dev.marzahn.gloriana.ui.resources.preset_import_storage
-import dev.marzahn.gloriana.ui.resources.preset_import_storage_detail
 import dev.marzahn.gloriana.ui.resources.preset_import_too_large
 import dev.marzahn.gloriana.ui.resources.presets_empty
 import dev.marzahn.gloriana.ui.resources.presets_empty_text
@@ -72,6 +65,13 @@ import dev.marzahn.gloriana.ui.resources.presets_error
 import dev.marzahn.gloriana.ui.resources.presets_error_detail
 import dev.marzahn.gloriana.ui.resources.presets_nothing_picked
 import dev.marzahn.gloriana.ui.resources.presets_nothing_picked_text
+import dev.marzahn.gloriana.ui.resources.reason_cant_open
+import dev.marzahn.gloriana.ui.resources.reason_cant_open_detail
+import dev.marzahn.gloriana.ui.resources.reason_damaged_json
+import dev.marzahn.gloriana.ui.resources.reason_not_saved
+import dev.marzahn.gloriana.ui.resources.reason_not_saved_detail
+import dev.marzahn.gloriana.ui.resources.reason_storage_full
+import dev.marzahn.gloriana.ui.resources.reason_storage_full_detail
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Navigation
 import org.jetbrains.compose.resources.StringResource
@@ -240,16 +240,6 @@ private fun rememberFocusAfterDelete(
 }
 
 @Composable
-private fun LazyItemScope.listMotion(): Modifier {
-  val motion = GlorianaTheme.motion
-  return Modifier.animateItem(
-    fadeInSpec = motion.enter.tween(),
-    placementSpec = motion.standard.tween(),
-    fadeOutSpec = motion.exit.tween(),
-  )
-}
-
-@Composable
 private fun PresetRow(
   preset: PresetSummary,
   selected: Boolean,
@@ -298,15 +288,15 @@ private class FailureText(val bold: StringResource, val plain: StringResource?)
 private val PresetImportFailure.text: FailureText
   get() = when (this) {
     PresetImportFailure.CantBeOpened ->
-      FailureText(Res.string.preset_import_cant_open, Res.string.preset_import_cant_open_detail)
-    PresetImportFailure.Damaged -> FailureText(Res.string.preset_import_damaged, null)
+      FailureText(Res.string.reason_cant_open, Res.string.reason_cant_open_detail)
+    PresetImportFailure.Damaged -> FailureText(Res.string.reason_damaged_json, null)
     PresetImportFailure.NotAPreset ->
       FailureText(Res.string.preset_import_not_a_preset, Res.string.preset_import_not_a_preset_detail)
     PresetImportFailure.TooLarge -> FailureText(Res.string.preset_import_too_large, null)
     PresetImportFailure.StorageFull ->
-      FailureText(Res.string.preset_import_storage, Res.string.preset_import_storage_detail)
+      FailureText(Res.string.reason_storage_full, Res.string.reason_storage_full_detail)
     PresetImportFailure.CouldNotSave ->
-      FailureText(Res.string.preset_import_could_not_save, Res.string.preset_import_could_not_save_detail)
+      FailureText(Res.string.reason_not_saved, Res.string.reason_not_saved_detail)
   }
 
 @Composable

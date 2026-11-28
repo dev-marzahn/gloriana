@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.ic_info_20
@@ -21,7 +22,7 @@ private val InfoIconSize = 16.dp
 @Composable
 fun SettingRow(
   title: String,
-  hint: String?,
+  hint: AnnotatedString?,
   error: String?,
   modifier: Modifier = Modifier,
   control: @Composable () -> Unit,

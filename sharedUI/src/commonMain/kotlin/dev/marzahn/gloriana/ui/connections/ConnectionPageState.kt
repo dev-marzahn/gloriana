@@ -6,6 +6,8 @@ import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.logic.connection.api.ModelApiError
 import dev.marzahn.gloriana.logic.keys.KeysBlocked
+import dev.marzahn.gloriana.ui.state.SaveFailure
+import dev.marzahn.gloriana.ui.state.UnsavedCopy
 import kotlin.time.Duration
 
 enum class KeyContext { SavedKey, TypedKey, HeadersOnly, NoKey }
@@ -49,9 +51,7 @@ sealed interface PageNote {
 
   data class KeysBlockedSave(val problem: KeysProblem) : PageNote
 
-  data object NotSavedStorage : PageNote
-
-  data object NotSaved : PageNote
+  data class NotSaved(val failure: SaveFailure) : PageNote
 
   data object NotDeleted : PageNote
 
@@ -117,11 +117,7 @@ sealed interface ModelListNote {
 sealed interface PageActivity {
   val locksForm: Boolean get() = this == OpeningSaved || this == Deleting
 
-  val isSaving: Boolean get() = this == Saving || this == OpeningSaved
-
   data object Idle : PageActivity
-
-  data object Saving : PageActivity
 
   data object OpeningSaved : PageActivity
 
@@ -151,7 +147,7 @@ sealed interface AfterUnlock {
 
   data object OnlyUnlock : AfterUnlock
 
-  class Edit(val field: FormField, val change: FormChange) : AfterUnlock
+  class Edit(val edit: PageIntent.Edit) : AfterUnlock
 }
 
 sealed interface ConnectionPageState {
@@ -164,7 +160,7 @@ sealed interface ConnectionPageState {
   data class Shown(
     val saved: Connection?,
     val isDefault: Boolean,
-    val copy: EditedCopy<ConnectionForm>,
+    val unsaved: UnsavedCopy<ConnectionForm>,
     val errors: FormErrors,
     val secrets: SecretsState,
     val globalSamplers: Samplers,
@@ -172,10 +168,11 @@ sealed interface ConnectionPageState {
     val test: TestOutcome?,
     val note: PageNote?,
     val modelListNote: ModelListNote?,
+    val isIdle: Boolean,
   ) : ConnectionPageState {
-    val form: ConnectionForm get() = copy.draft
+    val form: ConnectionForm get() = unsaved.draft
 
-    val canSave: Boolean get() = activity == PageActivity.Idle && (saved == null || copy.hasChanges)
+    val canSave: Boolean get() = isIdle && (saved == null || unsaved.hasChanges)
 
     val canEdit: Boolean get() = !activity.locksForm
   }

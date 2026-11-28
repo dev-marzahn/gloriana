@@ -162,6 +162,13 @@ Android resource; `LauncherLabelTest` keeps it equal to the Compose `app_name`.
   changes under it (a new Connection's first Save turns its route into the saved one). On desktop, closing the window
   and the system quit go through `QuitRequests`, which ask once for every page still holding changes and quit at
   once when none does. The question sits above the keys gate, so quitting works at the unlock screen too.
+- **The edited copy** is one `UnsavedCopy` (`ui/state`) per page: the stored value it follows, the user's edits as
+  `DraftEdit`s replayed over it, and the running save. A write from elsewhere lands under the open edits; a later
+  edit to the same field replaces the earlier one; edits made during a save stay over the saved value. Feed it
+  every stored emission with `storedNow`, from the one collector that reads the row.
+- **Detail pages** are built from `DetailPage` (scroll, padding, the back button by width), `DetailHeader` or
+  `PageTitle`, `SaveButton` and `DetailSkeleton` in `ui/components`; a key, value or address inside copy goes
+  through `textWithCode`, which sets it in monospace.
 - **Fonts and icons** are bundled resources: Literata and Inter as static TTF files in `composeResources/font`, and
   Material Symbols Outlined (weight 400, grade 0) as vector drawables in `composeResources/drawable`, copied one by
   one as screens need them. Licence texts live in `composeResources/files/licenses` and `THIRD_PARTY_NOTICES.md`.

@@ -3,7 +3,6 @@ package dev.marzahn.gloriana.ui.connections
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.ComposeUiTest
 import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.SemanticsMatcher
@@ -21,11 +20,11 @@ import androidx.compose.ui.test.onLast
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
+import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.App
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.cancel
 import dev.marzahn.gloriana.ui.resources.connection_default_mark
-import dev.marzahn.gloriana.ui.resources.connection_more
 import dev.marzahn.gloriana.ui.resources.create
 import dev.marzahn.gloriana.ui.resources.delete
 import dev.marzahn.gloriana.ui.resources.delete_connection
@@ -35,8 +34,10 @@ import dev.marzahn.gloriana.ui.resources.keep_editing
 import dev.marzahn.gloriana.ui.resources.make_default
 import dev.marzahn.gloriana.ui.resources.model_placeholder
 import dev.marzahn.gloriana.ui.resources.model_settings
+import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.save
 import dev.marzahn.gloriana.ui.resources.saving
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
@@ -69,7 +70,7 @@ class ConnectionScreensTest {
     return onAllNodes(matcher).onFirst()
   }
 
-  private suspend fun menuOf(name: String) = hasContentDescription(getString(Res.string.connection_more, name))
+  private suspend fun menuOf(name: String) = hasContentDescription(getString(Res.string.more_for, name))
 
   private suspend fun ComposeUiTest.rowMenu(name: String) = tap(menuOf(name))
 

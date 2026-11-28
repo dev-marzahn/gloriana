@@ -59,7 +59,7 @@ sealed interface ConnectionsList {
 internal sealed interface StartOverStep {
   data object Idle : StartOverStep
 
-  data class Confirming(val holding: Int?) : StartOverStep
+  data object Confirming : StartOverStep
 
   data class Erasing(val holding: Int?) : StartOverStep
 
@@ -75,13 +75,6 @@ sealed interface KeysNote {
 
   data class StartOverFailed(val failure: WriteFailure, val holding: Int?) : KeysNote
 }
-
-private val KeysNote.holdingForTheSheet: Int?
-  get() = when (this) {
-    is KeysNote.Unreadable -> holding
-    is KeysNote.StartOverFailed -> holding
-    KeysNote.None, KeysNote.UnreadableWhileTheListCantLoad -> null
-  }
 
 data class StartOverSheet(val holding: Int?, val erasing: Boolean)
 
@@ -188,7 +181,7 @@ class SettingsViewModel(
         keys = keysNote(holding, vaultState, current.startOver),
         locked = list.lockedNames(),
         unlock = current.unlock,
-        startOver = current.startOver.sheet(),
+        startOver = current.startOver.sheet(holding),
         rowActivity = current.rows,
         focus = focus(list, deleted, current.focusFirstRow),
       )
@@ -220,7 +213,7 @@ class SettingsViewModel(
       is SettingsIntent.AskToDelete -> rows(RowActivity.ConfirmingDelete(intent.row))
       SettingsIntent.CancelDelete -> rows(RowActivity.Idle)
       SettingsIntent.ConfirmDelete -> confirmDelete()
-      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming(state.value.keys.holdingForTheSheet))
+      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming)
       SettingsIntent.CancelStartOver -> startOver(StartOverStep.Idle)
       SettingsIntent.ConfirmStartOver -> confirmStartOver()
       SettingsIntent.AskToUnlock -> unlocking.open { prompt ->
@@ -268,10 +261,13 @@ class SettingsViewModel(
   }
 
   private fun confirmStartOver() {
+    val holding = state.value.holding
     session.updateAndClaim { current ->
-      (current.startOver as? StartOverStep.Confirming)
-        ?.let { current.copy(startOver = StartOverStep.Erasing(it.holding)) to it }
-        ?: (current to null)
+      if (current.startOver == StartOverStep.Confirming) {
+        current.copy(startOver = StartOverStep.Erasing(holding)) to Unit
+      } else {
+        current to null
+      }
     } ?: return
     viewModelScope.launch {
       when (val failure = vault.replaceDeviceKeyset().failure()) {
@@ -306,8 +302,8 @@ internal fun keysNote(holding: Int?, vault: VaultState, step: StartOverStep): Ke
   else -> KeysNote.Unreadable(holding)
 }
 
-private fun StartOverStep.sheet(): StartOverSheet? = when (this) {
-  is StartOverStep.Confirming -> StartOverSheet(holding, erasing = false)
+private fun StartOverStep.sheet(holdingNow: Int?): StartOverSheet? = when (this) {
+  StartOverStep.Confirming -> StartOverSheet(holdingNow, erasing = false)
   is StartOverStep.Erasing -> StartOverSheet(holding, erasing = true)
   StartOverStep.Idle, is StartOverStep.Failed -> null
 }

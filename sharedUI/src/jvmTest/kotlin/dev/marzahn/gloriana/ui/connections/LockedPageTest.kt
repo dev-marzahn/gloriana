@@ -4,6 +4,8 @@ import dev.marzahn.gloriana.logic.connection.HeaderDraft
 import dev.marzahn.gloriana.logic.connection.HeaderValueInput
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.SecretsState
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
+import dev.marzahn.gloriana.ui.testing.NoKeychain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -120,7 +122,7 @@ class LockedPageTest {
 
       page.on(PageIntent.Edit(FormField.HeaderValue(row.id), enter))
       assertEquals(ValueEdit.Kept, page.shown { it.activity is PageActivity.Unlocking }.header().value)
-      assertEquals(FormField.HeaderValue(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
+      assertEquals(FormField.HeaderValue(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).edit.field)
 
       page.shown { it.activity == PageActivity.Idle && it.header().value == ValueEdit.Entering }
       coroutineContext.cancelChildren()
@@ -135,7 +137,7 @@ class LockedPageTest {
       val rename: FormChange = { it.withHeaderChanged(row.id) { header -> header.copy(name = "X-Key") } }
 
       page.on(PageIntent.Edit(FormField.HeaderName(row.id), rename))
-      assertEquals(FormField.HeaderName(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
+      assertEquals(FormField.HeaderName(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).edit.field)
 
       page.shown { it.activity == PageActivity.Idle && it.header().name == "X-Key" }
       coroutineContext.cancelChildren()
@@ -172,7 +174,7 @@ class LockedPageTest {
       page.shown { it.secrets is SecretsState.Locked }
 
       page.on(PageIntent.Edit(FormField.Key) { it.copy(key = KeyEdit.typing(SecretText("s"))) })
-      assertEquals(FormField.Key, assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
+      assertEquals(FormField.Key, assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).edit.field)
 
       page.shown { it.activity == PageActivity.Idle && it.form.key == KeyEdit.typing(SecretText("s")) }
       coroutineContext.cancelChildren()

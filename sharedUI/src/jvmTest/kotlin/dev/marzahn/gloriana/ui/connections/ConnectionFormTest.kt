@@ -21,6 +21,26 @@ class ConnectionFormTest {
 
   private fun typed(text: String) = KeyEdit.typing(SecretText(text))
 
+  private fun header(id: Int, name: String) = HeaderRow(id, name, name, ValueEdit.Kept)
+
+  @Test
+  fun aStoredRowKeepsTheHeaderIdsTheOpenEditsTarget() {
+    val written = ConnectionForm.fromNothing.copy(headers = listOf(header(1, "X-B"), header(2, "X-C")))
+    val stored = ConnectionForm.fromNothing.copy(headers = listOf(header(0, "X-B"), header(1, "X-C")))
+
+    val followed = stored.withHeaderIdsOf(written)
+
+    assertEquals(listOf(1, 2), followed.headers.map { it.id })
+  }
+
+  @Test
+  fun aHeaderNewToTheStoredRowGetsAnIdNoEarlierRowUses() {
+    val earlier = ConnectionForm.fromNothing.copy(headers = listOf(header(3, "X-A")))
+    val stored = ConnectionForm.fromNothing.copy(headers = listOf(header(0, "x-a"), header(1, "X-New")))
+
+    assertEquals(listOf(3, 1), stored.withHeaderIdsOf(earlier).headers.map { it.id })
+  }
+
   @Test
   fun typingNothingIsEnteringAKeyNotTypingOne() {
     assertEquals(KeyEdit.Entering, typed(""))

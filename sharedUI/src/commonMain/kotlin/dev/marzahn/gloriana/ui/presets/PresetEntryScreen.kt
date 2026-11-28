@@ -22,6 +22,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,11 +36,15 @@ import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
 import dev.marzahn.gloriana.logic.presets.canMove
 import dev.marzahn.gloriana.logic.presets.placeOf
+import dev.marzahn.gloriana.ui.components.BackButtonShown
+import dev.marzahn.gloriana.ui.components.DetailPage
 import dev.marzahn.gloriana.ui.components.FieldNote
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaRadioButton
 import dev.marzahn.gloriana.ui.components.GlorianaSwitch
 import dev.marzahn.gloriana.ui.components.GlorianaTextField
+import dev.marzahn.gloriana.ui.components.PageBack
+import dev.marzahn.gloriana.ui.components.PageTitle
 import dev.marzahn.gloriana.ui.components.Panel
 import dev.marzahn.gloriana.ui.components.Segment
 import dev.marzahn.gloriana.ui.components.SegmentWidth
@@ -122,7 +127,7 @@ fun PresetEntryScreen(route: PresetEntryRoute, modifier: Modifier = Modifier) {
     if (page != null && entry == null) navigator.closeWithoutAsking(Destination.Library, route)
   }
   val lastInChatDepth = page?.content?.inChatDepth(route.entryUuid)
-    ?: page?.session?.baseline(page.stored.content)?.inChatDepth(route.entryUuid)
+    ?: page?.unsaved?.baseline?.inChatDepth(route.entryUuid)
     ?: 0
   val depthText = rememberDraftText(
     route,
@@ -143,7 +148,7 @@ fun PresetEntryScreen(route: PresetEntryRoute, modifier: Modifier = Modifier) {
     isBackEnabled = depthBad,
     onBackCompleted = { checkDepth() },
   )
-  PresetPageFrame(leave, page?.name.orEmpty(), modifier, backOnEveryWidth = true) {
+  DetailPage(PageBack(page?.name.orEmpty(), leave, BackButtonShown.OnEveryWidth), modifier) {
     if (page == null || entry == null) {
       Skeleton { SkeletonBlock(Modifier.size(width = SkeletonLine, height = GlorianaTheme.spacing.s20)) }
     } else {
@@ -174,21 +179,10 @@ private fun EntryPage(
   onIntent: (PresetIntent) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val colors = GlorianaTheme.colors
-  val type = GlorianaTheme.type.material
   val spacing = GlorianaTheme.spacing
   val place = page.content.rows.placeOf(entry.id)
   Column(modifier) {
-    Column(Modifier.padding(top = spacing.s8), verticalArrangement = Arrangement.spacedBy(spacing.s6)) {
-      Text(entry.name, style = type.headlineLarge, color = colors.text)
-      if (place != null) {
-        Text(
-          stringResource(Res.string.entry_of, place.position, place.of, page.name),
-          style = type.bodyMedium,
-          color = colors.textMuted,
-        )
-      }
-    }
+    PageTitle(entry.name, intro = place?.let { stringResource(Res.string.entry_of, it.position, it.of, page.name) })
     EntryActions(page, entry, checkDepth, onIntent)
     SaveNote(page)
     HowItsSent(entry, depth, onDepth, inChatDepth, onIntent)
@@ -209,7 +203,7 @@ private fun EntryActions(
     Modifier.padding(top = spacing.s16, bottom = spacing.s8),
     horizontalArrangement = Arrangement.spacedBy(spacing.s8),
   ) {
-    SaveButton(page, onIntent, beforeSave = checkDepth)
+    PresetSaveButton(page, onIntent, beforeSave = checkDepth)
     GlorianaButton(
       stringResource(Res.string.move_up),
       { onIntent(PresetIntent.Move(entry.id, MoveDirection.Up)) },
@@ -243,7 +237,8 @@ private fun HowItsSent(
     stringResource(Res.string.entry_how_sent),
     listOf(
       {
-        SettingRow(stringResource(Res.string.entry_on), stringResource(Res.string.entry_on_hint), null) {
+        val onHint = AnnotatedString(stringResource(Res.string.entry_on_hint))
+        SettingRow(stringResource(Res.string.entry_on), onHint, null) {
           GlorianaSwitch(entry.enabled, { onIntent(PresetIntent.SetOn(entry.id, it)) })
         }
       },
@@ -257,7 +252,7 @@ private fun HowItsSent(
             width = SegmentWidth.Filling,
             enabled = placeable,
           )
-          if (!placeable) FieldNote(stringResource(Res.string.entry_filled_hint), null)
+          if (!placeable) FieldNote(AnnotatedString(stringResource(Res.string.entry_filled_hint)), null)
         }
       },
       {
@@ -293,7 +288,7 @@ private fun PlacementChoice(title: String, hint: String, selected: Boolean, enab
     GlorianaRadioButton(selected, null, enabled = enabled)
     Column {
       Text(title, style = GlorianaTheme.type.material.bodyLarge, color = GlorianaTheme.colors.text)
-      FieldNote(hint, null)
+      FieldNote(AnnotatedString(hint), null)
     }
   }
 }
@@ -319,7 +314,7 @@ private fun DepthField(depth: DepthEntry, onDepth: (String) -> Unit, enabled: Bo
       keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
     )
     FieldNote(
-      hint = stringResource(Res.string.depth_hint),
+      hint = AnnotatedString(stringResource(Res.string.depth_hint)),
       error = if (depth.showError) stringResource(Res.string.depth_error) else null,
     )
   }
@@ -352,7 +347,7 @@ private fun TextPanel(entry: PresetEntry, modifier: Modifier = Modifier) {
         } else {
           Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
             Text(entry.text, style = type.reading, color = colors.text)
-            FieldNote(stringResource(Res.string.entry_macros_hint), null)
+            FieldNote(AnnotatedString(stringResource(Res.string.entry_macros_hint)), null)
           }
         }
       },

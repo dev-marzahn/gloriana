@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.characters.DesktopPickedFile
 import dev.marzahn.gloriana.ui.GlorianaApp
 import dev.marzahn.gloriana.ui.characters.CharacterImports
-import dev.marzahn.gloriana.ui.connections.LiveLibrary
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.navigation.Destination

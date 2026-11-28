@@ -26,7 +26,7 @@ class KeysNoteTest {
 
   @Test
   fun anOpenSheetKeepsTheNoteWhileTheVaultNeedsIt() {
-    val confirming = StartOverStep.Confirming(holding = 1)
+    val confirming = StartOverStep.Confirming
 
     assertEquals(KeysNote.Unreadable(1), keysNote(1, VaultState.DeviceKeyNotFound, confirming))
     assertEquals(KeysNote.None, keysNote(1, VaultState.Unlocked, confirming))

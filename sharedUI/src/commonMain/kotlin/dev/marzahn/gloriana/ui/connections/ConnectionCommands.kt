@@ -11,6 +11,7 @@ import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_deleted
 import dev.marzahn.gloriana.ui.resources.snack_made_default
+import dev.marzahn.gloriana.ui.resources.snack_saved
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import org.jetbrains.compose.resources.getString
@@ -19,6 +20,8 @@ enum class CommandResult { Done, Failed }
 
 class ConnectionCommands(private val repository: ConnectionRepository, private val messages: AppMessages) {
   val deletions = LastDeleted()
+
+  suspend fun saved(name: String) = messages.show(AppMessage(getString(Res.string.snack_saved, name)))
 
   suspend fun makeDefault(connection: Connection): CommandResult = when (repository.makeDefault(connection.id)) {
     MakeDefaultResult.Made -> CommandResult.Done.also {

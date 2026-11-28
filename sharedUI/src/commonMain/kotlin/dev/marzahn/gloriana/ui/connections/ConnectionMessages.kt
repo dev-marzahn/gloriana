@@ -4,7 +4,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.text.AnnotatedString
 import dev.marzahn.gloriana.logic.connection.HeldSecrets
 import dev.marzahn.gloriana.logic.connection.JsonFault
+import dev.marzahn.gloriana.ui.components.NotSavedCopy
 import dev.marzahn.gloriana.ui.components.boldThenPlain
+import dev.marzahn.gloriana.ui.components.notSavedText
+import dev.marzahn.gloriana.ui.components.textWith
+import dev.marzahn.gloriana.ui.components.textWithCode
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.character_invisible
 import dev.marzahn.gloriana.ui.resources.character_line_break
@@ -40,9 +44,7 @@ import dev.marzahn.gloriana.ui.resources.missing_note_key_detail
 import dev.marzahn.gloriana.ui.resources.missing_note_values_detail
 import dev.marzahn.gloriana.ui.resources.not_made_default
 import dev.marzahn.gloriana.ui.resources.not_made_default_detail
-import dev.marzahn.gloriana.ui.resources.not_saved
 import dev.marzahn.gloriana.ui.resources.not_saved_detail
-import dev.marzahn.gloriana.ui.resources.not_saved_storage
 import dev.marzahn.gloriana.ui.resources.not_saved_storage_detail
 import dev.marzahn.gloriana.ui.resources.reason_bad_address
 import dev.marzahn.gloriana.ui.resources.reason_bad_header
@@ -64,6 +66,10 @@ import dev.marzahn.gloriana.ui.resources.unreadable_note_sent_detail
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
 
+private const val STREAM_KEY = "stream"
+
+private val ConnectionSaveFailures =
+  NotSavedCopy.forANamedItem(Res.string.not_saved_storage_detail, Res.string.not_saved_detail)
 private const val LINE_BREAK = '\n'
 private const val RETURN = '\r'
 private const val SPACE = ' '
@@ -118,21 +124,24 @@ private fun characterClass(character: Char): StringResource? = when {
 }
 
 @Composable
-fun HostFailure.reason(): String = when (val failed = problem) {
-  HostProblem.Unreachable -> stringResource(Res.string.reason_unreachable)
-  is HostProblem.Timeout -> stringResource(Res.string.reason_timeout, failed.seconds)
-  is HostProblem.KeyRejected -> stringResource(
-    if (keys == KeyContext.SavedKey) Res.string.reason_key_rejected else Res.string.reason_refused,
-    failed.status,
+fun HostFailure.reason(): AnnotatedString = when (val failed = problem) {
+  HostProblem.Unreachable -> textWith(Res.string.reason_unreachable)
+  is HostProblem.Timeout -> AnnotatedString(stringResource(Res.string.reason_timeout, failed.seconds))
+  is HostProblem.KeyRejected -> AnnotatedString(
+    stringResource(
+      if (keys == KeyContext.SavedKey) Res.string.reason_key_rejected else Res.string.reason_refused,
+      failed.status,
+    ),
   )
-  is HostProblem.RateLimited -> stringResource(Res.string.reason_rate_limited)
-  is HostProblem.HostError -> failed.status?.let { stringResource(Res.string.reason_host_error, it.toString()) }
-    ?: stringResource(Res.string.reason_host_error_unknown)
-  HostProblem.PlainHttpToPublicHost -> stringResource(Res.string.reason_plain_http)
-  HostProblem.BadAddress -> stringResource(Res.string.reason_bad_address)
-  HostProblem.BadHeader -> stringResource(Res.string.reason_bad_header)
-  HostProblem.StreamNotBoolean -> stringResource(Res.string.reason_stream_not_boolean)
-  HostProblem.Unexpected -> stringResource(Res.string.reason_unexpected)
+  is HostProblem.RateLimited -> textWith(Res.string.reason_rate_limited)
+  is HostProblem.HostError -> failed.status?.let {
+    AnnotatedString(stringResource(Res.string.reason_host_error, it.toString()))
+  } ?: textWith(Res.string.reason_host_error_unknown)
+  HostProblem.PlainHttpToPublicHost -> textWith(Res.string.reason_plain_http)
+  HostProblem.BadAddress -> textWith(Res.string.reason_bad_address)
+  HostProblem.BadHeader -> textWith(Res.string.reason_bad_header)
+  HostProblem.StreamNotBoolean -> textWithCode(Res.string.reason_stream_not_boolean, STREAM_KEY)
+  HostProblem.Unexpected -> textWith(Res.string.reason_unexpected)
 }
 
 @Composable
@@ -164,14 +173,7 @@ fun PageNote.text(name: String): AnnotatedString = when (this) {
       stringResource(Res.string.keychain_note_saved_detail),
     )
   }
-  PageNote.NotSavedStorage -> boldThenPlain(
-    stringResource(Res.string.not_saved_storage, name),
-    stringResource(Res.string.not_saved_storage_detail),
-  )
-  PageNote.NotSaved -> boldThenPlain(
-    stringResource(Res.string.not_saved, name),
-    stringResource(Res.string.not_saved_detail),
-  )
+  is PageNote.NotSaved -> notSavedText(failure, ConnectionSaveFailures, name)
   PageNote.NotDeleted ->
     boldThenPlain(stringResource(Res.string.delete_failed, name), stringResource(Res.string.delete_failed_detail))
   PageNote.NotMadeDefault ->

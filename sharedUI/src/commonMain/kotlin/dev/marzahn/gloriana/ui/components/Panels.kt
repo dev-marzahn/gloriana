@@ -5,6 +5,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -32,27 +33,43 @@ private val BackButtonHeight = 40.dp
 
 @Composable
 fun Panel(icon: DrawableResource, title: String, rows: List<PanelRow>, modifier: Modifier = Modifier) {
-  val colors = GlorianaTheme.colors
-  val shape = GlorianaTheme.shapes.panel
   val spacing = GlorianaTheme.spacing
   Column(modifier, verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
-    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(spacing.s8)) {
-      Icon(painterResource(icon), null, Modifier.size(PanelIconSize), tint = colors.textSubtle)
-      Text(title, style = GlorianaTheme.type.material.titleLarge, color = colors.text)
-    }
-    Column(
-      Modifier
-        .fillMaxWidth()
-        .lookShadow(GlorianaTheme.shadows.soft, shape)
-        .background(colors.raised, shape)
-        .border(1.dp, colors.border, shape),
-    ) {
+    PanelHeading(icon, title)
+    PanelFrame {
       rows.forEachIndexed { index, row ->
-        if (index > 0) HorizontalDivider(thickness = 1.dp, color = colors.borderSubtle)
+        if (index > 0) HorizontalDivider(thickness = 1.dp, color = GlorianaTheme.colors.borderSubtle)
         Box(Modifier.fillMaxWidth().padding(horizontal = spacing.s16, vertical = spacing.s14)) { row() }
       }
     }
   }
+}
+
+@Composable
+fun PanelHeading(icon: DrawableResource, title: String, modifier: Modifier = Modifier) {
+  val colors = GlorianaTheme.colors
+  Row(
+    modifier,
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8),
+  ) {
+    Icon(painterResource(icon), null, Modifier.size(PanelIconSize), tint = colors.textSubtle)
+    Text(title, style = GlorianaTheme.type.material.titleLarge, color = colors.text)
+  }
+}
+
+@Composable
+fun PanelFrame(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
+  val colors = GlorianaTheme.colors
+  val shape = GlorianaTheme.shapes.panel
+  Column(
+    modifier
+      .fillMaxWidth()
+      .lookShadow(GlorianaTheme.shadows.soft, shape)
+      .background(colors.raised, shape)
+      .border(1.dp, colors.border, shape),
+    content = content,
+  )
 }
 
 @Composable

@@ -12,13 +12,11 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.HorizontalDivider
@@ -62,6 +60,8 @@ import dev.marzahn.gloriana.logic.presets.moved
 import dev.marzahn.gloriana.logic.presets.placeOf
 import dev.marzahn.gloriana.ui.components.AddRow
 import dev.marzahn.gloriana.ui.components.ListDensity
+import dev.marzahn.gloriana.ui.components.PanelFrame
+import dev.marzahn.gloriana.ui.components.PanelHeading
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.add_group
 import dev.marzahn.gloriana.ui.resources.entries_panel
@@ -81,7 +81,6 @@ import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 import kotlin.uuid.Uuid
 
-private val PanelIconSize = 20.dp
 private val HintIconSize = 16.dp
 
 class EntriesActions(
@@ -179,7 +178,7 @@ fun EntriesPanel(rows: List<PresetRow>, actions: EntriesActions, modifier: Modif
     },
   )
   Column(modifier, verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8)) {
-    PanelTitle()
+    PanelHeading(Res.drawable.ic_format_list_numbered, stringResource(Res.string.entries_panel))
     PanelBody(rows, state, actions)
     Announcement(rows, announced)
   }
@@ -189,34 +188,10 @@ private fun hiddenRows(rows: List<PresetRow>, hiddenGroups: Set<Uuid>): Set<Uuid
   hiddenGroups.flatMap { group -> rows.entriesUnder(group).map { it.id } }.toSet()
 
 @Composable
-private fun PanelTitle() {
-  val colors = GlorianaTheme.colors
-  Row(
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8),
-  ) {
-    Icon(
-      painterResource(Res.drawable.ic_format_list_numbered),
-      null,
-      Modifier.size(PanelIconSize),
-      tint = colors.textSubtle,
-    )
-    Text(stringResource(Res.string.entries_panel), style = GlorianaTheme.type.material.titleLarge, color = colors.text)
-  }
-}
-
-@Composable
 private fun PanelBody(rows: List<PresetRow>, state: PanelState, actions: EntriesActions) {
   val colors = GlorianaTheme.colors
-  val shape = GlorianaTheme.shapes.panel
   LookaheadScope {
-    Column(
-      Modifier
-        .fillMaxWidth()
-        .lookShadow(GlorianaTheme.shadows.soft, shape)
-        .background(colors.raised, shape)
-        .border(1.dp, colors.border, shape),
-    ) {
+    PanelFrame {
       PanelHint()
       var group: PresetGroup? = null
       rows.forEach { row ->

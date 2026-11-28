@@ -51,9 +51,10 @@ private fun SheetOrDialog(
   val scrim = Scrim(colors.scrim, colors.scrimAlpha)
   val style = GlorianaTheme.widthClass.sheetStyle
   val body: @Composable ColumnScope.() -> Unit = { content(style) }
+  val dismiss = { if (dismissible) onDismiss() }
   if (style == SheetStyle.BottomSheet) {
     ModalBottomSheet(
-      onDismissRequest = onDismiss,
+      onDismissRequest = dismiss,
       sheetState = rememberBottomSheetState(SheetValue.Hidden, setOf(SheetValue.Hidden, SheetValue.Expanded)),
       sheetGesturesEnabled = dismissible,
       shape = shapes.sheet,
@@ -86,8 +87,8 @@ private fun SheetOrDialog(
   }
   val properties = dialogProperties(scrim, dismissible)
   when (kind) {
-    DialogKind.Plain -> Dialog(onDismiss, properties, panel)
-    DialogKind.Alert -> BasicAlertDialog(onDismiss, properties = properties, content = panel)
+    DialogKind.Plain -> Dialog(dismiss, properties, panel)
+    DialogKind.Alert -> BasicAlertDialog(dismiss, properties = properties, content = panel)
   }
 }
 

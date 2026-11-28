@@ -99,10 +99,8 @@ data class ConnectionForm(
   val keyStored: Boolean,
   val key: KeyEdit,
   val headers: List<HeaderRow>,
-) : ComparesByValue<ConnectionForm> {
+) {
   val keptHeaders: List<HeaderRow> get() = headers.filterNot { it.isBlank }
-
-  val timeoutSeconds: Int? get() = timeout.wholeNumber()
 
   val promptBudget: Int?
     get() {
@@ -132,7 +130,7 @@ data class ConnectionForm(
   fun withHeaderChanged(id: Int, change: (HeaderRow) -> HeaderRow) =
     copy(headers = headers.map { if (it.id == id) change(it) else it })
 
-  override fun sameAs(other: ConnectionForm): Boolean =
+  fun sameAs(other: ConnectionForm): Boolean =
     comparable() == other.comparable() && samplers.sameAs(other.samplers)
 
   private fun headersOrNoKey() = if (keptHeaders.isNotEmpty()) KeyContext.HeadersOnly else KeyContext.NoKey
@@ -151,6 +149,21 @@ data class ConnectionForm(
     key = keyInput(),
     headers = keptHeaders.map { it.draft() },
   )
+
+  fun withHeaderIdsOf(vararg earlier: ConnectionForm?): ConnectionForm {
+    val earlierRows = earlier.flatMap { it?.headers.orEmpty() }
+    val earlierIds = earlierRows.map { it.id }.toSet()
+    var nextId = (earlierRows + headers).maxOfOrNull { it.id + 1 } ?: 0
+    val claimed = mutableSetOf<Int>()
+    return copy(
+      headers = headers.map { row ->
+        val match = earlierRows.firstOrNull { it.id !in claimed && it.name.trim().equals(row.name, ignoreCase = true) }
+        val id = match?.id ?: row.id.takeUnless { it in earlierIds || it in claimed } ?: nextId++
+        claimed += id
+        row.copy(id = id)
+      },
+    )
+  }
 
   companion object {
     fun of(connection: Connection) = fromFields(

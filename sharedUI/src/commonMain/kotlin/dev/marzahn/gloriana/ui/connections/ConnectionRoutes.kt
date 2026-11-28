@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.ui.connections
 
 import androidx.navigation3.runtime.NavKey
 import dev.marzahn.gloriana.logic.connection.ConnectionTemplate
+import dev.marzahn.gloriana.ui.state.DraftEdit
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlin.jvm.JvmInline
@@ -26,12 +27,12 @@ sealed interface ConnectionRoute : NavKey {
   data class Saved(val id: String) : ConnectionRoute {
     constructor(id: Uuid) : this(id.toString())
 
-    internal constructor(id: Uuid, editsDuringItsFirstSave: List<FormChange>) : this(id.toString()) {
+    internal constructor(id: Uuid, editsDuringItsFirstSave: List<DraftEdit<ConnectionForm>>) : this(id.toString()) {
       this.editsDuringItsFirstSave = editsDuringItsFirstSave
     }
 
     @Transient
-    internal var editsDuringItsFirstSave: List<FormChange> = emptyList()
+    internal var editsDuringItsFirstSave: List<DraftEdit<ConnectionForm>> = emptyList()
       private set
 
     val uuid: Uuid get() = Uuid.parse(id)

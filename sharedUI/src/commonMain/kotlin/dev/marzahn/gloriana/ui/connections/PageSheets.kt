@@ -43,9 +43,7 @@ internal fun PageSheets(page: ConnectionPageState.Shown, onIntent: (PageIntent) 
       )
     }
     is PageActivity.Unlocking -> UnlockPromptSheet(activity.prompt, onPassphrase)
-    PageActivity.Idle, PageActivity.Saving, PageActivity.OpeningSaved, PageActivity.Testing,
-    PageActivity.MakingDefault,
-    -> Unit
+    PageActivity.Idle, PageActivity.OpeningSaved, PageActivity.Testing, PageActivity.MakingDefault -> Unit
   }
 }
 

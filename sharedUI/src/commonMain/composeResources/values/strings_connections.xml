@@ -11,7 +11,6 @@
     <string name="format_openai_responses">OpenAI Responses</string>
 
     <string name="connection_default_mark">Default</string>
-    <string name="connection_more">More for %1$s</string>
     <string name="make_default">Make default</string>
     <string name="delete_connection">Delete Connection</string>
     <string name="snack_made_default">%1$s is the default Connection.</string>
@@ -70,13 +69,8 @@
 
     <string name="new_connection">New Connection</string>
     <string name="not_saved_yet">Not saved yet</string>
-    <string name="followed_by_dot">%1$s ·</string>
-    <string name="joined_by_dot">%1$s · %2$s</string>
-    <string name="save">Save</string>
-    <string name="saving">Saving…</string>
     <string name="test">Test</string>
     <string name="testing">Testing…</string>
-    <string name="snack_saved">%1$s was saved.</string>
     <string name="test_passed">Test passed in %1$s s. The host replied: "%2$s"</string>
 
     <string name="section_where_requests_go">Where requests go</string>
@@ -151,7 +145,7 @@
     <string name="field_streaming">Streaming</string>
     <string name="streaming_hint">The reply shows as it's written.</string>
     <string name="field_include_usage">Report token usage</string>
-    <string name="include_usage_hint">Sends stream_options.include_usage. Turn it off if the host refuses it.</string>
+    <string name="include_usage_hint">Sends %1$s. Turn it off if the host refuses it.</string>
     <string name="field_timeout">Timeout</string>
     <string name="seconds">seconds</string>
     <string name="timeout_hint">How long to wait to connect, and between parts of a reply.</string>
@@ -165,7 +159,7 @@
     <string name="add_header">Add a header</string>
     <string name="headers_hint">Saved values show as •••. A header named like the format's own replaces it.</string>
     <string name="field_custom_body">Custom body JSON</string>
-    <string name="custom_body_hint">Merged over the request Gloriana builds. null removes a key.</string>
+    <string name="custom_body_hint">Merged over the request Gloriana builds. %1$s removes a key.</string>
 
     <string name="error_name_empty">Give this Connection a name.</string>
     <string name="error_name_taken">Another Connection is named %1$s.</string>
@@ -222,7 +216,7 @@
     <string name="reason_plain_http">plain http goes only to your own network</string>
     <string name="reason_bad_address">the address can't be used as written</string>
     <string name="reason_bad_header">a custom header can't be sent</string>
-    <string name="reason_stream_not_boolean">stream in the custom body isn't true or false</string>
+    <string name="reason_stream_not_boolean">%1$s in the custom body isn't true or false</string>
     <string name="step_unreachable">Check the address, then test again.</string>
     <string name="step_timeout">Try again in a while, or raise the timeout.</string>
     <string name="step_replace_key">Replace the key, then test again.</string>
@@ -254,26 +248,14 @@
     <string name="missing_note_key_detail">Enter it again, then try again.</string>
     <string name="missing_note_values_detail">Enter them again, then try again.</string>
 
-    <string name="not_saved_storage">%1$s wasn't saved: there isn't enough storage.</string>
     <string name="not_saved_storage_detail">What you typed is still here. Free some space, then save again.</string>
-    <string name="not_saved">%1$s wasn't saved.</string>
     <string name="not_saved_detail">What you typed is still here. Save again.</string>
     <string name="this_connection">This Connection</string>
 
-    <string name="discard_title">Discard your changes?</string>
-    <string name="changes_not_saved">Your changes to %1$s aren't saved.</string>
     <string name="discard_new_connection">Your changes to this new Connection aren't saved.</string>
     <string name="discard_model_settings">Your changes to Model settings aren't saved.</string>
-    <string name="discard_quit_two">Your changes to %1$s and %2$s aren't saved.</string>
-    <plurals name="discard_quit_more">
-        <item quantity="one">Your changes to %1$s, %2$s and %3$d more page aren't saved.</item>
-        <item quantity="other">Your changes to %1$s, %2$s and %3$d more pages aren't saved.</item>
-    </plurals>
     <string name="quit_name_new_connection">a new Connection</string>
-    <string name="discard">Discard</string>
-    <string name="keep_editing">Keep editing</string>
 
-    <string name="delete_connection_title">Delete %1$s?</string>
     <string name="delete_connection_both">Its key and header values become unreadable in every file Gloriana keeps. An encrypted backup made before now still holds the key.</string>
     <string name="delete_connection_key">Its key becomes unreadable in every file Gloriana keeps. An encrypted backup made before now still holds the key.</string>
     <string name="delete_connection_headers">Its header values become unreadable in every file Gloriana keeps.</string>
@@ -296,7 +278,6 @@
     <string name="passphrase_hint">At least 8 characters</string>
     <string name="type_it_again">Type it again</string>
     <string name="set_passphrase_and_save">Set passphrase and save</string>
-    <string name="set_passphrase">Set passphrase</string>
     <string name="setting">Setting…</string>
     <string name="error_passphrase_short">Use at least 8 characters.</string>
     <string name="error_passphrase_mismatch">The two don't match.</string>

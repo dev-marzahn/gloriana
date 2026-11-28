@@ -17,16 +17,15 @@ import androidx.lifecycle.viewmodel.compose.LocalViewModelStoreOwner
 import dev.marzahn.gloriana.logic.characters.DesktopPickedFile
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.Preset
-import dev.marzahn.gloriana.logic.presets.PresetEntry
 import dev.marzahn.gloriana.logic.presets.PresetImport
 import dev.marzahn.gloriana.logic.presets.PresetImportResult
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.StoredPreset
-import dev.marzahn.gloriana.ui.connections.LiveLibrary
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.rememberShellNavigator
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.entry_in_chat_title
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.WidthClass
 import kotlinx.coroutines.flow.first
@@ -67,13 +66,7 @@ class PresetEntryScreenTest {
       val stored = library.deepPreset()
       val entry = stored.content.entries.last()
       val sessions = library.koin.get<PresetSessions>()
-      sessions.edit(stored.id, stored.content) { content ->
-        content.copy(
-          rows = content.rows.map { row ->
-            if (row is PresetEntry && row.id == entry.id) row.copy(placement = EntryPlacement.Relative) else row
-          },
-        )
-      }
+      sessions.edit(stored.id, stored.content, PresetIntent.SetPlacement(entry.id, EntryPlacement.Relative))
       val freshPageStore = object : ViewModelStoreOwner {
         override val viewModelStore = ViewModelStore()
       }
@@ -95,7 +88,7 @@ class PresetEntryScreenTest {
       onAllNodes(inChat).onFirst().performClick()
       waitForIdle()
 
-      val shown = sessions.current(stored.id).content(stored.content).entries.last()
+      val shown = checkNotNull(sessions.current(stored.id).unsaved).draft.entries.last()
       assertEquals(EntryPlacement.InChat(4), shown.placement)
     }
   }

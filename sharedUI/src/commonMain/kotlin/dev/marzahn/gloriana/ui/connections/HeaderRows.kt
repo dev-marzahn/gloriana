@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import dev.marzahn.gloriana.logic.keys.HeaderName
 import dev.marzahn.gloriana.ui.components.AddRow
 import dev.marzahn.gloriana.ui.components.FieldNote
@@ -55,7 +56,7 @@ fun HeaderRows(page: ConnectionPageState.Shown, editing: FormEditing, modifier: 
     )
     editing.form.headers.forEach { row -> HeaderLine(page, editing, row) }
     AddRow(stringResource(Res.string.add_header), { editing.toggle { it.withHeader() } }, density = ListDensity.Pane)
-    FieldNote(stringResource(Res.string.headers_hint), null)
+    FieldNote(AnnotatedString(stringResource(Res.string.headers_hint)), null)
   }
 }
 
@@ -115,7 +116,7 @@ private fun HeaderLine(page: ConnectionPageState.Shown, editing: FormEditing, ro
         enabled = editing.enabled,
       )
     }
-    FieldNote(stored?.headerHint?.let { stringResource(it) }, nameError ?: valueError)
+    FieldNote(stored?.headerHint?.let { AnnotatedString(stringResource(it)) }, nameError ?: valueError)
   }
 }
 

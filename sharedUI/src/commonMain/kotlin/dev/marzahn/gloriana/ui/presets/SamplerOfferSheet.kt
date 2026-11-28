@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -34,7 +32,9 @@ import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaDropdownField
 import dev.marzahn.gloriana.ui.components.GlorianaSheet
+import dev.marzahn.gloriana.ui.components.InfoCard
 import dev.marzahn.gloriana.ui.components.SheetButtons
+import dev.marzahn.gloriana.ui.components.joinedInPairs
 import dev.marzahn.gloriana.ui.connections.label
 import dev.marzahn.gloriana.ui.connections.rangeText
 import dev.marzahn.gloriana.ui.connections.shown
@@ -70,7 +70,6 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 private val ArrowSize = 16.dp
-private val MatchIconSize = 20.dp
 private const val TABULAR_FIGURES = "tnum"
 
 private val PresetSampler.label: StringResource
@@ -99,7 +98,7 @@ fun SamplerOfferSheet(
   val colors = GlorianaTheme.colors
   val type = GlorianaTheme.type.material
   val motion = GlorianaTheme.motion
-  GlorianaSheet(onDismiss = { if (!offer.copying) onDecline() }, modifier, dismissible = !offer.copying) {
+  GlorianaSheet(onDismiss = onDecline, modifier, dismissible = !offer.copying) {
     Column(verticalArrangement = Arrangement.spacedBy(spacing.s12)) {
       Text(stringResource(Res.string.offer_title), style = type.headlineSmall, color = colors.text)
       Text(stringResource(Res.string.offer_text, offer.presetName), style = type.bodyMedium, color = colors.textMuted)
@@ -184,22 +183,11 @@ private fun ChangeRow(change: SamplerChange) {
 
 @Composable
 private fun AlreadyMatching(connectionName: String) {
-  val colors = GlorianaTheme.colors
-  val shape = GlorianaTheme.shapes.control
-  val spacing = GlorianaTheme.spacing
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .background(colors.surface2, shape)
-      .border(1.dp, colors.borderSubtle, shape)
-      .padding(spacing.s12),
-    horizontalArrangement = Arrangement.spacedBy(spacing.s10),
-  ) {
-    Icon(painterResource(Res.drawable.ic_check_circle_20), null, Modifier.size(MatchIconSize), tint = colors.textMuted)
+  InfoCard(Res.drawable.ic_check_circle_20) {
     Text(
       stringResource(Res.string.offer_already_matching, connectionName),
       style = GlorianaTheme.type.material.bodyMedium,
-      color = colors.text,
+      color = GlorianaTheme.colors.text,
     )
   }
 }
@@ -220,20 +208,16 @@ private fun NotCopiedLines(
   Column(modifier, verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8)) {
     GroupHeader(stringResource(Res.string.offer_not_copied))
     if (takesNone.isNotEmpty()) {
-      val line = joined(takesNone.map { valueText(it, format = null) })
+      val line = joinedInPairs(takesNone.map { valueText(it, format = null) }, Res.string.joined_by_dot)
       Text(stringResource(Res.string.offer_format_takes_none, formatName, line), style = style, color = color)
     }
     if (outOfRange.isNotEmpty()) {
-      val line = joined(outOfRange.map { valueText(it, format) })
+      val line = joinedInPairs(outOfRange.map { valueText(it, format) }, Res.string.joined_by_dot)
       Text(stringResource(Res.string.offer_out_of_range, formatName, line), style = style, color = color)
     }
   }
 }
 
-@Composable
-private fun joined(parts: List<String>): String = parts.reduce { joined, part ->
-  stringResource(Res.string.joined_by_dot, joined, part)
-}
 
 @Composable
 private fun valueText(notCopied: NotCopied, format: ApiFormat?): String {

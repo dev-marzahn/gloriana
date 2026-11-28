@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.ui.components.ButtonKind
@@ -112,7 +113,7 @@ fun KeyRow(page: ConnectionPageState.Shown, editing: FormEditing, modifier: Modi
   LabelledField(
     stringResource(Res.string.field_key),
     modifier,
-    hint = shown.hint(editing.form),
+    hint = shown.hint(editing.form)?.let(::AnnotatedString),
     error = error,
     labelEnd = stringResource(Res.string.optional),
   ) {

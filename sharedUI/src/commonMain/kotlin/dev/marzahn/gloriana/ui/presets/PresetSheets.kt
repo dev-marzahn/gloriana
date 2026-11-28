@@ -39,8 +39,8 @@ import dev.marzahn.gloriana.ui.resources.add_group_confirm
 import dev.marzahn.gloriana.ui.resources.cancel
 import dev.marzahn.gloriana.ui.resources.delete
 import dev.marzahn.gloriana.ui.resources.delete_preset_chats
-import dev.marzahn.gloriana.ui.resources.delete_preset_text
-import dev.marzahn.gloriana.ui.resources.delete_preset_title
+import dev.marzahn.gloriana.ui.resources.delete_text
+import dev.marzahn.gloriana.ui.resources.delete_title
 import dev.marzahn.gloriana.ui.resources.deleting
 import dev.marzahn.gloriana.ui.resources.group_name
 import dev.marzahn.gloriana.ui.resources.group_name_empty
@@ -195,16 +195,16 @@ fun PresetDeleteQuestion(page: PresetPageState.Shown, onIntent: (PresetIntent) -
   val chats = when (val activity = page.session.activity) {
     is PresetActivity.ConfirmingDelete -> activity.chatsUsing
     is PresetActivity.Deleting -> activity.chatsUsing
-    PresetActivity.Idle, PresetActivity.Saving -> return
+    PresetActivity.Idle -> return
   }
   val deleting = page.session.activity is PresetActivity.Deleting
   val lines = listOfNotNull(
-    stringResource(Res.string.delete_preset_text, page.name),
+    stringResource(Res.string.delete_text, page.name),
     chats.takeIf { it > 0 }?.let { pluralStringResource(Res.plurals.delete_preset_chats, it, it) },
   )
   GlorianaConfirmation(
     Confirmation(
-      title = stringResource(Res.string.delete_preset_title, page.name),
+      title = stringResource(Res.string.delete_title, page.name),
       lines = lines,
       confirmLabel = stringResource(if (deleting) Res.string.deleting else Res.string.delete),
     ),
