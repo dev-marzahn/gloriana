@@ -1,12 +1,16 @@
 package dev.marzahn.gloriana.logic.settings
 
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
+import dev.marzahn.gloriana.logic.storage.readTransaction
 import dev.marzahn.gloriana.logic.storage.writeTransaction
 import kotlinx.coroutines.flow.Flow
 import kotlin.uuid.Uuid
 
 internal class AlwaysSetDefault(private val database: GlorianaDatabase, private val row: DefaultRow) {
   fun observe(): Flow<Uuid?> = row.observe()
+
+  suspend fun <T : Any> readCurrent(read: suspend (Uuid) -> T?): T? =
+    database.readTransaction { row.current()?.let { read(it) } }
 
   suspend fun make(id: Uuid): MakeDefaultResult = row.make(id)
 

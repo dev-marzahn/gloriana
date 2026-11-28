@@ -19,7 +19,7 @@ internal const val SHIPPED_PRESET_NAME = "Default"
 internal class DefaultPreset(
   database: GlorianaDatabase,
   settings: LibrarySettings,
-  dao: PresetDao,
+  private val dao: PresetDao,
   private val writes: PresetWrites,
   private val reader: PresetJsonReader,
 ) {
@@ -27,6 +27,8 @@ internal class DefaultPreset(
     AlwaysSetDefault(database, DefaultRow(database, settings, DefaultPresetSetting, dao.observeIds(), dao::exists))
 
   fun observe(): Flow<Uuid?> = default.observe()
+
+  suspend fun name(): String? = default.readCurrent(dao::name)
 
   suspend fun make(id: Uuid): MakeDefaultResult = default.make(id)
 

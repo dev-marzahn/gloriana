@@ -9,7 +9,7 @@ import kotlin.uuid.Uuid
 
 @Dao
 internal interface PersonaDao {
-  @Query("SELECT * FROM $PERSONAS_TABLE ORDER BY nameKey, name")
+  @Query("SELECT * FROM $PERSONAS_TABLE ORDER BY id")
   fun observeAll(): Flow<List<PersonaEntity>>
 
   @Query("SELECT * FROM $PERSONAS_TABLE WHERE id = :id")
@@ -23,6 +23,9 @@ internal interface PersonaDao {
 
   @Query("SELECT EXISTS(SELECT 1 FROM $PERSONAS_TABLE WHERE id = :id)")
   suspend fun exists(id: Uuid): Boolean
+
+  @Query("SELECT name FROM $PERSONAS_TABLE WHERE id = :id")
+  suspend fun name(id: Uuid): String?
 
   @Query(
     "SELECT name, description, pronoun_subject, pronoun_objective, pronoun_possessive, " +

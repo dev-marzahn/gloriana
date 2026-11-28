@@ -25,6 +25,9 @@ internal interface PresetDao {
   @Query("SELECT EXISTS(SELECT 1 FROM $PRESETS_TABLE WHERE id = :id)")
   suspend fun exists(id: Uuid): Boolean
 
+  @Query("SELECT name FROM $PRESETS_TABLE WHERE id = :id")
+  suspend fun name(id: Uuid): String?
+
   @Transaction
   @Query("SELECT * FROM $PRESETS_TABLE WHERE id = :id")
   fun observeRows(id: Uuid): Flow<PresetRows?>

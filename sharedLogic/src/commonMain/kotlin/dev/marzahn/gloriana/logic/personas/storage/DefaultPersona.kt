@@ -18,13 +18,15 @@ internal val ShippedPersona = PersonaFields(name = "User")
 internal class DefaultPersona(
   database: GlorianaDatabase,
   settings: LibrarySettings,
-  dao: PersonaDao,
+  private val dao: PersonaDao,
   private val writes: PersonaWrites,
 ) {
   private val default =
     AlwaysSetDefault(database, DefaultRow(database, settings, DefaultPersonaSetting, dao.observeIds(), dao::exists))
 
   fun observe(): Flow<Uuid?> = default.observe()
+
+  suspend fun name(): String? = default.readCurrent(dao::name)
 
   suspend fun make(id: Uuid): MakeDefaultResult = default.make(id)
 

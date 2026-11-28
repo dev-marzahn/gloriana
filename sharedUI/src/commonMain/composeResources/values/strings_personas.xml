@@ -1,0 +1,44 @@
+<resources>
+    <string name="library_kind_personas">Personas</string>
+    <string name="create_persona">Create a Persona</string>
+    <string name="personas_nothing_picked">Pick a Persona</string>
+    <string name="personas_nothing_picked_text">Or create one.</string>
+    <string name="personas_error">Your Personas couldn't be loaded.</string>
+    <string name="personas_error_detail">Nothing was changed. Retry, or restart Gloriana if it keeps happening.</string>
+
+    <string name="back_to_personas">All Personas</string>
+    <string name="persona_error">This Persona couldn't be loaded.</string>
+    <string name="persona_error_detail">Nothing was changed. Retry, or go back to your Personas.</string>
+    <string name="delete_persona">Delete Persona</string>
+    <string name="persona_default_cant_delete">Make another Persona the default first</string>
+    <string name="new_persona">New Persona</string>
+
+    <string name="persona_panel_sent">Sent to the model</string>
+    <string name="persona_panel_private">Only you see this</string>
+    <string name="persona_field_label">Persona Label</string>
+    <string name="persona_field_note">Persona Note</string>
+    <string name="persona_not_set">Not set</string>
+    <string name="persona_name_hint">What %1$s stands for in prompts.</string>
+    <string name="persona_description_hint">Sent with the prompt in every chat with this Persona.</string>
+    <string name="persona_pronouns_hint">Not available yet.</string>
+    <string name="persona_label_hint">Tells your Personas apart, for example two of one name. Never sent.</string>
+    <string name="persona_note_hint">Anything you want to remember about this Persona. Never sent.</string>
+
+    <string name="persona_no_name">Give this Persona a name.</string>
+    <string name="persona_not_saved_storage_detail">What you typed is still here. Free some space, then save again.</string>
+    <string name="persona_not_saved_detail">What you typed is still here. Save again.</string>
+    <string name="discard_persona_title">Discard this Persona?</string>
+    <string name="discard_new_persona">%1$s isn't saved yet, so it won't be made.</string>
+    <string name="discard_new_persona_unnamed">This new Persona isn't saved yet, so it won't be made.</string>
+    <string name="quit_name_new_persona">a new Persona</string>
+
+    <string name="snack_made_default_persona">%1$s is the default Persona.</string>
+    <string name="persona_delete_text">%1$s is removed from Gloriana. This can't be undone.</string>
+    <string name="persona_delete_text_no_chats">%1$s is removed from Gloriana. No chat uses it. This can't be undone.</string>
+    <plurals name="delete_persona_chats">
+        <item quantity="one">%1$d chat uses it and moves to the default Persona, %2$s.</item>
+        <item quantity="other">%1$d chats use it and move to the default Persona, %2$s.</item>
+    </plurals>
+    <string name="persona_refused_default">%1$s wasn't deleted: it's the default Persona now.</string>
+    <string name="persona_refused_default_detail">Make another Persona the default first.</string>
+</resources>

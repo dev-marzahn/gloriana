@@ -58,6 +58,19 @@ class DefaultPersonaTest {
   }
 
   @Test
+  fun theDefaultsNameIsReadAndADefaultNamingNoStoredPersonaHasNone() = runTest {
+    PersonaLibrary(directory).use { library ->
+      val own = library.created(wren())
+      library.repository.makeDefault(own.id)
+      assertEquals(own.fields.name, library.repository.defaultName())
+
+      library.settings.write(DefaultPersonaSetting, Uuid.random())
+
+      assertNull(library.repository.defaultName())
+    }
+  }
+
+  @Test
   fun theDefaultCantBeDeletedUntilAnotherIsTheDefault() = runTest {
     PersonaLibrary(directory).use { library ->
       library.default.ensureShipped()

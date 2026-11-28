@@ -10,8 +10,6 @@
     <string name="format_openai_chat_completions">OpenAI Chat Completions</string>
     <string name="format_openai_responses">OpenAI Responses</string>
 
-    <string name="connection_default_mark">Default</string>
-    <string name="make_default">Make default</string>
     <string name="delete_connection">Delete Connection</string>
     <string name="snack_made_default">%1$s is the default Connection.</string>
 

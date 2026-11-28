@@ -118,6 +118,7 @@ class ShellNavigatorTest {
     var discards = 0
     val page
       get() = UnsavedPage(
+        "Discard?",
         "leave?",
         "page",
         discard = {

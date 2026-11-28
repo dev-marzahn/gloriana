@@ -26,13 +26,12 @@ internal class PersonaWrites(
   private val chats: ChatsUsing,
   private val faults: Faults,
 ) {
-  suspend fun insert(fields: PersonaFields): PersonaSaveResult =
-    refusedOr(fields) { PersonaSaveResult.Saved(inserted(it)) }
+  suspend fun insert(id: Uuid, fields: PersonaFields): PersonaSaveResult =
+    refusedOr(fields) { PersonaSaveResult.Saved(inserted(id, it)) }
 
-  suspend fun insertShipped(): Uuid = inserted(ShippedPersona)
+  suspend fun insertShipped(): Uuid = inserted(ids.newId(), ShippedPersona)
 
-  private suspend fun inserted(fields: PersonaFields): Uuid = database.writeTransaction {
-    val id = ids.newId()
+  private suspend fun inserted(id: Uuid, fields: PersonaFields): Uuid = database.writeTransaction {
     dao.insert(fields.toEntity(id, clock.updatedAt(previous = null)))
     faults.reached(PersonaWritePoint.InsertRowWritten)
     id

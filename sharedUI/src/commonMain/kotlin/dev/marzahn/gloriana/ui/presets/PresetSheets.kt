@@ -23,9 +23,7 @@ import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
 import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.ui.components.ButtonKind
-import dev.marzahn.gloriana.ui.components.Confirmation
 import dev.marzahn.gloriana.ui.components.GlorianaButton
-import dev.marzahn.gloriana.ui.components.GlorianaConfirmation
 import dev.marzahn.gloriana.ui.components.GlorianaDropdownField
 import dev.marzahn.gloriana.ui.components.GlorianaSheet
 import dev.marzahn.gloriana.ui.components.GlorianaTextField
@@ -33,15 +31,14 @@ import dev.marzahn.gloriana.ui.components.LabelledField
 import dev.marzahn.gloriana.ui.components.Panel
 import dev.marzahn.gloriana.ui.components.SheetButtons
 import dev.marzahn.gloriana.ui.components.tappable
+import dev.marzahn.gloriana.ui.lists.DeleteImpact
+import dev.marzahn.gloriana.ui.lists.ItemDeleteQuestion
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.add_group
 import dev.marzahn.gloriana.ui.resources.add_group_confirm
 import dev.marzahn.gloriana.ui.resources.cancel
-import dev.marzahn.gloriana.ui.resources.delete
 import dev.marzahn.gloriana.ui.resources.delete_preset_chats
 import dev.marzahn.gloriana.ui.resources.delete_text
-import dev.marzahn.gloriana.ui.resources.delete_title
-import dev.marzahn.gloriana.ui.resources.deleting
 import dev.marzahn.gloriana.ui.resources.group_name
 import dev.marzahn.gloriana.ui.resources.group_name_empty
 import dev.marzahn.gloriana.ui.resources.group_prompt_text
@@ -192,25 +189,19 @@ private fun PromptButtons(prompt: GroupPrompt, onSubmit: () -> Unit, onCancel: (
 
 @Composable
 fun PresetDeleteQuestion(page: PresetPageState.Shown, onIntent: (PresetIntent) -> Unit) {
-  val chats = when (val activity = page.session.activity) {
-    is PresetActivity.ConfirmingDelete -> activity.chatsUsing
-    is PresetActivity.Deleting -> activity.chatsUsing
-    PresetActivity.Idle -> return
-  }
-  val deleting = page.session.activity is PresetActivity.Deleting
-  val lines = listOfNotNull(
-    stringResource(Res.string.delete_text, page.name),
-    chats.takeIf { it > 0 }?.let { pluralStringResource(Res.plurals.delete_preset_chats, it, it) },
-  )
-  GlorianaConfirmation(
-    Confirmation(
-      title = stringResource(Res.string.delete_title, page.name),
-      lines = lines,
-      confirmLabel = stringResource(if (deleting) Res.string.deleting else Res.string.delete),
-    ),
+  ItemDeleteQuestion(
+    page.session.work,
+    page.name,
+    lines = { impact ->
+      listOfNotNull(
+        stringResource(Res.string.delete_text, page.name),
+        (impact as? DeleteImpact.MovesChats)?.let {
+          pluralStringResource(Res.plurals.delete_preset_chats, it.chats, it.chats, it.defaultName)
+        },
+      )
+    },
     onConfirm = { onIntent(PresetIntent.ConfirmDelete) },
     onDismiss = { onIntent(PresetIntent.CancelDelete) },
-    busy = deleting,
   )
 }
 

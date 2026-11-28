@@ -10,27 +10,17 @@ import kotlinx.serialization.Serializable
 import kotlin.uuid.Uuid
 
 sealed interface PresetPart : NavKey {
-  val presetId: String
-
-  val presetUuid: Uuid get() = Uuid.parse(presetId)
+  val presetId: Uuid
 }
 
 @Serializable
-data class PresetRoute(override val presetId: String) : PresetPart {
-  constructor(id: Uuid) : this(id.toString())
-}
+data class PresetRoute(override val presetId: Uuid) : PresetPart
 
 @Serializable
-data class PresetEntryRoute(override val presetId: String, val entryId: String) : PresetPart {
-  constructor(presetId: Uuid, entryId: Uuid) : this(presetId.toString(), entryId.toString())
-
-  val entryUuid: Uuid get() = Uuid.parse(entryId)
-}
+data class PresetEntryRoute(override val presetId: Uuid, val entryId: Uuid) : PresetPart
 
 @Serializable
-data class PresetWrapperRoute(override val presetId: String, val prompt: WrapperPrompt) : PresetPart {
-  constructor(presetId: Uuid, prompt: WrapperPrompt) : this(presetId.toString(), prompt)
-}
+data class PresetWrapperRoute(override val presetId: Uuid, val prompt: WrapperPrompt) : PresetPart
 
 fun ShellNavigator.showPresets() = showLibraryKind(LibraryKind.Presets)
 
@@ -43,4 +33,4 @@ fun ShellNavigator.pickPreset(id: Uuid) {
 }
 
 fun ShellNavigator.shownPreset(): Uuid? =
-  stack(Destination.Library).filterIsInstance<PresetPart>().firstOrNull()?.presetUuid
+  stack(Destination.Library).filterIsInstance<PresetPart>().firstOrNull()?.presetId

@@ -38,7 +38,7 @@ class PersonaLibrary(
   val prompts = PersonaPrompts(database.personaDao(), default)
 
   suspend fun created(fields: PersonaFields): Persona =
-    stored(assertIs<PersonaSaveResult.Saved>(repository.create(fields)).id)
+    stored(assertIs<PersonaSaveResult.Saved>(repository.create(UuidV7IdFactory.newId(), fields)).id)
 
   suspend fun stored(id: Uuid): Persona = checkNotNull(repository.persona(id).first())
 

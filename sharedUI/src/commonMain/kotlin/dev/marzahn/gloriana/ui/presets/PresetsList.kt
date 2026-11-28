@@ -3,13 +3,11 @@ package dev.marzahn.gloriana.ui.presets
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
@@ -19,6 +17,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marzahn.gloriana.logic.presets.PresetImportFailure
 import dev.marzahn.gloriana.logic.presets.PresetSummary
 import dev.marzahn.gloriana.ui.components.AddRow
+import dev.marzahn.gloriana.ui.components.DefaultMark
 import dev.marzahn.gloriana.ui.components.EmptyAction
 import dev.marzahn.gloriana.ui.components.EmptyBlock
 import dev.marzahn.gloriana.ui.components.GlorianaButton
@@ -32,10 +31,11 @@ import dev.marzahn.gloriana.ui.components.RowSelection
 import dev.marzahn.gloriana.ui.components.RowTile
 import dev.marzahn.gloriana.ui.components.Skeleton
 import dev.marzahn.gloriana.ui.components.boldThenPlain
+import dev.marzahn.gloriana.ui.components.chevron
 import dev.marzahn.gloriana.ui.components.listMotion
 import dev.marzahn.gloriana.ui.files.FileChoice
 import dev.marzahn.gloriana.ui.files.rememberFilePicker
-import dev.marzahn.gloriana.ui.lists.Deleted
+import dev.marzahn.gloriana.ui.lists.DeleteFocus
 import dev.marzahn.gloriana.ui.lists.RowFocus
 import dev.marzahn.gloriana.ui.lists.RowSkeletons
 import dev.marzahn.gloriana.ui.lists.rememberRowFocus
@@ -49,7 +49,6 @@ import dev.marzahn.gloriana.ui.resources.choose_another_file
 import dev.marzahn.gloriana.ui.resources.create
 import dev.marzahn.gloriana.ui.resources.create_preset
 import dev.marzahn.gloriana.ui.resources.ic_add_20
-import dev.marzahn.gloriana.ui.resources.ic_chevron_right
 import dev.marzahn.gloriana.ui.resources.ic_draft
 import dev.marzahn.gloriana.ui.resources.ic_file_open
 import dev.marzahn.gloriana.ui.resources.ic_view_list
@@ -75,13 +74,10 @@ import dev.marzahn.gloriana.ui.resources.reason_storage_full_detail
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Navigation
 import org.jetbrains.compose.resources.StringResource
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.uuid.Uuid
-
-private val ChevronSize = 20.dp
 
 private val PresetFiles = FileChoice(listOf("json"), several = false)
 
@@ -145,8 +141,6 @@ internal fun PresetsContent(
   TopLevelScreen(Destination.Library, content, modifier, kindPicker)
 }
 
-class DeleteFocus(val deleted: Deleted?, val onFocus: (Deleted) -> Unit)
-
 private const val ADD_ROW_KEY = "add"
 
 private fun LazyListScope.importRows(imports: PresetImportState, actions: PresetsActions, density: ListDensity) {
@@ -200,6 +194,7 @@ private fun PresetRows(
           val key = preset.id.toString()
           PresetRow(
             preset,
+            preset.id == listing.defaultId,
             preset.id == selected,
             density,
             { actions.onOpen(preset.id) },
@@ -241,6 +236,7 @@ private fun rememberFocusAfterDelete(
 @Composable
 private fun PresetRow(
   preset: PresetSummary,
+  isDefault: Boolean,
   selected: Boolean,
   density: ListDensity,
   onClick: () -> Unit,
@@ -253,18 +249,8 @@ private fun PresetRow(
     modifier = modifier,
     selection = if (selected) RowSelection.Selected else RowSelection.Unselected,
     density = density,
-    trailing = if (density == ListDensity.Pane) {
-      null
-    } else {
-      {
-        Icon(
-          painterResource(Res.drawable.ic_chevron_right),
-          null,
-          Modifier.size(ChevronSize),
-          tint = GlorianaTheme.colors.textMuted,
-        )
-      }
-    },
+    nameMark = { DefaultMark(isDefault) },
+    trailing = density.chevron(),
     avatar = { RowTile(Res.drawable.ic_view_list, density) },
   )
 }

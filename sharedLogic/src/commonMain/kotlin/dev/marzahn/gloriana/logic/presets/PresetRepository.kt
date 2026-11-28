@@ -44,6 +44,8 @@ class PresetRepository internal constructor(
 
   fun defaultPreset(): Flow<Uuid?> = default.observe()
 
+  suspend fun defaultName(): String? = default.name()
+
   suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { default.make(id) }
 
   suspend fun delete(id: Uuid): PresetDeleteResult = failingAs(PresetDeleteResult.Failed) {

@@ -24,7 +24,7 @@ sealed interface PresetsListing {
 
   data object CouldNotLoad : PresetsListing
 
-  data class Loaded(val presets: List<PresetSummary>) : PresetsListing
+  data class Loaded(val presets: List<PresetSummary>, val defaultId: Uuid?) : PresetsListing
 }
 
 data class PresetsState(val listing: PresetsListing, val imports: PresetImportState) {
@@ -46,8 +46,10 @@ class PresetsViewModel(
 
   @OptIn(ExperimentalCoroutinesApi::class)
   private val listing: Flow<PresetsListing> = attempt.flatMapLatest {
-    repository.presets()
-      .map<List<PresetSummary>, PresetsListing> { PresetsListing.Loaded(it) }
+    combine<List<PresetSummary>, Uuid?, PresetsListing>(
+      repository.presets(),
+      repository.defaultPreset(),
+    ) { presets, defaultId -> PresetsListing.Loaded(presets, defaultId) }
       .onStart { emit(PresetsListing.Loading) }
       .catch { emit(PresetsListing.CouldNotLoad) }
   }

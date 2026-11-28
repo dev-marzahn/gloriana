@@ -25,6 +25,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.resources.Res
@@ -38,7 +39,8 @@ import org.jetbrains.compose.resources.stringResource
 
 private val EmptyIconSize = 40.dp
 private val EmptyBlockWidth = 320.dp
-private const val SKELETON_WAIT_MILLIS = 300L
+const val SKELETON_WAIT_MILLIS = 300L
+const val SKELETON_TAG = "skeleton"
 
 data class EmptyAction(val label: String, val icon: DrawableResource?, val onClick: () -> Unit)
 
@@ -78,7 +80,8 @@ fun Skeleton(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     delay(SKELETON_WAIT_MILLIS)
     shown = true
   }
-  AnimatedVisibility(shown, modifier, enter = fadeIn(GlorianaTheme.motion.standard.tween())) { content() }
+  val enter = fadeIn(GlorianaTheme.motion.standard.tween())
+  AnimatedVisibility(shown, modifier.testTag(SKELETON_TAG), enter = enter) { content() }
 }
 
 enum class SkeletonSurface { Canvas, Raised }

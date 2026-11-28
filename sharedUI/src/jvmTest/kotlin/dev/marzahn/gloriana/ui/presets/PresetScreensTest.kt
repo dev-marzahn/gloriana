@@ -37,6 +37,7 @@ import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.add_group
 import dev.marzahn.gloriana.ui.resources.add_group_confirm
 import dev.marzahn.gloriana.ui.resources.changes_not_saved
+import dev.marzahn.gloriana.ui.resources.delete_preset
 import dev.marzahn.gloriana.ui.resources.depth_error
 import dev.marzahn.gloriana.ui.resources.destination_library
 import dev.marzahn.gloriana.ui.resources.discard
@@ -44,10 +45,12 @@ import dev.marzahn.gloriana.ui.resources.export
 import dev.marzahn.gloriana.ui.resources.import_waiting
 import dev.marzahn.gloriana.ui.resources.keep_editing
 import dev.marzahn.gloriana.ui.resources.library_kind_presets
+import dev.marzahn.gloriana.ui.resources.make_default
 import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.move_down
 import dev.marzahn.gloriana.ui.resources.offer_copy
 import dev.marzahn.gloriana.ui.resources.offer_dont_copy
+import dev.marzahn.gloriana.ui.resources.preset_default_cant_delete
 import dev.marzahn.gloriana.ui.resources.save
 import dev.marzahn.gloriana.ui.resources.save_changes_first
 import dev.marzahn.gloriana.ui.testing.LiveLibrary
@@ -184,6 +187,20 @@ class PresetScreensTest {
       val saved = library.entries(id)
       assertEquals(listOf("Chat History", "Main Prompt", "Auxiliary Prompt"), saved.map { it.name })
       assertEquals(listOf(false, true, true), saved.map { it.enabled })
+    }
+  }
+
+  @Test
+  fun theDefaultPresetHidesMakeDefaultAndCantBeDeleted() = runComposeUiTest {
+    LiveLibrary.use { library ->
+      openPresets(library)
+      val name = library.shippedPreset().name
+      tap(hasText(name) and hasClickAction())
+      tap(hasContentDescription(getString(Res.string.more_for, name)))
+
+      waitFor(hasText(getString(Res.string.preset_default_cant_delete)))
+      assertTrue(onAllNodes(hasText(getString(Res.string.make_default))).fetchSemanticsNodes().isEmpty())
+      onAllNodes(hasText(getString(Res.string.delete_preset)) and hasClickAction()).onFirst().assertIsNotEnabled()
     }
   }
 

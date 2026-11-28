@@ -1,10 +1,13 @@
 package dev.marzahn.gloriana.ui.testing
 
 import androidx.compose.runtime.Composable
+import androidx.room.execSQL
+import androidx.room.useWriterConnection
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
 import dev.marzahn.gloriana.logic.app.ShippedDefaultsAtStart
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
+import dev.marzahn.gloriana.logic.assets.StorageFullException
 import dev.marzahn.gloriana.logic.characters.AvatarTranscoder
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.Connection
@@ -30,10 +33,17 @@ import dev.marzahn.gloriana.logic.keys.OsKeychain
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
 import dev.marzahn.gloriana.logic.keys.deviceKeysetFileIn
 import dev.marzahn.gloriana.logic.keys.passphraseKeysetFileIn
+import dev.marzahn.gloriana.logic.personas.Persona
+import dev.marzahn.gloriana.logic.personas.PersonaFields
+import dev.marzahn.gloriana.logic.personas.PersonaRepository
+import dev.marzahn.gloriana.logic.personas.PersonaSaveResult
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.PresetSummary
+import dev.marzahn.gloriana.logic.storage.ChatSetting
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
+import dev.marzahn.gloriana.logic.storage.UuidV7IdFactory
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
 import dev.marzahn.gloriana.logic.tasks.KeepAlive
 import dev.marzahn.gloriana.logic.tasks.KeepAliveLosses
@@ -54,6 +64,7 @@ import org.koin.dsl.module
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import kotlin.io.path.ExperimentalPathApi
@@ -100,6 +111,25 @@ object NoKeychain : OsKeychain {
   override fun delete(account: String) = Unit
 }
 
+class CountedChats : ChatsUsing {
+  private val counts = ConcurrentHashMap<Pair<ChatSetting, Uuid>, Int>()
+
+  operator fun set(key: Pair<ChatSetting, Uuid>, chats: Int) {
+    counts[key] = chats
+  }
+
+  override suspend fun count(setting: ChatSetting, id: Uuid): Int = counts[setting to id] ?: 0
+
+  override suspend fun move(setting: ChatSetting.EveryChatHasOne, from: Uuid, to: Uuid) = moved(setting, from, to)
+
+  override suspend fun move(setting: ChatSetting.Connection, from: Uuid, to: Uuid?) = moved(setting, from, to)
+
+  private fun moved(setting: ChatSetting, from: Uuid, to: Uuid?) {
+    val chats = counts.remove(setting to from) ?: return
+    to?.let { counts.merge(setting to it, chats, Int::plus) }
+  }
+}
+
 private object HeldInProcess : KeepAlive {
   override fun start(opening: TaskNotice, shown: Flow<TaskNotice?>, losses: KeepAliveLosses) = Unit
 
@@ -129,6 +159,14 @@ class LiveLibrary private constructor(private val directory: Path, private val d
 
   private var whenTheNextKeysetWriteIsRefused: (() -> Unit)? = null
 
+  @Volatile
+  var failingWrite: FaultPoint? = null
+
+  @Volatile
+  var storageFullAt: FaultPoint? = null
+
+  val chatsUsing = CountedChats()
+
   private val deviceKeysetFile: Path get() = deviceKeysetFileIn(directory)
 
   val writes = WriteGate()
@@ -144,6 +182,20 @@ class LiveLibrary private constructor(private val directory: Path, private val d
   private val vault: KeyVault get() = application.koin.get()
 
   private val presetRepository: PresetRepository get() = application.koin.get()
+
+  val personaRepository: PersonaRepository get() = application.koin.get()
+
+  fun createdPersona(name: String, label: String = ""): Persona = runBlocking {
+    val result = personaRepository.create(UuidV7IdFactory.newId(), PersonaFields(name = name, personaLabel = label))
+    checkNotNull(personaRepository.persona(assertIs<PersonaSaveResult.Saved>(result).id).first())
+  }
+
+  fun personas(): List<Persona> = runBlocking { personaRepository.personas().first() }
+
+  fun defaultPersona(): Persona = runBlocking {
+    val id = checkNotNull(personaRepository.defaultPersona().first())
+    personaRepository.personas().first().single { it.id == id }
+  }
 
   @Composable
   fun Show(content: @Composable () -> Unit) {
@@ -251,7 +303,8 @@ class LiveLibrary private constructor(private val directory: Path, private val d
       single<DebuggableBuild> { DebuggableBuild { false } }
       single<AvatarTranscoder> { AvatarTranscoder { _, _ -> null } }
       single<DeviceKeyStore> { device }
-      single<Faults> { Faults(::failKeysetWrite) }
+      single<Faults> { Faults(::failArmedWrite) }
+      single<ChatsUsing> { chatsUsing }
       single { UpdatedAtClock(writes) }
       single<KeepAlive> { HeldInProcess }
     }
@@ -263,14 +316,33 @@ class LiveLibrary private constructor(private val directory: Path, private val d
     whenTheNextKeysetWriteIsRefused = alongside
   }
 
-  private fun failKeysetWrite(point: FaultPoint) {
-    if (point != KeyWritePoint.NewKeysetStaged) return
-    whenTheNextKeysetWriteIsRefused?.let { alongside ->
-      whenTheNextKeysetWriteIsRefused = null
-      alongside()
-      throw IOException("keyset write refused")
-    }
-    if (keysetWritesFail) throw IOException("keyset write refused")
+  fun makeUnreadable(table: String) = onDatabase("ALTER TABLE $table RENAME TO ${table}_away")
+
+  fun makeReadableAgain(table: String) = onDatabase("ALTER TABLE ${table}_away RENAME TO $table")
+
+  fun refuseChangesTo(table: String) = listOf("INSERT", "UPDATE").forEach { change ->
+    onDatabase("CREATE TRIGGER refuse_$change BEFORE $change ON $table BEGIN SELECT RAISE(ABORT, 'refused'); END")
+  }
+
+  fun allowChangesAgain() = listOf("INSERT", "UPDATE").forEach { onDatabase("DROP TRIGGER refuse_$it") }
+
+  private fun onDatabase(sql: String) = runBlocking {
+    application.koin.get<GlorianaDatabase>().useWriterConnection { it.execSQL(sql) }
+  }
+
+  private fun failArmedWrite(point: FaultPoint) {
+    if (point == storageFullAt) throw StorageFullException(IOException("No space left on device"))
+    if (point == failingWrite || refusesKeysetWrite(point)) throw IOException("write refused")
+  }
+
+  private fun refusesKeysetWrite(point: FaultPoint): Boolean =
+    point == KeyWritePoint.NewKeysetStaged && (refusesWithItsAlongside() || keysetWritesFail)
+
+  private fun refusesWithItsAlongside(): Boolean {
+    val alongside = whenTheNextKeysetWriteIsRefused ?: return false
+    whenTheNextKeysetWriteIsRefused = null
+    alongside()
+    return true
   }
 
   companion object {

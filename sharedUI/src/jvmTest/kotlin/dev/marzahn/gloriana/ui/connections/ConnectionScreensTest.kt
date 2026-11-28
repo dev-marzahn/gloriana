@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.App
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.cancel
-import dev.marzahn.gloriana.ui.resources.connection_default_mark
+import dev.marzahn.gloriana.ui.resources.default_mark
 import dev.marzahn.gloriana.ui.resources.create
 import dev.marzahn.gloriana.ui.resources.delete
 import dev.marzahn.gloriana.ui.resources.delete_connection
@@ -81,7 +81,7 @@ class ConnectionScreensTest {
   }
 
   private suspend fun rowMarkedDefault(name: String) =
-    hasText(name) and hasText(getString(Res.string.connection_default_mark)) and hasClickAction()
+    hasText(name) and hasText(getString(Res.string.default_mark)) and hasClickAction()
 
   private fun listRow(name: String) = hasText(name) and hasClickAction() and !hasSetTextAction()
 

@@ -48,18 +48,19 @@ class PersonaRepositoryTest {
   }
 
   @Test
-  fun theListIsOrderedByNameLetterCaseAside() = runTest {
+  fun theListKeepsTheOrderPersonasWereCreatedInNeverByName() = runTest {
     PersonaLibrary(directory).use { library ->
-      listOf("bram", "Ada", "Cleo").forEach { library.created(PersonaFields(name = it)) }
+      val names = listOf("bram", "Ada", "Cleo") + (1..30).map { "Zed $it" } + listOf("Alba")
+      names.forEach { library.created(PersonaFields(name = it)) }
 
-      assertEquals(listOf("Ada", "bram", "Cleo"), library.repository.personas().first().map { it.fields.name })
+      assertEquals(names, library.repository.personas().first().map { it.fields.name })
     }
   }
 
   @Test
   fun aCreateOrEditWithAnEmptyNameIsRefusedAndWritesNothing() = runTest {
     PersonaLibrary(directory).use { library ->
-      assertEquals(PersonaSaveResult.EmptyName, library.repository.create(wren().copy(name = " ")))
+      assertEquals(PersonaSaveResult.EmptyName, library.repository.create(Uuid.random(), wren().copy(name = " ")))
       assertEquals(emptyList(), library.repository.personas().first())
 
       val persona = library.created(wren())
@@ -115,7 +116,7 @@ class PersonaRepositoryTest {
     PersonaLibrary(directory, faults = faults).use { library ->
       faults.armed = true
 
-      assertEquals(PersonaSaveResult.Failed, library.repository.create(wren()))
+      assertEquals(PersonaSaveResult.Failed, library.repository.create(Uuid.random(), wren()))
 
       assertEquals(emptyList(), library.repository.personas().first())
     }

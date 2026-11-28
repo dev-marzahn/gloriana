@@ -24,9 +24,11 @@ class PersonaRepository internal constructor(
 
   fun defaultPersona(): Flow<Uuid?> = default.observe()
 
+  suspend fun defaultName(): String? = default.name()
+
   suspend fun chatsUsing(id: Uuid): Int = chats.count(ChatSetting.Persona, id)
 
-  suspend fun create(fields: PersonaFields): PersonaSaveResult = saving { writes.insert(fields) }
+  suspend fun create(id: Uuid, fields: PersonaFields): PersonaSaveResult = saving { writes.insert(id, fields) }
 
   suspend fun update(id: Uuid, fields: PersonaFields): PersonaSaveResult = saving { writes.update(id, fields) }
 

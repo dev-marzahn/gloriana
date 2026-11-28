@@ -4,12 +4,13 @@ import androidx.navigation3.runtime.NavKey
 import androidx.savedstate.serialization.decodeFromSavedState
 import androidx.savedstate.serialization.encodeToSavedState
 import dev.marzahn.gloriana.logic.presets.WrapperPrompt
+import dev.marzahn.gloriana.logic.storage.UuidV7IdFactory
 import dev.marzahn.gloriana.ui.characters.CharacterRoute
 import dev.marzahn.gloriana.ui.connections.ConnectionRoute
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
 import dev.marzahn.gloriana.ui.connections.NewConnectionStart
-import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
+import dev.marzahn.gloriana.ui.personas.PersonaRoute
 import dev.marzahn.gloriana.ui.presets.PresetEntryRoute
 import dev.marzahn.gloriana.ui.presets.PresetRoute
 import dev.marzahn.gloriana.ui.presets.PresetWrapperRoute
@@ -33,15 +34,17 @@ class BackStackTest {
 
   @Test
   fun everyPushedScreenSurvivesSavedState() {
-    val opening = Opening.fresh()
+    val opening = Opening.fresh(UuidV7IdFactory)
     listOf(
-      CharacterRoute(Uuid.random().toString()),
+      CharacterRoute(Uuid.random()),
       ConnectionRoute.Saved(Uuid.random()),
       ConnectionRoute.New(NewConnectionStart.FromNothing, opening),
       ModelSettingsRoute,
       PassphraseRoute,
-      PresetRoute(Uuid.random().toString()),
+      PresetRoute(Uuid.random()),
       PresetEntryRoute(Uuid.random(), Uuid.random()),
+      PersonaRoute.Saved(Uuid.random()),
+      PersonaRoute.New(opening),
     ).forEach(::assertSurvives)
     WrapperPrompt.entries.forEach { assertSurvives(PresetWrapperRoute(Uuid.random(), it)) }
     NewConnectionStart.choices.forEach { assertSurvives(ConnectionRoute.New(it, opening)) }

@@ -21,7 +21,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
+import dev.marzahn.gloriana.logic.storage.IdFactory
 import dev.marzahn.gloriana.ui.components.AddRow
+import dev.marzahn.gloriana.ui.components.DefaultMark
 import dev.marzahn.gloriana.ui.components.EmptyAction
 import dev.marzahn.gloriana.ui.components.EmptyBlock
 import dev.marzahn.gloriana.ui.components.EmptyState
@@ -36,9 +38,7 @@ import dev.marzahn.gloriana.ui.components.listMotion
 import dev.marzahn.gloriana.ui.connections.ConnectionMoreMenu
 import dev.marzahn.gloriana.ui.connections.ConnectionRoute
 import dev.marzahn.gloriana.ui.connections.CreateConnectionSheet
-import dev.marzahn.gloriana.ui.connections.DefaultMark
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
-import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
 import dev.marzahn.gloriana.ui.connections.hostOf
 import dev.marzahn.gloriana.ui.connections.label
@@ -48,6 +48,7 @@ import dev.marzahn.gloriana.ui.lists.RowSkeletons
 import dev.marzahn.gloriana.ui.lists.rememberRowFocus
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
+import dev.marzahn.gloriana.ui.navigation.Opening
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
 import dev.marzahn.gloriana.ui.navigation.replaceTop
@@ -83,6 +84,7 @@ import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private val ChevronSize = 24.dp
@@ -157,6 +159,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
   val viewModel: SettingsViewModel = koinViewModel()
   val state by viewModel.state.collectAsStateWithLifecycle()
   val navigator = LocalShellNavigator.current
+  val ids: IdFactory = koinInject()
   var creating by rememberSaveable { mutableStateOf(false) }
   val actions = SettingsActions(
     onOpen = { navigator.replaceTop(Destination.Settings, it) },
@@ -170,7 +173,7 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
     CreateConnectionSheet(
       onPick = { start ->
         creating = false
-        navigator.replaceTop(Destination.Settings, ConnectionRoute.New(start, Opening.fresh()))
+        navigator.replaceTop(Destination.Settings, ConnectionRoute.New(start, Opening.fresh(ids)))
       },
       onDismiss = { creating = false },
     )

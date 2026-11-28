@@ -1,10 +1,5 @@
 package dev.marzahn.gloriana.ui.connections
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandHorizontally
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -26,14 +21,13 @@ import dev.marzahn.gloriana.ui.components.GlorianaConfirmation
 import dev.marzahn.gloriana.ui.components.GlorianaMoreMenu
 import dev.marzahn.gloriana.ui.components.GlorianaSheet
 import dev.marzahn.gloriana.ui.components.ListDensity
-import dev.marzahn.gloriana.ui.components.Mark
 import dev.marzahn.gloriana.ui.components.MenuItem
 import dev.marzahn.gloriana.ui.components.RowTile
 import dev.marzahn.gloriana.ui.components.SheetButtons
 import dev.marzahn.gloriana.ui.components.tappable
+import dev.marzahn.gloriana.ui.lists.makeDefaultMenuItem
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.cancel
-import dev.marzahn.gloriana.ui.resources.connection_default_mark
 import dev.marzahn.gloriana.ui.resources.create_connection
 import dev.marzahn.gloriana.ui.resources.create_connection_text
 import dev.marzahn.gloriana.ui.resources.delete
@@ -47,9 +41,7 @@ import dev.marzahn.gloriana.ui.resources.deleting
 import dev.marzahn.gloriana.ui.resources.ic_delete
 import dev.marzahn.gloriana.ui.resources.ic_edit_note_20
 import dev.marzahn.gloriana.ui.resources.ic_hub_20
-import dev.marzahn.gloriana.ui.resources.ic_star
 import dev.marzahn.gloriana.ui.resources.joined_by_dot
-import dev.marzahn.gloriana.ui.resources.make_default
 import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.template_from_nothing
 import dev.marzahn.gloriana.ui.resources.template_from_nothing_text
@@ -160,21 +152,8 @@ fun ConnectionMoreMenu(
   modifier: Modifier = Modifier,
 ) {
   val items = listOfNotNull(
-    MenuItem(stringResource(Res.string.make_default), Res.drawable.ic_star, onMakeDefault).takeUnless { isDefault },
+    makeDefaultMenuItem(isDefault, onMakeDefault),
     MenuItem(stringResource(Res.string.delete_connection), Res.drawable.ic_delete, onDelete),
   )
   GlorianaMoreMenu(stringResource(Res.string.more_for, name), items, modifier)
-}
-
-@Composable
-fun DefaultMark(isDefault: Boolean, modifier: Modifier = Modifier) {
-  val standard = GlorianaTheme.motion.standard
-  AnimatedVisibility(
-    isDefault,
-    modifier,
-    enter = fadeIn(standard.tween()) + expandHorizontally(standard.tween()),
-    exit = fadeOut(standard.tween()) + shrinkHorizontally(standard.tween()),
-  ) {
-    Mark(stringResource(Res.string.connection_default_mark))
-  }
 }

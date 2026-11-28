@@ -34,6 +34,7 @@ import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.OpenPagesWhileShown
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
+import dev.marzahn.gloriana.ui.personas.PersonasLibrary
 import dev.marzahn.gloriana.ui.presets.PresetsLibrary
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.characters_error
@@ -46,6 +47,7 @@ import dev.marzahn.gloriana.ui.resources.ic_person_add
 import dev.marzahn.gloriana.ui.resources.library_empty
 import dev.marzahn.gloriana.ui.resources.library_empty_text
 import dev.marzahn.gloriana.ui.resources.library_kind_characters
+import dev.marzahn.gloriana.ui.resources.library_kind_personas
 import dev.marzahn.gloriana.ui.resources.library_kind_presets
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Navigation
@@ -73,6 +75,7 @@ fun LibraryScreen(modifier: Modifier = Modifier) {
   val kindPicker = @Composable { LibraryKindPicker(navigator.libraryKind) { navigator.showLibraryKind(it) } }
   when (navigator.libraryKind) {
     LibraryKind.Characters -> CharactersLibrary(kindPicker, modifier)
+    LibraryKind.Personas -> PersonasLibrary(kindPicker, modifier)
     LibraryKind.Presets -> PresetsLibrary(kindPicker, modifier)
   }
 }
@@ -86,6 +89,7 @@ private fun LibraryKindPicker(kind: LibraryKind, onPick: (LibraryKind) -> Unit) 
 private val LibraryKind.label: StringResource
   get() = when (this) {
     LibraryKind.Characters -> Res.string.library_kind_characters
+    LibraryKind.Personas -> Res.string.library_kind_personas
     LibraryKind.Presets -> Res.string.library_kind_presets
   }
 
@@ -115,7 +119,7 @@ private fun CharactersLibrary(
       viewModel.showQuestion()
     },
   )
-  val selected = (navigator.stack(Destination.Library).lastOrNull() as? CharacterRoute)?.uuid?.takeIf { onWorkbench }
+  val selected = (navigator.stack(Destination.Library).lastOrNull() as? CharacterRoute)?.id?.takeIf { onWorkbench }
   LibraryContent(state, modifier, actions, selected, kindPicker)
   if (creating) {
     CreateSheet(onImport = { creating = false; picker.pick() }, onDismiss = { creating = false })

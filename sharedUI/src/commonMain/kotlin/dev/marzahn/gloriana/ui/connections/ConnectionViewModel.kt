@@ -23,7 +23,6 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
@@ -166,8 +165,8 @@ class ConnectionViewModel(
     }
   }
 
-  private fun followed(route: ConnectionRoute.Saved): Flow<StoredRow<ShownConnection>> = reads.follow(route.uuid) {
-    combine(repository.connection(route.uuid), repository.defaultConnection().catch { emit(null) }) { saved, default ->
+  private fun followed(route: ConnectionRoute.Saved): Flow<StoredRow<ShownConnection>> = reads.follow(route.id) {
+    combine(repository.connection(route.id), repository.defaultConnection()) { saved, default ->
       saved?.let { ShownConnection(it, default == it.id) }
     }
   }.onEach { side ->
