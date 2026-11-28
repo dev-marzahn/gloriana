@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.app
 
+import dev.marzahn.gloriana.logic.chat.chatsModule
 import dev.marzahn.gloriana.logic.debug.FaultInjected
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.personas.PersonaRepository
@@ -78,6 +79,7 @@ class ShippedDefaultsAtStartTest {
       presetsModule,
       personasModule,
       shippedDefaultsModule,
+      chatsModule,
       module {
         single { desktopGlorianaDatabase(directory) }
         single { faults }

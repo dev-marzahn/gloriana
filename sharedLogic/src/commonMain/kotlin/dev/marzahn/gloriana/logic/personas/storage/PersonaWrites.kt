@@ -5,8 +5,12 @@ import dev.marzahn.gloriana.logic.personas.PersonaDeleteResult
 import dev.marzahn.gloriana.logic.personas.PersonaFields
 import dev.marzahn.gloriana.logic.personas.PersonaSaveResult
 import dev.marzahn.gloriana.logic.personas.PersonaWritePoint
+import dev.marzahn.gloriana.logic.storage.ChatSetting
+import dev.marzahn.gloriana.logic.storage.ChatsMoved
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.IdFactory
+import dev.marzahn.gloriana.logic.storage.moveAll
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.Tombstones
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
@@ -19,6 +23,7 @@ internal class PersonaWrites(
   private val ids: IdFactory,
   private val clock: UpdatedAtClock,
   private val tombstones: Tombstones,
+  private val chats: ChatsUsing,
   private val faults: Faults,
 ) {
   suspend fun insert(fields: PersonaFields): PersonaSaveResult =
@@ -42,8 +47,11 @@ internal class PersonaWrites(
     }
   }
 
-  suspend fun delete(id: Uuid): PersonaDeleteResult = database.writeTransaction {
+  suspend fun delete(id: Uuid, chatsMoveTo: Uuid?): PersonaDeleteResult = database.writeTransaction {
     if (dao.find(id) == null) return@writeTransaction PersonaDeleteResult.Gone
+    if (chats.moveAll(ChatSetting.Persona, id, toDefault = chatsMoveTo) == ChatsMoved.NoDefaultToMoveTo) {
+      return@writeTransaction PersonaDeleteResult.ChatsHaveNoDefault
+    }
     dao.delete(id)
     faults.reached(PersonaWritePoint.DeleteRowRemoved)
     tombstones.record(PersonasEntityType, RowKey.Row(id))

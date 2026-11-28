@@ -6,8 +6,6 @@ import dev.marzahn.gloriana.logic.files.MemoryDestination
 import dev.marzahn.gloriana.logic.presets.storage.PresetEntriesEntityType
 import dev.marzahn.gloriana.logic.presets.storage.PresetGroupsEntityType
 import dev.marzahn.gloriana.logic.presets.storage.PresetsEntityType
-import dev.marzahn.gloriana.logic.storage.ChatSetting
-import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
 import kotlinx.coroutines.flow.first
@@ -201,18 +199,6 @@ class PresetStorageTest {
       database.presetDao().update(rows.preset.copy(sourceJson = "{not json"))
       assertEquals(StoredPreset.Unreadable, library.repository.preset(id).first())
       assertEquals(PresetExportResult.Unreadable, library.repository.export(id, MemoryDestination()))
-    }
-  }
-
-  @Test
-  fun theChatCountAsksItsSeamForThisPreset() = runTest {
-    val asked = mutableListOf<Pair<ChatSetting, Uuid>>()
-    val seam = ChatsUsing { setting, id -> asked += setting to id; 2 }
-    PresetLibrary(directory, chats = seam).use { library ->
-      val id = library.imported("minimal.json").id
-
-      assertEquals(2, library.repository.chatsUsing(id))
-      assertEquals(listOf(ChatSetting.Preset to id), asked)
     }
   }
 

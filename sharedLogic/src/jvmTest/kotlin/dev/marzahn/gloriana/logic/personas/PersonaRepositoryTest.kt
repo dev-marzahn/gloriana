@@ -5,8 +5,6 @@ import dev.marzahn.gloriana.logic.debug.FaultInjected
 import dev.marzahn.gloriana.logic.debug.FaultPoint
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.personas.storage.PersonasEntityType
-import dev.marzahn.gloriana.logic.storage.ChatSetting
-import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.RowKey
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -147,18 +145,6 @@ class PersonaRepositoryTest {
 
       assertEquals(persona, library.stored(persona.id))
       assertEquals(emptyList(), library.database.tombstoneDao().all())
-    }
-  }
-
-  @Test
-  fun theChatCountAsksItsSeamForThisPersona() = runTest {
-    val asked = mutableListOf<Pair<ChatSetting, Uuid>>()
-    val seam = ChatsUsing { setting, id -> asked += setting to id; 3 }
-    PersonaLibrary(directory, chats = seam).use { library ->
-      val persona = library.created(wren())
-
-      assertEquals(3, library.repository.chatsUsing(persona.id))
-      assertEquals(listOf(ChatSetting.Persona to persona.id), asked)
     }
   }
 

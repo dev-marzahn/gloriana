@@ -12,6 +12,7 @@ import dev.marzahn.gloriana.logic.characters.storage.toSummary
 import dev.marzahn.gloriana.logic.characters.storage.verbatimCard
 import dev.marzahn.gloriana.logic.files.ExportDestination
 import dev.marzahn.gloriana.logic.files.PickedFile
+import dev.marzahn.gloriana.logic.storage.ChatsWithCharacter
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
@@ -27,6 +28,7 @@ class CharacterRepository internal constructor(
   private val writer: CardWriter,
   private val hold: ImportHold,
   private val assetLock: AssetWriteLock,
+  private val chats: ChatsWithCharacter,
 ) {
   fun characters(): Flow<List<CharacterSummary>> = dao.summaries().map { rows -> rows.map { it.toSummary() } }
 
@@ -53,8 +55,10 @@ class CharacterRepository internal constructor(
     return withContext(Dispatchers.IO) { writer.write(card, format, destination) }
   }
 
-  suspend fun delete(id: Uuid): DeleteResult = failingAs(DeleteResult.Failed) {
-    if (writes.delete(id)) DeleteResult.Deleted else DeleteResult.Gone
+  suspend fun chatsWith(id: Uuid): Int = chats.count(id)
+
+  suspend fun delete(id: Uuid, chatsOfIt: ChatsOfDeletedCharacter): DeleteResult = failingAs(DeleteResult.Failed) {
+    if (writes.delete(id, chatsOfIt)) DeleteResult.Deleted else DeleteResult.Gone
   }
 
   private suspend fun importOne(file: PickedFile, filesLeft: Int, answers: PickAnswers): FileImportResult {

@@ -210,7 +210,7 @@ class CharacterImportTest {
     val tamsin = library.importedCharacter(ImporterCorpus.charx)
 
     val result = library.repository.import(listOf(ImporterCorpus.charxUpdated), { question ->
-      library.repository.delete(question.existing.id)
+      library.repository.delete(question.existing.id, ChatsOfDeletedCharacter.Keep)
       AlreadyInLibraryAnswer(AlreadyInLibraryChoice.Update)
     }).single()
 
@@ -306,7 +306,7 @@ class CharacterImportTest {
   fun deleteRemovesTheCharacterAndItsRowsWithTombstones() = runTest {
     val tamsin = library.importedCharacter(ImporterCorpus.charx)
 
-    val deleted = library.repository.delete(tamsin.id)
+    val deleted = library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep)
 
     assertEquals(DeleteResult.Deleted, deleted)
     assertEquals(emptyList(), library.list())
@@ -322,9 +322,9 @@ class CharacterImportTest {
   @Test
   fun deletingACharacterThatIsGoneChangesNothing() = runTest {
     val tamsin = library.importedCharacter(ImporterCorpus.charx)
-    library.repository.delete(tamsin.id)
+    library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep)
 
-    assertEquals(DeleteResult.Gone, library.repository.delete(tamsin.id))
+    assertEquals(DeleteResult.Gone, library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep))
     assertEquals(3, library.database.tombstoneDao().all().size)
   }
 

@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.logic.di
 
 import dev.marzahn.gloriana.logic.app.shippedDefaultsModule
 import dev.marzahn.gloriana.logic.characters.charactersModule
+import dev.marzahn.gloriana.logic.chat.chatsModule
 import dev.marzahn.gloriana.logic.connection.api.modelApiModule
 import dev.marzahn.gloriana.logic.connection.connectionsModule
 import dev.marzahn.gloriana.logic.debug.debugModule
@@ -26,5 +27,6 @@ val logicModule = module {
     personasModule,
     shippedDefaultsModule,
     tasksModule,
+    chatsModule,
   )
 }

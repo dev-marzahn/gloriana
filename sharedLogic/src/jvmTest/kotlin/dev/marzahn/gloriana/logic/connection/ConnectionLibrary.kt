@@ -1,6 +1,6 @@
 package dev.marzahn.gloriana.logic.connection
 
-import dev.marzahn.gloriana.logic.storage.ChatsUsing
+import dev.marzahn.gloriana.logic.chat.storage.ChatReferences
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionWrites
 import dev.marzahn.gloriana.logic.connection.storage.DefaultConnection
 import dev.marzahn.gloriana.logic.debug.Faults
@@ -35,6 +35,7 @@ class ConnectionLibrary(
   val settings = LibrarySettings(database, updatedAt)
   internal val vault: TinkKeyVault =
     vaults.start(faults = keyFaults, stored = ConnectionsNeedingDataKeys(database.connectionDao()))
+  private val chats = ChatReferences(database.chatReferenceDao(), updatedAt)
   private val default = DefaultConnection(database, settings, database.connectionDao())
   val repository = ConnectionRepository(
     dao = database.connectionDao(),
@@ -43,13 +44,14 @@ class ConnectionLibrary(
       database.connectionDao(),
       default,
       Tombstones(database, updatedAt),
+      chats,
       updatedAt,
       faults,
     ),
     default = default,
     vault = vaultAround(vault),
     ids = ids,
-    chats = ChatsUsing.NoneYet,
+    chats = chats,
   )
 
   suspend fun created(draft: ConnectionDraft): Connection =

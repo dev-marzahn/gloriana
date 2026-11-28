@@ -12,5 +12,4 @@ val storageModule = module {
   single { ApplicationScope { stopApp(it) } } onClose { it?.cancel() }
   single(createdAtStart = true) { DatabaseOpenedAtStart(get(), get()) }
   single { Tombstones(get(), get()) }
-  single { ChatsUsing.NoneYet }
 }

@@ -8,8 +8,12 @@ import dev.marzahn.gloriana.logic.presets.PresetGroup
 import dev.marzahn.gloriana.logic.presets.PresetProblem
 import dev.marzahn.gloriana.logic.presets.PresetSaveResult
 import dev.marzahn.gloriana.logic.presets.PresetWritePoint
+import dev.marzahn.gloriana.logic.storage.ChatSetting
+import dev.marzahn.gloriana.logic.storage.ChatsMoved
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.IdFactory
+import dev.marzahn.gloriana.logic.storage.moveAll
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.StoredJson
 import dev.marzahn.gloriana.logic.storage.Tombstones
@@ -25,6 +29,7 @@ internal class PresetWrites(
   private val ids: IdFactory,
   private val clock: UpdatedAtClock,
   private val tombstones: Tombstones,
+  private val chats: ChatsUsing,
   private val faults: Faults,
 ) {
   suspend fun insert(name: String, content: PresetContent, source: JsonObject): Uuid = database.writeTransaction {
@@ -64,8 +69,11 @@ internal class PresetWrites(
     PresetSaveResult.Saved
   }
 
-  suspend fun delete(id: Uuid): PresetDeleteResult = database.writeTransaction {
+  suspend fun delete(id: Uuid, chatsMoveTo: Uuid?): PresetDeleteResult = database.writeTransaction {
     val previous = dao.rows(id) ?: return@writeTransaction PresetDeleteResult.Gone
+    if (chats.moveAll(ChatSetting.Preset, id, toDefault = chatsMoveTo) == ChatsMoved.NoDefaultToMoveTo) {
+      return@writeTransaction PresetDeleteResult.ChatsHaveNoDefault
+    }
     remove(previous.children)
     faults.reached(PresetWritePoint.DeleteChildrenRemoved)
     dao.delete(id)

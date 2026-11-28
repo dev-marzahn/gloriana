@@ -24,7 +24,7 @@ class DebugHooksTest {
     CharacterLibrary(directory.resolve("library"), faults = hooks).use { library ->
       val tamsin = library.importedCharacter(ImporterCorpus.charx)
 
-      assertEquals(DeleteResult.Failed, library.repository.delete(tamsin.id))
+      assertEquals(DeleteResult.Failed, library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep))
       assertEquals(tamsin, library.character(tamsin.id))
     }
   }
@@ -36,7 +36,7 @@ class DebugHooksTest {
     CharacterLibrary(directory.resolve("library"), faults = debugHooks).use { library ->
       val tamsin = library.importedCharacter(ImporterCorpus.charx)
 
-      assertEquals(DeleteResult.Deleted, library.repository.delete(tamsin.id))
+      assertEquals(DeleteResult.Deleted, library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep))
       assertFalse(debugHooks.isOn(AssetSwitch.PurgeNow))
     }
   }

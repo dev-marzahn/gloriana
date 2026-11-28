@@ -29,6 +29,8 @@ class PresetRepository internal constructor(
 
   fun preset(id: Uuid): Flow<StoredPreset?> = dao.observeRows(id).map { it?.decoded()?.stored }
 
+  suspend fun exists(id: Uuid): Boolean = dao.exists(id)
+
   fun newGroup(name: String): PresetGroup = PresetGroup(ids.newId(), name)
 
   suspend fun chatsUsing(id: Uuid): Int = chats.count(ChatSetting.Preset, id)
@@ -43,7 +45,7 @@ class PresetRepository internal constructor(
   suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { default.make(id) }
 
   suspend fun delete(id: Uuid): PresetDeleteResult = failingAs(PresetDeleteResult.Failed) {
-    default.unlessDefault(id, refused = PresetDeleteResult.IsDefault) { writes.delete(id) }
+    default.unlessDefault(id, refused = PresetDeleteResult.IsDefault) { writes.delete(id, chatsMoveTo = it) }
   }
 
   suspend fun export(id: Uuid, destination: ExportDestination): PresetExportResult =

@@ -31,7 +31,7 @@ class PersonaRepository internal constructor(
   suspend fun update(id: Uuid, fields: PersonaFields): PersonaSaveResult = saving { writes.update(id, fields) }
 
   suspend fun delete(id: Uuid): PersonaDeleteResult = failingAs(PersonaDeleteResult.Failed) {
-    default.unlessDefault(id, refused = PersonaDeleteResult.IsDefault) { writes.delete(id) }
+    default.unlessDefault(id, refused = PersonaDeleteResult.IsDefault) { writes.delete(id, chatsMoveTo = it) }
   }
 
   suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { default.make(id) }

@@ -2,6 +2,8 @@ package dev.marzahn.gloriana.logic.characters.storage
 
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.characters.CharacterFields
+import dev.marzahn.gloriana.logic.characters.ChatsOfDeletedCharacter
+import dev.marzahn.gloriana.logic.storage.ChatsWithCharacter
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.characters.CharacterWritePoint
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
@@ -25,6 +27,7 @@ internal class CharacterWrites(
   private val ids: IdFactory,
   private val clock: UpdatedAtClock,
   private val tombstones: Tombstones,
+  private val chats: ChatsWithCharacter,
   private val faults: Faults,
 ) {
   private val characters = database.characterDao()
@@ -50,9 +53,13 @@ internal class CharacterWrites(
     if (previous == null) CharacterWrite.Inserted(insert(fresh())) else replace(previous, replacement)
   }
 
-  suspend fun delete(id: Uuid): Boolean = database.writeTransaction {
+  suspend fun delete(id: Uuid, chatsOfIt: ChatsOfDeletedCharacter): Boolean = database.writeTransaction {
     val previous = characters.rows(id)
     if (previous != null) {
+      when (chatsOfIt) {
+        ChatsOfDeletedCharacter.Keep -> chats.keepWithout(id)
+        ChatsOfDeletedCharacter.Delete -> chats.delete(id)
+      }
       removeChildren(previous)
       faults.reached(CharacterWritePoint.DeleteChildrenRemoved)
       characters.delete(id)

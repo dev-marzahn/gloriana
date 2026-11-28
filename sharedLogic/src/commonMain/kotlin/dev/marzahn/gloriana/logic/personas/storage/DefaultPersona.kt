@@ -28,7 +28,7 @@ internal class DefaultPersona(
 
   suspend fun make(id: Uuid): MakeDefaultResult = default.make(id)
 
-  suspend fun <T> unlessDefault(id: Uuid, refused: T, write: suspend () -> T): T =
+  suspend fun <T> unlessDefault(id: Uuid, refused: T, write: suspend (default: Uuid?) -> T): T =
     default.unlessDefault(id, refused, write)
 
   suspend fun ensureShipped() = default.ensure(writes::insertShipped)

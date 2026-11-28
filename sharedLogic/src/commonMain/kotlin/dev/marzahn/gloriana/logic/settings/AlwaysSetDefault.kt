@@ -14,6 +14,11 @@ internal class AlwaysSetDefault(private val database: GlorianaDatabase, private 
     database.writeTransaction { if (row.current() == null) row.name(create()) }
   }
 
-  suspend fun <T> unlessDefault(id: Uuid, refused: T, write: suspend () -> T): T =
-    database.writeTransaction { if (row.current() == id) refused else write() }
+  suspend fun <T> unlessDefault(id: Uuid, refused: T, write: suspend (default: Uuid?) -> T): T =
+    database.writeTransaction {
+      when (val default = row.current()) {
+        id -> refused
+        else -> write(default)
+      }
+    }
 }

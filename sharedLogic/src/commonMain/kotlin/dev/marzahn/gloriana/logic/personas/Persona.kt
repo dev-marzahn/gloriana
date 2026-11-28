@@ -32,6 +32,7 @@ sealed interface PersonaSaveResult {
 enum class PersonaDeleteResult {
   Deleted,
   IsDefault,
+  ChatsHaveNoDefault,
   Gone,
   Failed,
 }

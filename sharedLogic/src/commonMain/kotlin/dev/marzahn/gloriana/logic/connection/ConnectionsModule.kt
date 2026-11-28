@@ -14,8 +14,9 @@ val connectionsModule = module {
   single { get<GlorianaDatabase>().connectionDao() }
   single { ConnectionsNeedingDataKeys(get()) } bind StoredConnections::class
   single { DefaultConnection(get(), get(), get()) }
-  single { ConnectionWrites(get(), get(), get(), get(), get(), get()) }
+  single { ConnectionWrites(get(), get(), get(), get(), get(), get(), get()) }
   single { ConnectionRepository(get(), get(), get(), get(), get(), get()) }
+  single { ConnectionLookup(get()) }
   single { GlobalModelSettings(get()) }
   single { KeysUnlock(get(), get()) }
 }

@@ -9,6 +9,8 @@ import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.SamplersUpdateResult
 import dev.marzahn.gloriana.logic.connection.samplerProblems
 import dev.marzahn.gloriana.logic.debug.Faults
+import dev.marzahn.gloriana.logic.storage.ChatSetting
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.StoredJson
@@ -25,6 +27,7 @@ internal class ConnectionWrites(
   private val dao: ConnectionDao,
   private val default: DefaultConnection,
   private val tombstones: Tombstones,
+  private val chats: ChatsUsing,
   private val clock: UpdatedAtClock,
   private val faults: Faults,
 ) {
@@ -93,6 +96,7 @@ internal class ConnectionWrites(
     if (dao.find(id) == null) {
       RowDelete.Gone
     } else {
+      chats.move(ChatSetting.Connection, id, to = default.currentOtherThan(id))
       default.clearIf(id)
       dao.delete(id)
       faults.reached(ConnectionWritePoint.DeleteRowRemoved)

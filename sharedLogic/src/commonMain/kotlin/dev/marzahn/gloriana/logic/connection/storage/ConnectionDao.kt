@@ -18,6 +18,9 @@ internal interface ConnectionDao {
   @Query("SELECT * FROM $CONNECTIONS_TABLE WHERE id = :id")
   suspend fun find(id: Uuid): ConnectionEntity?
 
+  @Query("SELECT EXISTS(SELECT 1 FROM $CONNECTIONS_TABLE WHERE id = :id)")
+  suspend fun exists(id: Uuid): Boolean
+
   @Query("SELECT id, format, apiKey, headers FROM $CONNECTIONS_TABLE")
   suspend fun allSecretColumns(): List<SecretColumns>
 

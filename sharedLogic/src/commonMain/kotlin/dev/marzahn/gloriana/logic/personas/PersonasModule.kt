@@ -7,8 +7,8 @@ import org.koin.dsl.module
 
 val personasModule = module {
   single { get<GlorianaDatabase>().personaDao() }
-  single { PersonaWrites(get(), get(), get(), get(), get(), get()) }
+  single { PersonaWrites(get(), get(), get(), get(), get(), get(), get()) }
   single { DefaultPersona(get(), get(), get(), get()) }
   single { PersonaRepository(get(), get(), get(), get()) }
-  single { PersonaPrompts(get()) }
+  single { PersonaPrompts(get(), get()) }
 }

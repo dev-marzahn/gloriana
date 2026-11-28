@@ -18,6 +18,8 @@ internal class DefaultConnection(database: GlorianaDatabase, settings: LibrarySe
     if (row.current() == null) row.name(id)
   }
 
+  suspend fun currentOtherThan(id: Uuid): Uuid? = row.current()?.takeIf { it != id }
+
   suspend fun clearIf(id: Uuid) {
     if (row.current() == id) row.clear()
   }
