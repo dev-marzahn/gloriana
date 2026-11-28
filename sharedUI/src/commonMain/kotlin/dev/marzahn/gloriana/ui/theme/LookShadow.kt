@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.Dp
 data class LookShadow(val elevation: Dp, val color: Color)
 
 @Immutable
-data class LookShadows(val soft: LookShadow, val elevated: LookShadow, val warm: LookShadow)
+data class LookShadows(val soft: LookShadow, val elevated: LookShadow)
 
 fun Modifier.lookShadow(shadow: LookShadow, shape: Shape): Modifier =
   shadow(shadow.elevation, shape, clip = false, ambientColor = shadow.color, spotColor = shadow.color)

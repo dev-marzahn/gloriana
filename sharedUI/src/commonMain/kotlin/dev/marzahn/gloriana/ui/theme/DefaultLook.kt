@@ -81,7 +81,6 @@ fun defaultLookTokens(fonts: LookFonts): LookTokens = LookTokens(
     LookShadows(
       soft = LookShadow(1.dp, WarmShadow),
       elevated = LookShadow(12.dp, WarmShadow.copy(alpha = 0.12f)),
-      warm = LookShadow(6.dp, LightLookColors.accent.copy(alpha = 0.7f)),
     ),
   ),
   dark = defaultLookSet(
@@ -89,7 +88,6 @@ fun defaultLookTokens(fonts: LookFonts): LookTokens = LookTokens(
     LookShadows(
       soft = LookShadow(1.dp, Color.Black),
       elevated = LookShadow(12.dp, Color.Black.copy(alpha = 0.55f)),
-      warm = LookShadow(6.dp, DarkLookColors.accent.copy(alpha = 0.35f)),
     ),
   ),
   fonts = fonts,

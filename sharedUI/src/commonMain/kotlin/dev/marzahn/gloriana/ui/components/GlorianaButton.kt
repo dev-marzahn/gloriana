@@ -56,7 +56,7 @@ private fun buttonLook(kind: ButtonKind, state: InteractionState): ButtonLook {
       container = if (state == InteractionState.Rest) colors.accent else colors.accentHover,
       content = colors.accentFg,
       shape = shapes.pill,
-      shadow = shadows.warm,
+      shadow = null,
       border = null,
     )
     ButtonKind.Secondary -> ButtonLook(
