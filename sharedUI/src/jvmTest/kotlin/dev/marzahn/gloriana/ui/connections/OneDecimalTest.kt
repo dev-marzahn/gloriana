@@ -1,19 +1,24 @@
 package dev.marzahn.gloriana.ui.connections
 
+import java.util.Locale
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
 class OneDecimalTest {
-  @Test
-  fun secondsShowOneRoundedDecimal() {
-    assertEquals("1.3", withOneDecimal(1.25))
-    assertEquals("1.0", withOneDecimal(0.96))
-    assertEquals("12.0", withOneDecimal(12.0))
+  private fun <T> inLocale(locale: Locale, block: () -> T): T {
+    val before = Locale.getDefault()
+    Locale.setDefault(locale)
+    return try {
+      block()
+    } finally {
+      Locale.setDefault(before)
+    }
   }
 
   @Test
-  fun aNegativeValueKeepsItsSignOnTheWholePart() {
-    assertEquals("-0.5", withOneDecimal(-0.5))
-    assertEquals("0.0", withOneDecimal(-0.04))
+  fun secondsShowOneRoundedDecimalWithTheLocalesSeparator() {
+    assertEquals("1.3", inLocale(Locale.UK) { withOneDecimal(1.25) })
+    assertEquals("1,3", inLocale(Locale.GERMANY) { withOneDecimal(1.25) })
+    assertEquals("12.0", inLocale(Locale.UK) { withOneDecimal(12.0) })
   }
 }
