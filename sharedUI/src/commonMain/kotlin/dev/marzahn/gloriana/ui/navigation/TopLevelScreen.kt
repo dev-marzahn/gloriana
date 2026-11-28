@@ -40,20 +40,19 @@ private val ListPaneWidth = 330.dp
 private val DetailMaxWidth = 700.dp
 
 sealed interface TopLevelContent {
-  data class Empty(val block: EmptyBlock) : TopLevelContent
+  val idle: EmptyBlock
+  val onCreate: (() -> Unit)?
+
+  data class Empty(override val idle: EmptyBlock) : TopLevelContent {
+    override val onCreate: (() -> Unit)? get() = null
+  }
 
   class Items(
-    val nothingPicked: EmptyBlock,
-    val onCreate: (() -> Unit)? = null,
+    override val idle: EmptyBlock,
+    override val onCreate: (() -> Unit)? = null,
     val list: @Composable (header: @Composable () -> Unit) -> Unit,
   ) : TopLevelContent
 }
-
-private val TopLevelContent.createAction: (() -> Unit)?
-  get() = when (this) {
-    is TopLevelContent.Empty -> null
-    is TopLevelContent.Items -> onCreate
-  }
 
 @Composable
 fun TopLevelScreen(
@@ -70,7 +69,7 @@ fun TopLevelScreen(
       is TopLevelContent.Empty -> Column(modifier.fillMaxSize()) {
         TitleRow(destination, onCreate = null)
         kindPicker?.let { KindPickerRow(it) }
-        EmptyState(content.block, Modifier.weight(1f).fillMaxWidth().padding(GlorianaTheme.spacing.s16))
+        EmptyState(content.idle, Modifier.weight(1f).fillMaxWidth().padding(GlorianaTheme.spacing.s16))
       }
       is TopLevelContent.Items -> Box(modifier.fillMaxSize()) {
         content.list {
@@ -98,19 +97,15 @@ private fun Workbench(
   kindPicker: (@Composable () -> Unit)? = null,
 ) {
   val colors = GlorianaTheme.colors
-  val idle = when (content) {
-    is TopLevelContent.Empty -> content.block
-    is TopLevelContent.Items -> content.nothingPicked
-  }
   Column(modifier.fillMaxSize()) {
-    TopBar(destination, content.createAction)
+    TopBar(destination, content.onCreate)
     Row(Modifier.weight(1f).fillMaxWidth()) {
       Column(Modifier.width(ListPaneWidth).fillMaxHeight().background(colors.pane)) {
         kindPicker?.let { Box(Modifier.fillMaxWidth().padding(GlorianaTheme.spacing.s8)) { it() } }
         if (content is TopLevelContent.Items) Box(Modifier.weight(1f)) { content.list {} }
       }
       VerticalDivider(color = colors.border)
-      DetailPane(panes.detail, idle, Modifier.weight(1f).fillMaxHeight())
+      DetailPane(panes.detail, content.idle, Modifier.weight(1f).fillMaxHeight())
     }
   }
 }

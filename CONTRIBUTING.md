@@ -135,9 +135,15 @@ Android resource; `LauncherLabelTest` keeps it equal to the Compose `app_name`.
   theme can replace the whole look at run time. Material You's dynamic colour is not used.
 - **Wrappers only.** Screens use the `components` wrappers (`GlorianaButton`, `GlorianaIconButton`, `GlorianaSwitch`,
   `ListRow`, `SearchField`, `GlorianaSheet` and the rest), never the Material component directly: the wrappers give
-  each one its token colours, its hover and pressed fills and its keyboard focus ring (`GlorianaFocusRing`), and keep
+  each one its token colours, its hover and pressed fills and its keyboard focus ring (`Modifier.focusRing`), and keep
   its shadow and ring on the drawn shape, inside the touch target. Material's ripple is off; a plain clickable takes
-  `GlorianaIndication(shape)` for its own shape. A disabled control draws with `Color.disabled()`.
+  `GlorianaIndication(shape)` for its own shape. A disabled control draws with `Color.disabled()` (or
+  `disabledUnless(enabled)`).
+- **Work while a list is shown.** A top-level list that acts on the shell from background work (an import opening the
+  page it made) runs that work in `WhileRootShown(destination)`: it runs only while that destination is current and
+  its root is on screen, not while it fades out or a pushed screen slides over it. Pages go through a `PageOpener`,
+  which opens a page only while a list shows and hands back any page the list left before opening, so the importer
+  shows its Snackbar instead.
 - **Width classes.** `WidthClass` (compact under 600 dp, medium to 839 dp, expanded from 840 dp) comes from the
   window's width and carries the policies that depend on it: the `Navigation` (bar, labelled rail, or the workbench of
   rail, top bar, list pane and detail pane), the `SheetStyle`, and `pointerDense` (expanded's denser type and controls,

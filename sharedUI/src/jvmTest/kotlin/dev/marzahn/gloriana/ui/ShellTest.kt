@@ -37,6 +37,7 @@ import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.ShellNavigator
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
+import dev.marzahn.gloriana.ui.navigation.WhileRootShown
 import dev.marzahn.gloriana.ui.navigation.rememberShellNavigator
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.app_name
@@ -52,10 +53,14 @@ import dev.marzahn.gloriana.ui.settings.SettingsActions
 import dev.marzahn.gloriana.ui.settings.SettingsContent
 import dev.marzahn.gloriana.ui.settings.SettingsRoute
 import dev.marzahn.gloriana.ui.settings.SettingsState
+import kotlinx.coroutines.flow.MutableSharedFlow
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertTrue
+
+private val WindowHeight = 700.dp
 
 @OptIn(ExperimentalTestApi::class)
 class ShellTest {
@@ -79,7 +84,7 @@ class ShellTest {
       val dispatcher = LocalNavigationEventDispatcherOwner.current!!.navigationEventDispatcher
       remember { dispatcher.addInput(harness.back) }
       harness.navigator = rememberShellNavigator()
-      Box(Modifier.size(width, 700.dp)) {
+      Box(Modifier.size(width, WindowHeight)) {
         GlorianaApp(
           entryProvider<NavKey> {
             entry<ChatsRoute> { ChatsScreen() }
@@ -107,7 +112,7 @@ class ShellTest {
     onNodeWithText(getString(Res.string.library_empty)).assertIsDisplayed()
     assertEquals(2, onAllNodesWithText(getString(Res.string.destination_library)).fetchSemanticsNodes().size)
     val settings = onNodeWithText(getString(Res.string.destination_settings)).getBoundsInRoot()
-    assertTrue(settings.top > 600.dp, "the bar sits at the bottom")
+    assertTrue(settings.top > WindowHeight - 100.dp, "the bar sits at the bottom")
   }
 
   @Test
@@ -223,7 +228,7 @@ class ShellTest {
     assertEquals(12.dp, mark.top, "top edge")
     assertEquals(14.dp, chats.top - mark.bottom, "mark to first item")
     assertEquals(6.dp, library.top - chats.bottom, "between items")
-    assertEquals(12.dp, 700.dp - settings.bottom, "bottom edge")
+    assertEquals(12.dp, WindowHeight - settings.bottom, "bottom edge")
   }
 
   private val creatingLibrary: @Composable () -> Unit = {
@@ -260,11 +265,67 @@ class ShellTest {
     assertTrue(create.right > 950.dp && create.bottom < 48.dp, "Create ends the top bar: $create")
   }
 
+  private class OpeningLibrary {
+    val pages = MutableSharedFlow<NavKey>(extraBufferCapacity = 1)
+    val listening: Boolean get() = pages.subscriptionCount.value > 0
+
+    val screen: @Composable () -> Unit = {
+      val navigator = LocalShellNavigator.current
+      WhileRootShown(Destination.Library) { pages.collect { navigator.push(it, Destination.Library) } }
+      LibraryContent(LibraryState.Empty)
+    }
+  }
+
+  @Test
+  fun libraryOpensAPageWhileItsRootIsShown() = runComposeUiTest {
+    val library = OpeningLibrary()
+    val harness = showApp(400.dp, library = library.screen)
+    waitForIdle()
+    assertTrue(library.listening)
+    runOnIdle { library.pages.tryEmit(Pushed) }
+    waitForIdle()
+    assertEquals(listOf(Destination.Library.root, Pushed), harness.navigator.stack(Destination.Library))
+  }
+
+  @Test
+  fun libraryStopsListeningWhileItFadesOut() = runComposeUiTest {
+    val library = OpeningLibrary()
+    val harness = showApp(400.dp, library = library.screen)
+    waitForIdle()
+    mainClock.autoAdvance = false
+    runOnIdle { harness.navigator.select(Destination.Chats) }
+    mainClock.advanceTimeBy(SWITCH_MIDWAY_MILLIS)
+    onNodeWithText(getString(Res.string.library_empty)).assertExists()
+    assertFalse(library.listening, "Library still fading out counts as not shown")
+  }
+
+  @Test
+  fun libraryStopsListeningAsAScreenSlidesOverIt() = runComposeUiTest {
+    val library = OpeningLibrary()
+    val harness = showApp(400.dp, library = library.screen)
+    waitForIdle()
+    mainClock.autoAdvance = false
+    runOnIdle { harness.navigator.push(Pushed) }
+    mainClock.advanceTimeBy(PUSH_MIDWAY_MILLIS)
+    onNodeWithText(getString(Res.string.library_empty)).assertExists()
+    assertFalse(library.listening, "Library sliding under a push counts as not shown")
+  }
+
+  @Test
+  fun libraryKeepsListeningBesideTheDetailPane() = runComposeUiTest {
+    val library = OpeningLibrary()
+    val harness = showApp(1000.dp, library = library.screen)
+    runOnIdle { harness.navigator.push(Pushed) }
+    waitForIdle()
+    assertTrue(library.listening, "the list pane is still on screen beside a pushed page")
+  }
+
   private val nothingPicked = EmptyBlock(Res.drawable.ic_person_add, NOTHING_PICKED, PUSHED)
 
   private companion object {
     const val PUSHED = "pushed"
     const val NOTHING_PICKED = "nothing picked"
     const val SWITCH_MIDWAY_MILLIS = 100L
+    const val PUSH_MIDWAY_MILLIS = 100L
   }
 }

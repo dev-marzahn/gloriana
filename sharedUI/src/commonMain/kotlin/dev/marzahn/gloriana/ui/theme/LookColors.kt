@@ -7,6 +7,8 @@ const val DISABLED_ALPHA = 0.38f
 
 fun Color.disabled(): Color = copy(alpha = alpha * DISABLED_ALPHA)
 
+fun Color.disabledUnless(enabled: Boolean): Color = if (enabled) this else disabled()
+
 @Immutable
 data class ContainerRoles(
   val lowest: Color,

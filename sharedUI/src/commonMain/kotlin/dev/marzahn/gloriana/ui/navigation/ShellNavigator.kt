@@ -32,7 +32,7 @@ class ShellNavigator(
 
   fun stack(destination: Destination): List<NavKey> = stacks.getValue(destination)
 
-  val atRoot: Boolean get() = stack(current).size == 1
+  val atRoot: Boolean get() = isAtRoot(current)
 
   val canLeaveToHome: Boolean get() = atRoot && current != Destination.Home
 
@@ -94,6 +94,8 @@ class ShellNavigator(
     unsaved.keepOnly(stacks.values.flatten().toSet())
   }
 }
+
+fun ShellNavigator.isAtRoot(destination: Destination): Boolean = stack(destination).size == 1
 
 fun ShellNavigator.replaceTop(destination: Destination, key: NavKey) =
   returnToRoot(destination) { push(key, destination) }

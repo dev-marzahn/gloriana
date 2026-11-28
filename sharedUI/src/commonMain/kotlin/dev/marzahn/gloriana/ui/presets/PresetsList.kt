@@ -12,7 +12,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.AnnotatedString
@@ -44,6 +43,7 @@ import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
+import dev.marzahn.gloriana.ui.navigation.WhileRootShown
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.choose_another_file
 import dev.marzahn.gloriana.ui.resources.create
@@ -98,7 +98,8 @@ fun PresetsLibrary(kindPicker: @Composable () -> Unit, modifier: Modifier = Modi
   val state by viewModel.state.collectAsStateWithLifecycle()
   val navigator = LocalShellNavigator.current
   val picker = rememberFilePicker(PresetFiles) { files -> files.firstOrNull()?.let(viewModel::import) }
-  LaunchedEffect(viewModel, navigator) { viewModel.openPagesWhileShown { navigator.pickPreset(it) } }
+  val openPages = viewModel::openPagesWhileShown
+  WhileRootShown(Destination.Library, openPages) { openPages { navigator.pickPreset(it) } }
   val actions = PresetsActions(
     onCreate = picker::pick,
     onOpen = navigator::pickPreset,

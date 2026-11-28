@@ -16,8 +16,11 @@ import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.InteractionState
 import dev.marzahn.gloriana.ui.theme.LookColors
+import dev.marzahn.gloriana.ui.theme.animateLookColor
 import dev.marzahn.gloriana.ui.theme.disabled
 import dev.marzahn.gloriana.ui.theme.fillFor
+import dev.marzahn.gloriana.ui.theme.interactionState
+import dev.marzahn.gloriana.ui.theme.pick
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -61,8 +64,7 @@ private fun LookColors.uncheckedTrack(state: InteractionState): Color = when (st
   InteractionState.Pressed -> border
 }
 
-private fun LookColors.checkedTrack(state: InteractionState): Color =
-  if (state == InteractionState.Rest) accent else accentHover
+private fun LookColors.checkedTrack(state: InteractionState): Color = state.pick(accent, accentHover)
 
 @Composable
 fun GlorianaSwitch(

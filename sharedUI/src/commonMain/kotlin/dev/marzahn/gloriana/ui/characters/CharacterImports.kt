@@ -9,6 +9,7 @@ import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.messages.MessageAction
+import dev.marzahn.gloriana.ui.navigation.PageOpener
 import dev.marzahn.gloriana.ui.navigation.ShellNavigator
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.import_failed_all
@@ -23,7 +24,6 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.async
-import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -47,8 +47,8 @@ class CharacterImports(
   messages: AppMessages,
 ) {
   private val mutableState = MutableStateFlow(ImportState())
-  private val pages = MutableSharedFlow<Uuid>(extraBufferCapacity = 1)
-  private val announcer = ImportAnnouncer(messages, importer, pages)
+  private val announcer = ImportAnnouncer(messages, importer)
+  private val pages = PageOpener<Uuid> { id -> scope.launch { announcer.announceImported(id) } }
   private val pendingAnswer = MutableStateFlow<CompletableDeferred<AlreadyInLibraryAnswer>?>(null)
   private val active = MutableStateFlow<ActiveImport?>(null)
   private val oneAtATime = Mutex()
@@ -56,9 +56,9 @@ class CharacterImports(
 
   val state: StateFlow<ImportState> = mutableState.asStateFlow()
 
-  private val inLibrary: Boolean get() = pages.subscriptionCount.value > 0
+  private val inLibrary: Boolean get() = pages.shown
 
-  suspend fun openPagesWhileShown(open: (Uuid) -> Unit): Nothing = pages.collect(open)
+  suspend fun openPagesWhileShown(open: (Uuid) -> Unit): Nothing = pages.openWhileShown(open)
 
   fun start(files: List<PickedFile>) {
     if (files.isEmpty()) return
@@ -107,7 +107,7 @@ class CharacterImports(
     }
     val outcome = importOutcome(files.map { it.name }, results.toList(), import.timedOut)
     outcome.note?.let { note -> mutableState.update { it.copy(note = note) } }
-    announcer.announce(outcome, inLibrary)
+    announcer.announce(outcome, pages)
   }
 
   private fun onStatus(key: Long, status: FileImportStatus, record: (FileImportResult) -> Unit) {
@@ -148,7 +148,6 @@ class CharacterImports(
 private class ImportAnnouncer(
   private val messages: AppMessages,
   private val importer: CardImporter,
-  private val pages: MutableSharedFlow<Uuid>,
 ) {
   suspend fun needsAnswer(showQuestion: () -> Unit) {
     val open = openAction {
@@ -158,12 +157,12 @@ private class ImportAnnouncer(
     messages.show(AppMessage(getString(Res.string.snack_needs_answer), open))
   }
 
-  suspend fun announce(outcome: ImportOutcome, inLibrary: Boolean) {
+  suspend fun announce(outcome: ImportOutcome, pages: PageOpener<Uuid>) {
     when (outcome) {
       ImportOutcome.NothingImported -> Unit
-      is ImportOutcome.TimedOut -> if (!inLibrary) showOpeningLibrary(timedOut(outcome.note))
-      is ImportOutcome.Failed -> if (!inLibrary) showOpeningLibrary(failureCount(outcome.note))
-      is ImportOutcome.OneImported -> if (inLibrary) pages.emit(outcome.id) else importedOutside(outcome.id)
+      is ImportOutcome.TimedOut -> if (!pages.shown) showOpeningLibrary(timedOut(outcome.note))
+      is ImportOutcome.Failed -> if (!pages.shown) showOpeningLibrary(failureCount(outcome.note))
+      is ImportOutcome.OneImported -> if (!pages.offer(outcome.id)) announceImported(outcome.id)
       is ImportOutcome.SeveralImported ->
         messages.show(AppMessage(getPluralString(Res.plurals.snack_imported, outcome.count, outcome.count)))
     }
@@ -173,7 +172,7 @@ private class ImportAnnouncer(
     messages.show(AppMessage(text, openAction { it.showLibrary() }))
   }
 
-  private suspend fun importedOutside(id: Uuid) {
+  suspend fun announceImported(id: Uuid) {
     val name = importer.nameOf(id) ?: return
     messages.show(AppMessage(getString(Res.string.snack_imported_one, name), openAction { it.openCharacter(id) }))
   }

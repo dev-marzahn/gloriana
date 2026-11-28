@@ -3,13 +3,13 @@ package dev.marzahn.gloriana.ui.navigation
 import androidx.navigation3.runtime.NavKey
 import androidx.savedstate.serialization.decodeFromSavedState
 import androidx.savedstate.serialization.encodeToSavedState
+import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.ui.characters.CharacterRoute
 import dev.marzahn.gloriana.ui.connections.ConnectionRoute
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
 import dev.marzahn.gloriana.ui.connections.NewConnectionStart
 import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
-import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.ui.presets.PresetEntryRoute
 import dev.marzahn.gloriana.ui.presets.PresetRoute
 import dev.marzahn.gloriana.ui.presets.PresetWrapperRoute

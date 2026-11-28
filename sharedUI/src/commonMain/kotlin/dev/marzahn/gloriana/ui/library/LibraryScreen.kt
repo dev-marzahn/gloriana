@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,6 +33,7 @@ import dev.marzahn.gloriana.ui.navigation.LibraryKind
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
+import dev.marzahn.gloriana.ui.navigation.WhileRootShown
 import dev.marzahn.gloriana.ui.presets.PresetsLibrary
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.characters_error
@@ -102,7 +102,8 @@ private fun CharactersLibrary(
   var creating by rememberSaveable { mutableStateOf(false) }
   var previewing by rememberSaveable { mutableStateOf<String?>(null) }
   var enlarged by rememberSaveable { mutableStateOf(false) }
-  LaunchedEffect(viewModel, navigator) { viewModel.openPagesWhileShown { navigator.pickCharacter(it) } }
+  val openPages = viewModel::openPagesWhileShown
+  WhileRootShown(Destination.Library, openPages) { openPages { navigator.pickCharacter(it) } }
   val actions = LibraryActions(
     onCreate = { creating = true },
     onTile = { id -> if (onWorkbench) navigator.pickCharacter(id) else previewing = id.toString() },

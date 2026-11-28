@@ -37,6 +37,7 @@ import dev.marzahn.gloriana.ui.resources.ic_add
 import dev.marzahn.gloriana.ui.theme.GlorianaIndication
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Spacing
+import dev.marzahn.gloriana.ui.theme.animateLookColor
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -96,6 +97,7 @@ fun ListRow(
   name: String,
   line: RowLine,
   onClick: () -> Unit,
+  avatar: @Composable () -> Unit,
   modifier: Modifier = Modifier,
   selection: RowSelection = RowSelection.NotSelectable,
   density: ListDensity = ListDensity.Screen,
@@ -103,7 +105,6 @@ fun ListRow(
   nameMark: (@Composable () -> Unit)? = null,
   thirdLine: String? = null,
   trailing: (@Composable () -> Unit)? = null,
-  avatar: @Composable () -> Unit = {},
 ) {
   val colors = GlorianaTheme.colors
   val spacing = GlorianaTheme.spacing

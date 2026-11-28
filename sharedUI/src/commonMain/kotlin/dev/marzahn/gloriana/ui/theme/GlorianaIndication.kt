@@ -10,7 +10,6 @@ import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.PressInteraction
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
@@ -24,20 +23,12 @@ import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.launch
 
-enum class InteractionState { Rest, Hovered, Pressed }
-
-fun LookColors.fillFor(state: InteractionState): Color = when (state) {
-  InteractionState.Rest -> Color.Transparent
-  InteractionState.Hovered -> surface2
-  InteractionState.Pressed -> surface3
-}
-
 data class GlorianaIndication(val shape: Shape) : IndicationNodeFactory {
   override fun create(interactionSource: InteractionSource): DelegatableNode =
     IndicationNode(interactionSource, shape, fills = true)
 }
 
-data class GlorianaFocusRing(val shape: Shape) : IndicationNodeFactory {
+private data class GlorianaFocusRing(val shape: Shape) : IndicationNodeFactory {
   override fun create(interactionSource: InteractionSource): DelegatableNode =
     IndicationNode(interactionSource, shape, fills = false)
 }
