@@ -1,11 +1,18 @@
 package dev.marzahn.gloriana.ui.connections
 
+import androidx.room.execSQL
+import androidx.room.useWriterConnection
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.HeaderDraft
 import dev.marzahn.gloriana.logic.connection.HeaderValueInput
+import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.Sampler
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.SealedSecret
+import dev.marzahn.gloriana.logic.keys.SecretSlot
+import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_saved
@@ -26,6 +33,7 @@ import kotlinx.coroutines.test.setMain
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import org.jetbrains.compose.resources.getString
+import java.util.concurrent.CopyOnWriteArrayList
 import kotlin.test.AfterTest
 import kotlin.test.BeforeTest
 import kotlin.test.Test
@@ -225,6 +233,48 @@ class ConnectionViewModelTest {
       val settled = page.settled { it.saved?.fields?.name == "Home" }
       assertEquals("Home", settled.form.name)
       assertFalse(settled.unsaved.hasChanges)
+      coroutineContext.cancelChildren()
+    }
+  }
+
+  @Test
+  fun aRetryAfterAFailedReadChecksTheConnectionsKeyAgain() = LiveLibrary.use { library ->
+    runBlocking {
+      val saved = library.created("Work", key = KeyInput.Entered("sk-1"))
+      val vault = library.koin.get<KeyVault>()
+      val opened = CopyOnWriteArrayList<SecretSlot>()
+      val countingVault = object : KeyVault by vault {
+        override suspend fun open(slot: SecretSlot, secret: SealedSecret) =
+          vault.open(slot, secret).also { opened += slot }
+      }
+      val database = library.koin.get<GlorianaDatabase>()
+      database.useWriterConnection { it.execSQL("ALTER TABLE connections RENAME TO connections_away") }
+      val page = with(library.koin) { ConnectionViewModel(get(), get(), countingVault, get(), get(), get()) }
+      launch(Dispatchers.Main) { page.state.collect {} }
+      page.show(ConnectionRoute.Saved(saved.id))
+      withTimeout(WAIT_MILLIS) { page.state.first { it is ConnectionPageState.CouldNotLoad } }
+      database.useWriterConnection { it.execSQL("ALTER TABLE connections_away RENAME TO connections") }
+
+      page.on(PageIntent.Retry)
+
+      withTimeout(WAIT_MILLIS) { page.state.first { it is ConnectionPageState.Shown } }
+      withTimeout(WAIT_MILLIS) { while (SecretSlot.ApiKey(saved.id) !in opened) delay(POLL_MILLIS) }
+      coroutineContext.cancelChildren()
+    }
+  }
+
+  @Test
+  fun aSavedNameTheStoreTrimsBackToTheStoredOneShowsTheStoredName() = LiveLibrary.use { library ->
+    runBlocking {
+      val page = shownPage(library, "Work")
+      page.on(PageIntent.Edit(FormField.Name) { it.copy(name = "Work ") })
+
+      page.on(PageIntent.Save)
+      withTimeout(WAIT_MILLIS) { library.koin.get<AppMessages>().messages.first() }
+
+      val settled = page.settled { true }
+      assertEquals("Work", settled.form.name)
+      assertEquals("Work", settled.unsaved.baseline.name)
       coroutineContext.cancelChildren()
     }
   }

@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.ui.connections
 
+import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionDraft
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
@@ -10,7 +11,11 @@ import dev.marzahn.gloriana.logic.connection.api.ConnectionProbe
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.ui.state.SaveFailure
+import dev.marzahn.gloriana.ui.state.StoredRow
+import dev.marzahn.gloriana.ui.state.StoredValue
 import dev.marzahn.gloriana.ui.state.UnsavedCopy
+import dev.marzahn.gloriana.ui.state.UnsavedSaves
+import dev.marzahn.gloriana.ui.state.asCell
 import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.Channel
@@ -18,12 +23,11 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
-import kotlin.uuid.Uuid
 
 typealias FormChange = (ConnectionForm) -> ConnectionForm
 
 internal data class PageSession(
-  val stored: StoredSide = StoredSide.Loading,
+  val stored: StoredRow<ShownConnection> = StoredValue.Loading,
   val unsaved: UnsavedCopy<ConnectionForm>? = null,
   val errors: FormErrors = FormErrors.None,
   val activity: PageActivity = PageActivity.Idle,
@@ -85,6 +89,9 @@ internal class PageWork(
     PagePassphrase(context, vault, UnlockFlow(vault, keys::holding, context.scope, PageUnlockSlot(session)))
   private val probing = PageProbing(context, probe, onLocked = passphrase::ask)
   private val subject = PageSubject(context, commands)
+  private val saves = UnsavedSaves(session.asCell(), PageSession::unsaved) { current, unsaved ->
+    current.copy(unsaved = unsaved)
+  }
 
   fun on(intent: PageIntent.PageAction, route: ConnectionRoute) {
     when (intent) {
@@ -153,12 +160,11 @@ internal class PageWork(
   private fun save(route: ConnectionRoute) {
     val form = session.value.takeIf { it.isIdle }?.unsaved?.draft ?: return
     val draft = context.ready(form) ?: return
-    val start = session.updateAndClaim { current ->
-      val unsaved = current.unsaved?.takeIf { current.isIdle && it.draft === form }
-        ?: return@updateAndClaim current to null
-      current.copy(unsaved = unsaved.savingStarted(), note = null, test = null) to SaveStart(form, draft)
-    }
-    start?.let { context.scope.launch { finishSave(route, it) } }
+    val started = saves.start(
+      ready = { current, unsaved -> current.isIdle && unsaved.draft === form },
+      started = { it.copy(note = null, test = null) },
+    )
+    if (started != null) context.scope.launch { finishSave(route, SaveStart(form, draft)) }
   }
 
   private suspend fun finishSave(route: ConnectionRoute, start: SaveStart) {
@@ -167,7 +173,7 @@ internal class PageWork(
       is ConnectionRoute.New -> repository.create(start.draft)
     }
     when (result) {
-      is ConnectionSaveResult.Saved -> saved(route, start, result.id)
+      is ConnectionSaveResult.Saved -> saved(route, start, result.connection)
       is ConnectionSaveResult.Refused -> notSaved {
         val form = context.page()?.form ?: start.form
         context.showErrors(form.errorsOf(result.problems), form)
@@ -187,24 +193,24 @@ internal class PageWork(
     }
   }
 
-  private suspend fun saved(route: ConnectionRoute, start: SaveStart, id: Uuid) {
+  private suspend fun saved(route: ConnectionRoute, start: SaveStart, written: Connection) {
     when (route) {
       is ConnectionRoute.Saved -> {
-        session.update { current -> current.withUnsaved { it.saved(start.form) }.copy(errors = FormErrors.None) }
-        commands.saved(start.draft.fields.name)
+        saves.saved(ConnectionForm.of(written).withHeaderIdsOf(start.form)) { it.copy(errors = FormErrors.None) }
+        commands.saved(written.fields.name)
       }
       is ConnectionRoute.New -> {
         val edits = session.updateAndClaim { current ->
           current.copy(activity = PageActivity.OpeningSaved) to current.unsaved?.editsSinceSaveStarted.orEmpty()
         }
-        commands.saved(start.draft.fields.name)
-        context.events.send(PageEvent.Saved(ConnectionRoute.Saved(id, editsDuringItsFirstSave = edits)))
+        commands.saved(written.fields.name)
+        context.events.send(PageEvent.Saved(ConnectionRoute.Saved(written.id, editsDuringItsFirstSave = edits)))
       }
     }
   }
 
   private inline fun notSaved(then: () -> Unit) {
-    session.update { current -> current.withUnsaved { it.notSaved() } }
+    saves.notSaved()
     then()
   }
 

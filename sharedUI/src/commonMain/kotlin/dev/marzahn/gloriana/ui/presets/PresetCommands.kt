@@ -27,23 +27,21 @@ class PresetCommands(
   val deletions = LastDeleted()
 
   fun save(stored: Preset) {
-    val draft = sessions.claim(stored.id) { session ->
-      val unsaved = session.unsaved?.takeIf { it.hasChanges && session.isIdle }
-      unsaved?.let { session.copy(unsaved = it.savingStarted(), notSaved = null) to it.draft }
-    } ?: return
+    val saves = sessions.saves(stored.id)
+    val draft = saves.start(
+      ready = { session, _ -> session.canSave },
+      started = { it.copy(notSaved = null) },
+    ) ?: return
     scope.launch {
-      val failure = when (repository.save(stored.copy(content = draft))) {
-        PresetSaveResult.Saved -> null
-        PresetSaveResult.StorageFull -> SaveFailure.Storage
-        PresetSaveResult.Gone, PresetSaveResult.Failed, is PresetSaveResult.Refused -> SaveFailure.Other
-      }
-      sessions.update(stored.id) { session ->
-        when (failure) {
-          null -> session.copy(unsaved = session.unsaved?.saved(draft))
-          else -> session.copy(unsaved = session.unsaved?.notSaved(), notSaved = failure)
+      when (repository.save(stored.copy(content = draft))) {
+        PresetSaveResult.Saved -> {
+          saves.saved(draft)
+          messages.show(AppMessage(getString(Res.string.snack_saved, stored.name)))
         }
+        PresetSaveResult.StorageFull -> saves.notSaved { it.copy(notSaved = SaveFailure.Storage) }
+        PresetSaveResult.Gone, PresetSaveResult.Failed, is PresetSaveResult.Refused ->
+          saves.notSaved { it.copy(notSaved = SaveFailure.Other) }
       }
-      if (failure == null) messages.show(AppMessage(getString(Res.string.snack_saved, stored.name)))
     }
   }
 
@@ -63,7 +61,7 @@ class PresetCommands(
   }
 
   fun confirmDelete(stored: Preset) {
-    sessions.claim(stored.id) { session ->
+    sessions.cell(stored.id).claim { session ->
       (session.activity as? PresetActivity.ConfirmingDelete)?.let { confirming ->
         session.copy(activity = PresetActivity.Deleting(confirming.chatsUsing)) to confirming
       }

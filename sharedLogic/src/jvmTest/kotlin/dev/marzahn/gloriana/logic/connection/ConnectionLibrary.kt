@@ -53,7 +53,7 @@ class ConnectionLibrary(
   )
 
   suspend fun created(draft: ConnectionDraft): Connection =
-    stored(assertIs<ConnectionSaveResult.Saved>(repository.create(draft)).id)
+    stored(assertIs<ConnectionSaveResult.Saved>(repository.create(draft)).connection.id)
 
   suspend fun stored(id: Uuid): Connection = checkNotNull(repository.connection(id).first())
 

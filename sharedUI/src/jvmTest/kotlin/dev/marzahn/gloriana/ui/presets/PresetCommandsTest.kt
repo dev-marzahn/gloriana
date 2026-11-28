@@ -139,9 +139,39 @@ class PresetCommandsTest {
     val normalised = saved.copy(wrappers = saved.wrappers.with(WrapperPrompt.NewChat, "Changed in storage"))
     sessions.storedNow(id, normalised)
 
-    val page = sessions.current(id).unsavedOver(normalised)
-    assertEquals(normalised, page.baseline)
+    val page = PresetPageState.Shown(stored.copy(content = normalised), sessions.current(id), export = null)
+    assertEquals(normalised, page.unsaved.baseline)
     assertFalse(page.hasChanges)
+  }
+
+  @Test
+  fun aSavedDraftIsStoredAsWrittenSoTheSavedBaselineEnds() = withPreset {
+    sessions.edit(id, stored.content, PresetIntent.SetWrapper(WrapperPrompt.NewChat, "  Padded wrapper  "))
+    turnOff(0)
+    val saved = checkNotNull(draft())
+
+    commands.save(stored)
+    awaitIdle()
+    awaitStoreHolds(saved)
+    sessions.storedNow(id, read().content)
+
+    assertEquals(saved, read().content)
+    assertEquals(PresetSession(), sessions.current(id))
+  }
+
+  @Test
+  fun aPageStatePairingTheNewSessionWithTheOlderReadKeepsTheSavedChange() = withPreset {
+    turnOff(0)
+    val saved = checkNotNull(draft())
+    commands.save(stored)
+    awaitIdle()
+    awaitStoreHolds(saved)
+    turnOff(1, pageShows = saved)
+    sessions.storedNow(id, saved)
+
+    val page = PresetPageState.Shown(stored, sessions.current(id), export = null)
+
+    assertEquals(listOf(false, false), page.content.entries.map { it.enabled })
   }
 
   @Test

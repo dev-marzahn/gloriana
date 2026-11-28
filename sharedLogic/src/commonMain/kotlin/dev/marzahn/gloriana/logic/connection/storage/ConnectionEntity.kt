@@ -64,18 +64,21 @@ internal fun ConnectionEntity.readableOrNull(): Connection? = when (val stored =
 internal data class SecretColumns(val id: Uuid, val format: String, val apiKey: String?, val headers: String)
 
 internal val SecretColumns.needsDataKey: Boolean
-  get() {
-    val key = apiKey?.let(::sealedSecret)
-    val storedHeaders = customHeaders(headers)
-    return when {
-      apiFormatOf(format) == null || !keyReadable(apiKey, key) || storedHeaders == null -> true
-      else -> holdsSealedValues(key, storedHeaders)
-    }
+  get() = decodedSecrets(format, apiKey, headers)?.let { holdsSealedValues(it.key, it.headers) } ?: true
+
+private class DecodedSecrets(val format: ApiFormat, val key: SealedSecret?, val headers: List<CustomHeader>)
+
+private fun decodedSecrets(format: String, apiKey: String?, headers: String): DecodedSecrets? {
+  val apiFormat = ApiFormat.entries.firstOrNull { it.name == format }
+  val key = apiKey?.let(::sealedSecret)
+  val storedHeaders = customHeaders(headers)
+  val keyReadable = apiKey == null || key != null
+  return if (apiFormat != null && keyReadable && storedHeaders != null) {
+    DecodedSecrets(apiFormat, key, storedHeaders)
+  } else {
+    null
   }
-
-private fun apiFormatOf(format: String): ApiFormat? = ApiFormat.entries.firstOrNull { it.name == format }
-
-private fun keyReadable(apiKey: String?, key: SealedSecret?): Boolean = apiKey == null || key != null
+}
 
 private fun customHeaders(headers: String): List<CustomHeader>? =
   StoredJson.decodedOrNull<List<StoredHeader>>(headers)?.allOrNull { stored ->
@@ -86,33 +89,28 @@ private fun <T, R : Any> List<T>.allOrNull(transform: (T) -> R?): List<R>? =
   mapNotNull(transform).takeIf { it.size == size }
 
 private fun ConnectionEntity.readable(): Connection? {
-  val apiFormat = apiFormatOf(format)
-  val key = apiKey?.let(::sealedSecret)
-  val storedHeaders = customHeaders(headers)
+  val secrets = decodedSecrets(format, apiKey, headers)
   val storedSamplers = StoredJson.decodedOrNull<Samplers>(samplers)
   val storedBody = StoredJson.decodedOrNull<JsonObject>(customBody)
-  return when {
-    apiFormat == null || !keyReadable(apiKey, key) || storedHeaders == null -> null
-    storedSamplers == null || storedBody == null -> null
-    else -> Connection(
-      id = id,
-      fields = ConnectionFields(
-        name = name,
-        format = apiFormat,
-        baseUrl = baseUrl,
-        model = model,
-        contextSize = contextSize,
-        maxReplyTokens = maxReplyTokens,
-        streaming = streaming,
-        includeUsage = includeUsage,
-        samplers = storedSamplers,
-        timeoutSeconds = timeoutSeconds,
-        customBody = storedBody,
-      ),
-      key = key,
-      headers = storedHeaders,
-    )
-  }
+  if (secrets == null || storedSamplers == null || storedBody == null) return null
+  return Connection(
+    id = id,
+    fields = ConnectionFields(
+      name = name,
+      format = secrets.format,
+      baseUrl = baseUrl,
+      model = model,
+      contextSize = contextSize,
+      maxReplyTokens = maxReplyTokens,
+      streaming = streaming,
+      includeUsage = includeUsage,
+      samplers = storedSamplers,
+      timeoutSeconds = timeoutSeconds,
+      customBody = storedBody,
+    ),
+    key = secrets.key,
+    headers = secrets.headers,
+  )
 }
 
 internal fun Connection.toEntity(updatedAt: Long) = ConnectionEntity(

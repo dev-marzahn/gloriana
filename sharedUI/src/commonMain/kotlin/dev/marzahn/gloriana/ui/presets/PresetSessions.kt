@@ -3,7 +3,10 @@ package dev.marzahn.gloriana.ui.presets
 import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.ui.state.DraftEdit
 import dev.marzahn.gloriana.ui.state.SaveFailure
+import dev.marzahn.gloriana.ui.state.StateCell
 import dev.marzahn.gloriana.ui.state.UnsavedCopy
+import dev.marzahn.gloriana.ui.state.UnsavedSaves
+import dev.marzahn.gloriana.ui.state.update
 import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,12 +53,11 @@ data class PresetSession(
 ) {
   val isIdle: Boolean get() = activity == PresetActivity.Idle && unsaved?.isSaving != true
 
+  val canSave: Boolean get() = activity == PresetActivity.Idle && unsaved?.canSave == true
+
   val holdsNothing: Boolean
     get() = unsaved?.holdsNothingBeyondTheStoredValue != false && activity == PresetActivity.Idle &&
       notSaved == null && !notDeleted && importNotes == null
-
-  fun unsavedOver(stored: PresetContent): UnsavedCopy<PresetContent> =
-    (unsaved ?: UnsavedCopy.of(stored)).storedNow(stored)
 }
 
 class PresetSessions {
@@ -66,15 +68,18 @@ class PresetSessions {
 
   fun current(id: Uuid): PresetSession = sessions.value[id] ?: PresetSession()
 
-  fun update(id: Uuid, change: (PresetSession) -> PresetSession) {
-    sessions.update { all -> all.with(id, change(all[id] ?: PresetSession())) }
+  fun update(id: Uuid, change: (PresetSession) -> PresetSession) = cell(id).update(change)
+
+  fun cell(id: Uuid): StateCell<PresetSession> = object : StateCell<PresetSession> {
+    override fun <R : Any> claim(change: (PresetSession) -> Pair<PresetSession, R>?): R? =
+      sessions.updateAndClaim { all ->
+        val result = change(all[id] ?: PresetSession())
+        if (result == null) all to null else all.with(id, result.first) to result.second
+      }
   }
 
-  fun <T : Any> claim(id: Uuid, change: (PresetSession) -> Pair<PresetSession, T>?): T? =
-    sessions.updateAndClaim { all ->
-      val result = change(all[id] ?: PresetSession())
-      if (result == null) all to null else all.with(id, result.first) to result.second
-    }
+  fun saves(id: Uuid): UnsavedSaves<PresetSession, PresetContent> =
+    UnsavedSaves(cell(id), PresetSession::unsaved) { session, unsaved -> session.copy(unsaved = unsaved) }
 
   fun forget(id: Uuid) = sessions.update { it - id }
 

@@ -41,9 +41,9 @@ import dev.marzahn.gloriana.ui.lists.RowSkeletons
 import dev.marzahn.gloriana.ui.lists.rememberRowFocus
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
+import dev.marzahn.gloriana.ui.navigation.OpenPagesWhileShown
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
-import dev.marzahn.gloriana.ui.navigation.WhileRootShown
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.choose_another_file
 import dev.marzahn.gloriana.ui.resources.create
@@ -98,8 +98,7 @@ fun PresetsLibrary(kindPicker: @Composable () -> Unit, modifier: Modifier = Modi
   val state by viewModel.state.collectAsStateWithLifecycle()
   val navigator = LocalShellNavigator.current
   val picker = rememberFilePicker(PresetFiles) { files -> files.firstOrNull()?.let(viewModel::import) }
-  val openPages = viewModel::openPagesWhileShown
-  WhileRootShown(Destination.Library, openPages) { openPages { navigator.pickPreset(it) } }
+  OpenPagesWhileShown(Destination.Library, viewModel::openPagesWhileShown) { navigator.pickPreset(it) }
   val actions = PresetsActions(
     onCreate = picker::pick,
     onOpen = navigator::pickPreset,

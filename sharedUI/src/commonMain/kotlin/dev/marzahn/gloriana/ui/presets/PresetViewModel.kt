@@ -21,23 +21,21 @@ import dev.marzahn.gloriana.logic.presets.withoutGroup
 import dev.marzahn.gloriana.ui.files.ExportState
 import dev.marzahn.gloriana.ui.files.SaveTarget
 import dev.marzahn.gloriana.ui.state.DraftEdit
+import dev.marzahn.gloriana.ui.state.StoredReads
+import dev.marzahn.gloriana.ui.state.StoredRow
+import dev.marzahn.gloriana.ui.state.StoredValue
 import dev.marzahn.gloriana.ui.state.UnsavedCopy
+import dev.marzahn.gloriana.ui.state.WhileCollected
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
 import kotlin.uuid.Uuid
-
-private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 sealed interface PresetIntent {
   sealed interface OnPage : PresetIntent
@@ -117,7 +115,7 @@ sealed interface PresetPageState {
     val session: PresetSession,
     val export: ExportState?,
   ) : PresetPageState {
-    val unsaved: UnsavedCopy<PresetContent> = session.unsavedOver(stored.content)
+    val unsaved: UnsavedCopy<PresetContent> = session.unsaved ?: UnsavedCopy.of(stored.content)
 
     val content: PresetContent get() = unsaved.draft
 
@@ -125,16 +123,10 @@ sealed interface PresetPageState {
 
     val name: String get() = stored.name
 
-    val canSave: Boolean get() = hasChanges && session.isIdle
+    val canSave: Boolean get() = session.canSave
 
     fun entry(id: Uuid): PresetEntry? = content.entries.firstOrNull { it.id == id }
   }
-}
-
-private sealed interface PresetRead {
-  data object Failed : PresetRead
-
-  data class Read(val stored: StoredPreset?) : PresetRead
 }
 
 class PresetViewModel(
@@ -144,55 +136,37 @@ class PresetViewModel(
   private val exports: PresetExports,
 ) : ViewModel() {
   private val id = MutableStateFlow<Uuid?>(null)
-  private val read = MutableStateFlow<PresetRead?>(null)
-  private var following: Job? = null
+  private val reads = StoredReads.rows<StoredPreset>()
 
   @OptIn(ExperimentalCoroutinesApi::class)
   val state: StateFlow<PresetPageState> = id.filterNotNull()
     .flatMapLatest(::pageState)
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), PresetPageState.Loading)
+    .stateIn(viewModelScope, WhileCollected, PresetPageState.Loading)
 
   fun show(id: Uuid) {
-    if (this.id.value == id) return
     this.id.value = id
-    follow(id)
   }
 
   fun contentNow(): PresetContent? {
     val page = state.value as? PresetPageState.Shown ?: return null
-    return sessions.current(page.stored.id).unsavedOver(page.stored.content).draft
+    return sessions.current(page.stored.id).unsaved?.draft ?: page.stored.content
   }
 
   fun on(intent: PresetIntent) {
     val id = id.value ?: return
     when (intent) {
       is PresetIntent.Dismissal -> dismiss(id, intent)
-      PresetIntent.Retry -> follow(id)
+      PresetIntent.Retry -> reads.retry()
       is PresetIntent.OnPage -> (state.value as? PresetPageState.Shown)?.let { onPage(it, intent) }
     }
   }
 
-  private fun follow(id: Uuid) {
-    following?.cancel()
-    read.value = null
-    following = viewModelScope.launch {
-      repository.preset(id)
-        .map<StoredPreset?, PresetRead> { PresetRead.Read(it) }
-        .catch { emit(PresetRead.Failed) }
-        .collect { result ->
-          val readable = (result as? PresetRead.Read)?.stored as? StoredPreset.Readable
-          readable?.let { sessions.storedNow(id, it.preset.content) }
-          read.value = result
-        }
-    }
-  }
-
-  private fun latestStored(): PresetContent? =
-    ((read.value as? PresetRead.Read)?.stored as? StoredPreset.Readable)?.preset?.content
+  private fun follow(id: Uuid): Flow<StoredRow<StoredPreset>> = reads.follow(id) { repository.preset(id) }
+    .onEach { row -> row.readableContent()?.let { sessions.storedNow(id, it) } }
 
   private fun onPage(page: PresetPageState.Shown, intent: PresetIntent.OnPage) {
     val id = page.stored.id
-    val latest = latestStored() ?: page.stored.content
+    val latest = reads.latest(id)?.readableContent() ?: page.stored.content
     when (intent) {
       is PresetIntent.Edit -> sessions.edit(id, latest, intent)
       is PresetIntent.AddGroup -> sessions.edit(id, latest, GroupAdded(repository.newGroup(intent.name), intent.above))
@@ -214,11 +188,18 @@ class PresetViewModel(
   }
 
   private fun pageState(id: Uuid): Flow<PresetPageState> =
-    combine(read.filterNotNull(), sessions.session(id), exports.runs.state(id)) { read, session, export ->
-      when (val stored = (read as? PresetRead.Read ?: return@combine PresetPageState.CouldNotLoad).stored) {
-        null -> PresetPageState.Gone
-        StoredPreset.Unreadable -> PresetPageState.CouldNotLoad
-        is StoredPreset.Readable -> PresetPageState.Shown(stored.preset, session, export)
+    combine(follow(id), sessions.session(id), exports.runs.state(id)) { row, session, export ->
+      when (row) {
+        StoredValue.Loading -> PresetPageState.Loading
+        StoredValue.CouldNotLoad -> PresetPageState.CouldNotLoad
+        StoredRow.Gone -> PresetPageState.Gone
+        is StoredValue.Found -> when (val stored = row.value) {
+          StoredPreset.Unreadable -> PresetPageState.CouldNotLoad
+          is StoredPreset.Readable -> PresetPageState.Shown(stored.preset, session, export)
+        }
       }
     }
 }
+
+private fun StoredRow<StoredPreset>.readableContent(): PresetContent? =
+  ((this as? StoredValue.Found)?.value as? StoredPreset.Readable)?.preset?.content

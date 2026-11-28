@@ -31,9 +31,9 @@ import dev.marzahn.gloriana.ui.files.rememberFilePicker
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LibraryKind
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
+import dev.marzahn.gloriana.ui.navigation.OpenPagesWhileShown
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
-import dev.marzahn.gloriana.ui.navigation.WhileRootShown
 import dev.marzahn.gloriana.ui.presets.PresetsLibrary
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.characters_error
@@ -102,8 +102,7 @@ private fun CharactersLibrary(
   var creating by rememberSaveable { mutableStateOf(false) }
   var previewing by rememberSaveable { mutableStateOf<String?>(null) }
   var enlarged by rememberSaveable { mutableStateOf(false) }
-  val openPages = viewModel::openPagesWhileShown
-  WhileRootShown(Destination.Library, openPages) { openPages { navigator.pickCharacter(it) } }
+  OpenPagesWhileShown(Destination.Library, viewModel::openPagesWhileShown) { navigator.pickCharacter(it) }
   val actions = LibraryActions(
     onCreate = { creating = true },
     onTile = { id -> if (onWorkbench) navigator.pickCharacter(id) else previewing = id.toString() },

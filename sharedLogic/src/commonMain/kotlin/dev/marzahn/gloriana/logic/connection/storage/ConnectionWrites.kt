@@ -39,7 +39,7 @@ internal class ConnectionWrites(
       dao.insert(connection.toEntity(clock.updatedAt(previous = null)))
       faults.reached(ConnectionWritePoint.InsertRowWritten)
       default.claimIfUnset(connection.id)
-      ConnectionSaveResult.Saved(connection.id)
+      ConnectionSaveResult.Saved(connection)
     }
   }
 
@@ -52,7 +52,7 @@ internal class ConnectionWrites(
       else -> {
         dao.update(connection.toEntity(clock.updatedAt(previous.updatedAt)))
         faults.reached(ConnectionWritePoint.UpdateRowWritten)
-        ConnectionSaveResult.Saved(connection.id)
+        ConnectionSaveResult.Saved(connection)
       }
     }
   }

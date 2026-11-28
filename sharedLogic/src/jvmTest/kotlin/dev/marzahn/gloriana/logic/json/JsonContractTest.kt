@@ -1,9 +1,12 @@
 package dev.marzahn.gloriana.logic.json
 
+import dev.marzahn.gloriana.logic.characters.storage.CharacterConverters
 import dev.marzahn.gloriana.logic.storage.StoredJson
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFailsWith
 import kotlin.test.assertIs
 import kotlin.test.assertNull
 
@@ -38,5 +41,11 @@ class JsonContractTest {
     assertNull(parsedObject("[1]"))
     assertNull(StoredJson.decodedOrNull<Map<String, String>>("""{"a": 1}"""))
     assertNull(StoredJson.decodedOrNull<JsonObject>("not json"))
+  }
+
+  @Test
+  fun characterRowsAreTheOneExceptionAndStillThrowOnDamagedJson() {
+    assertFailsWith<SerializationException> { CharacterConverters.textToJsonObject("not json") }
+    assertFailsWith<SerializationException> { CharacterConverters.textToKeptFields("{") }
   }
 }

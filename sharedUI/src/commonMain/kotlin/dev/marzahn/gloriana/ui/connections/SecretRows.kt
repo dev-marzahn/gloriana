@@ -75,7 +75,7 @@ private sealed interface KeyShown {
 private fun ConnectionForm.keyShown(secrets: SecretsState): KeyShown {
   val stored = secrets.stored { it.key }
   return when (key) {
-    KeyEdit.Entering, is KeyEdit.Typed ->
+    KeyEdit.Entering, is TypedSecret ->
       KeyShown.Typing(replacing = keyStored, missing = keyStored && stored == StoredSecret.Missing)
     KeyEdit.Kept -> KeyShown.Stored(stored)
     KeyEdit.Removed -> KeyShown.Removed
@@ -97,7 +97,7 @@ private fun KeyShown.hint(form: ConnectionForm): String? = when (this) {
     when {
       missing -> Res.string.key_missing_hint
       replacing -> Res.string.key_hint_replacing
-      form.key !is KeyEdit.Typed -> Res.string.key_hint_empty
+      form.key !is TypedSecret -> Res.string.key_hint_empty
       else -> Res.string.key_hint_typed
     },
   )

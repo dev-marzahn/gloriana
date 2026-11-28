@@ -44,7 +44,7 @@ class ConnectionFormTest {
   @Test
   fun typingNothingIsEnteringAKeyNotTypingOne() {
     assertEquals(KeyEdit.Entering, typed(""))
-    assertEquals(KeyEdit.Typed(SecretText("s")), typed("s"))
+    assertEquals(SecretText("s"), (typed("s") as TypedSecret).text)
   }
 
   @Test

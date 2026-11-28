@@ -82,7 +82,7 @@ private fun HeaderLine(page: ConnectionPageState.Shown, editing: FormEditing, ro
     Row(horizontalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8), verticalAlignment = Alignment.Top) {
       HeaderNameField(editing, row, nameError)
       when (val value = row.value) {
-        ValueEdit.Entering, is ValueEdit.Typed ->
+        ValueEdit.Entering, is TypedSecret ->
           Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             SecretField(
               value.typedText,

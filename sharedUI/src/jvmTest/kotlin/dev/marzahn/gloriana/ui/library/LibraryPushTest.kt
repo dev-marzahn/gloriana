@@ -127,6 +127,37 @@ class LibraryPushTest {
     }
   }
 
+  @Test
+  fun aCharacterImportFinishingWhileACharacterPageSlidesInOnCompactWidthPushesNothingMore() = runComposeUiTest {
+    LiveLibrary.use { library ->
+      val navigator = showApp(library)
+      val imports = library.koin.get<CharacterImports>()
+      runOnIdle { imports.start(listOf(file("Oren.json", CARD))) }
+      waitUntil(timeoutMillis = WAIT_MILLIS) { navigator.stack(Destination.Library).size == 2 }
+      val oren = navigator.stack(Destination.Library).last()
+      runOnIdle { navigator.pop(Destination.Library) }
+      waitForIdle()
+      val announced = CompletableDeferred<AppMessage>()
+      val expected = getString(Res.string.snack_imported_one, "Mira")
+      val listener = CoroutineScope(Dispatchers.Default).launch {
+        announced.complete(library.koin.get<AppMessages>().messages.first { it.text == expected })
+      }
+
+      mainClock.autoAdvance = false
+      runOnIdle { navigator.push(oren, Destination.Library) }
+      mainClock.advanceTimeBy(FADE_MIDWAY_MILLIS)
+      onNodeWithText(getString(Res.string.library_kind_characters)).assertExists()
+      imports.start(listOf(file("Mira.json", CARD.replace("Oren", "Mira"))))
+      waitUntil(timeoutMillis = WAIT_MILLIS) { imports.state.value.running.isEmpty() }
+      mainClock.autoAdvance = true
+      waitForIdle()
+
+      assertEquals(listOf(Destination.Library.root, oren), navigator.stack(Destination.Library))
+      waitUntil(timeoutMillis = WAIT_MILLIS) { announced.isCompleted }
+      listener.cancel()
+    }
+  }
+
   private companion object {
     const val FADE_MIDWAY_MILLIS = 45L
     const val WAIT_MILLIS = 5_000L

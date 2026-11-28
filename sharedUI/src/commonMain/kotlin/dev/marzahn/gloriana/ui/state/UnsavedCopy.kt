@@ -27,6 +27,8 @@ class UnsavedCopy<T : Any> private constructor(
 
   val isSaving: Boolean get() = running != null
 
+  val canSave: Boolean get() = hasChanges && !isSaving
+
   val beingSaved: T?
     get() = running?.let { save -> edits.take(save.edits).fold(baseline) { value, edit -> edit.applied(value) } }
 
@@ -47,13 +49,13 @@ class UnsavedCopy<T : Any> private constructor(
     copy(edits = emptyList(), running = running?.let { RunningSave(edits = 0, it.storedAtStart) })
 
   fun storedNow(emission: T): UnsavedCopy<T> =
-    if (emission == stored) this else copy(stored = emission, savedAhead = null)
+    if (sameValue.same(emission, stored)) this else copy(stored = emission, savedAhead = null)
 
   fun savingStarted(): UnsavedCopy<T> = copy(running = RunningSave(edits.size, stored))
 
   fun saved(written: T): UnsavedCopy<T> {
     val save = running ?: return this
-    val noNewerRow = stored == save.storedAtStart && stored != written
+    val noNewerRow = sameValue.same(stored, save.storedAtStart) && !sameValue.same(stored, written)
     return copy(edits = edits.drop(save.edits), savedAhead = written.takeIf { noNewerRow }, running = null)
   }
 

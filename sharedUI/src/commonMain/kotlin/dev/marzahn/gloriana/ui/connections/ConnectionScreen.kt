@@ -55,6 +55,7 @@ import dev.marzahn.gloriana.ui.resources.test_failed
 import dev.marzahn.gloriana.ui.resources.test_passed
 import dev.marzahn.gloriana.ui.resources.testing
 import dev.marzahn.gloriana.ui.resources.this_connection
+import dev.marzahn.gloriana.ui.text.withOneDecimal
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel

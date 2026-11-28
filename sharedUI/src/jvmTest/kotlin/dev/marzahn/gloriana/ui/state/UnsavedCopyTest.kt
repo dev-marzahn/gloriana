@@ -23,6 +23,9 @@ private data object AppendToNote : DraftEdit<Form> {
 
 class UnsavedCopyTest {
   private val stored = Form()
+  private val sameTrimmed = SameValue<Form> { one, other -> one.trimmed() == other.trimmed() }
+
+  private fun Form.trimmed() = copy(name = name.trim())
 
   @Test
   fun anEditShowsInTheDraftAndCountsAsAChange() {
@@ -44,6 +47,23 @@ class UnsavedCopyTest {
     val copy = UnsavedCopy.of(stored) { one, other -> one.name.trim() == other.name.trim() }.edited(SetName("Work "))
 
     assertFalse(copy.hasChanges)
+  }
+
+  @Test
+  fun aStoredRowTheSameValueKeepsTheSavedBaseline() {
+    val written = stored.copy(model = "model-2")
+    val saved = UnsavedCopy.of(stored, sameTrimmed).edited(SetModel("model-2")).savingStarted().saved(written)
+
+    assertEquals(written, saved.storedNow(stored.copy(name = "Work ")).baseline)
+  }
+
+  @Test
+  fun aWrittenValueTheSameAsTheStoredOneLeavesNoSavedBaseline() {
+    val written = stored.copy(name = "Work ")
+    val saved = UnsavedCopy.of(stored, sameTrimmed).edited(SetName("Work ")).savingStarted().saved(written)
+
+    assertEquals(stored, saved.baseline)
+    assertTrue(saved.holdsNothingBeyondTheStoredValue)
   }
 
   @Test

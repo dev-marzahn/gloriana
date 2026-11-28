@@ -16,6 +16,16 @@ import dev.marzahn.gloriana.logic.connection.problems
 import dev.marzahn.gloriana.logic.connection.samplerProblems
 import dev.marzahn.gloriana.logic.connection.textProblems
 import dev.marzahn.gloriana.logic.connection.withCustomBody
+@ConsistentCopyVisibility
+data class TypedSecret private constructor(val text: SecretText) : KeyEdit, ValueEdit {
+  override val isEntering: Boolean get() = true
+
+  override val typedText: SecretText get() = text
+
+  companion object {
+    fun of(text: SecretText): TypedSecret? = if (text.isEmpty) null else TypedSecret(text)
+  }
+}
 
 sealed interface KeyEdit {
   data object Kept : KeyEdit
@@ -24,22 +34,12 @@ sealed interface KeyEdit {
 
   data object Entering : KeyEdit
 
-  data class Typed(val text: SecretText) : KeyEdit {
-    init {
-      require(!text.isEmpty) { "An empty key is Entering, not Typed" }
-    }
-  }
+  val isEntering: Boolean get() = this == Entering
 
-  val isEntering: Boolean get() = this == Entering || this is Typed
-
-  val typedText: SecretText
-    get() = when (this) {
-      is Typed -> text
-      Kept, Removed, Entering -> SecretText.Empty
-    }
+  val typedText: SecretText get() = SecretText.Empty
 
   companion object {
-    fun typing(text: SecretText): KeyEdit = if (text.isEmpty) Entering else Typed(text)
+    fun typing(text: SecretText): KeyEdit = TypedSecret.of(text) ?: Entering
   }
 }
 
@@ -48,22 +48,12 @@ sealed interface ValueEdit {
 
   data object Entering : ValueEdit
 
-  data class Typed(val text: SecretText) : ValueEdit {
-    init {
-      require(!text.isEmpty) { "An empty value is Entering, not Typed" }
-    }
-  }
+  val isEntering: Boolean get() = this == Entering
 
-  val isEntering: Boolean get() = this == Entering || this is Typed
-
-  val typedText: SecretText
-    get() = when (this) {
-      is Typed -> text
-      Kept, Entering -> SecretText.Empty
-    }
+  val typedText: SecretText get() = SecretText.Empty
 
   companion object {
-    fun typing(text: SecretText): ValueEdit = if (text.isEmpty) Entering else Typed(text)
+    fun typing(text: SecretText): ValueEdit = TypedSecret.of(text) ?: Entering
   }
 }
 
@@ -75,7 +65,7 @@ data class HeaderRow(val id: Int, val name: String, val storedName: String?, val
   fun valueInput(): HeaderValueInput = when (value) {
     ValueEdit.Kept -> HeaderValueInput.Kept(storedName.orEmpty())
     ValueEdit.Entering -> storedName?.let(HeaderValueInput::Kept) ?: HeaderValueInput.Entered("")
-    is ValueEdit.Typed -> HeaderValueInput.Entered(value.text.text)
+    is TypedSecret -> HeaderValueInput.Entered(value.text.text)
   }
 
   private fun renamesStoredValue(after: HeaderRow) = storedName != null && after.name != name
@@ -285,7 +275,7 @@ private fun ConnectionForm.keyInput(): KeyInput = when (val edit = key) {
   KeyEdit.Kept -> KeyInput.Kept
   KeyEdit.Removed -> KeyInput.Removed
   KeyEdit.Entering -> if (keyStored) KeyInput.Kept else KeyInput.Removed
-  is KeyEdit.Typed -> KeyInput.Entered(edit.text.text)
+  is TypedSecret -> KeyInput.Entered(edit.text.text)
 }
 
 private fun HeaderRow.draft(): HeaderDraft = HeaderDraft(name, valueInput())

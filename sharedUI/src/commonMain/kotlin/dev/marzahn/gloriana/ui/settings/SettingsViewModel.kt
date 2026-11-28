@@ -25,11 +25,11 @@ import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_keys_erased
+import dev.marzahn.gloriana.ui.state.WhileCollected
 import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -41,8 +41,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import kotlin.uuid.Uuid
-
-private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 data class ConnectionRowState(val connection: Connection, val isDefault: Boolean, val secrets: SecretsState) {
   val id: Uuid get() = connection.id
@@ -185,7 +183,7 @@ class SettingsViewModel(
         rowActivity = current.rows,
         focus = focus(list, deleted, current.focusFirstRow),
       )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SettingsState())
+    }.stateIn(viewModelScope, WhileCollected, SettingsState())
 
   private val unlocking = UnlockFlow(
     vault,
