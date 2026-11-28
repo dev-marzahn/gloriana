@@ -107,7 +107,7 @@ internal object PresetJsonWriter {
       .filter { it.home == home && content.wrappers[it] != view.wrappers[it] }
       .associate { prompt ->
         val text = content.wrappers[prompt]
-        val omitted = home.omitsDefault && text == prompt.pinnedDefault
+        val omitted = home.omitsDefault && text == prompt.shippedDefault
         prompt.key to if (omitted) KeyWrite.Remove else KeyWrite.Put(JsonPrimitive(text))
       }
 

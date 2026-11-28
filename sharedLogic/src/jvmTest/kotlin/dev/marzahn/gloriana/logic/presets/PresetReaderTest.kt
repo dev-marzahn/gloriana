@@ -66,7 +66,7 @@ class PresetReaderTest {
         content.entries.map { it.identifier to it.enabled },
       )
       assertEquals(listOf("Early", "main", "chatHistory", "Late", "tail"), content.rows.map(::label))
-      assertEquals(WrapperPrompt.Impersonation.pinnedDefault, content.wrappers[WrapperPrompt.Impersonation])
+      assertEquals(WrapperPrompt.Impersonation.shippedDefault, content.wrappers[WrapperPrompt.Impersonation])
       assertEquals("[Begin]", content.wrappers[WrapperPrompt.NewChat])
     }
   }
