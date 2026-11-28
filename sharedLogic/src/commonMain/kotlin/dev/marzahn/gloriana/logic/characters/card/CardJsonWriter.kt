@@ -2,9 +2,11 @@ package dev.marzahn.gloriana.logic.characters.card
 
 import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.CharacterNote
+import dev.marzahn.gloriana.logic.characters.NoteRole
 import dev.marzahn.gloriana.logic.characters.Pronouns
 import dev.marzahn.gloriana.logic.json.objectAt
 import dev.marzahn.gloriana.logic.json.orNone
+import dev.marzahn.gloriana.logic.json.string
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -68,9 +70,12 @@ internal object CardJsonWriter {
     kept + mapOf(
       DepthPromptKey.Prompt.key to text(note.text),
       DepthPromptKey.Depth.key to JsonPrimitive(note.depth),
-      DepthPromptKey.Role.key to text(note.role),
+      DepthPromptKey.Role.key to text(roleOnCard(kept, note.role)),
     ),
   )
+
+  private fun roleOnCard(kept: JsonObject, role: NoteRole): String =
+    kept.string(DepthPromptKey.Role.key)?.takeIf { NoteRole.fromCard(it) == role } ?: role.cardValue
 
   private fun pronounsJson(pronouns: Pronouns) = JsonObject(
     PronounKey.entries.mapNotNull { key -> key.of(pronouns)?.let { key.key to text(it) } }.toMap(),

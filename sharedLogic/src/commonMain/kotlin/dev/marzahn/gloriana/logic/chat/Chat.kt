@@ -26,6 +26,18 @@ data class ChatMessage(
   val shown: Swipe,
 )
 
+data class ReplyText(val text: String, val reasoning: String) {
+  val isEmpty: Boolean get() = text.isEmpty() && reasoning.isEmpty()
+
+  operator fun plus(delta: ReplyText) = ReplyText(text + delta.text, reasoning + delta.reasoning)
+
+  companion object {
+    val Empty = ReplyText("", "")
+  }
+}
+
+internal class ReplyDraft(val id: Uuid, val messageId: Uuid)
+
 data class NewChatDefaults(val personaId: Uuid?, val presetId: Uuid?, val connectionId: Uuid?)
 
 sealed interface Greeting {

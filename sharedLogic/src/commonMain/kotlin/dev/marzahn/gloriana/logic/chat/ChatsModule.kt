@@ -6,7 +6,9 @@ import dev.marzahn.gloriana.logic.chat.storage.CharacterChats
 import dev.marzahn.gloriana.logic.chat.storage.ChatReferences
 import dev.marzahn.gloriana.logic.chat.storage.ChatRemovals
 import dev.marzahn.gloriana.logic.chat.storage.ChatWrites
+import dev.marzahn.gloriana.logic.chat.storage.DraftSettling
 import dev.marzahn.gloriana.logic.chat.storage.LeftoverDrafts
+import dev.marzahn.gloriana.logic.chat.storage.ReplyRows
 import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.ChatsWithCharacter
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
@@ -26,6 +28,8 @@ val chatsModule = module {
   single { ChatRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
   single { ChatFileReads(get(), get(), get(), get(), get()) }
   single { ChatExport(get()) }
-  single { LeftoverDrafts(get(), get(), get(), get(), get(), get(), get()) }
+  single { DraftSettling(get(), get(), get(), get(), get()) }
+  single { LeftoverDrafts(get(), get(), get(), get()) }
+  single { ReplyRows(get(), get(), get(), get(), get(), get()) }
   single(createdAtStart = true) { LeftoverDraftsAtStart(get(), get(), get()) }
 }

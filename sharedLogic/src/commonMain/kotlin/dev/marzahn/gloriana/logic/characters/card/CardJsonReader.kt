@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.logic.characters.card
 import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.CharacterNote
 import dev.marzahn.gloriana.logic.characters.KeptCardFields
+import dev.marzahn.gloriana.logic.characters.NoteRole
 import dev.marzahn.gloriana.logic.characters.Pronouns
 import dev.marzahn.gloriana.logic.json.NoFields
 import dev.marzahn.gloriana.logic.json.asString
@@ -100,7 +101,7 @@ internal object CardJsonReader {
   private fun characterNote(depthPrompt: JsonObject) = CharacterNote(
     text = depthPrompt.string(DepthPromptKey.Prompt.key).orEmpty(),
     depth = depthPrompt.quotedOrBareInt(DepthPromptKey.Depth.key) ?: 0,
-    role = depthPrompt.string(DepthPromptKey.Role.key) ?: DEFAULT_NOTE_ROLE,
+    role = NoteRole.fromCard(depthPrompt.string(DepthPromptKey.Role.key)),
   )
 
   private fun assetEntry(element: JsonElement): CardAssetEntry? = (element as? JsonObject)?.let { asset ->

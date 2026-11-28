@@ -4,7 +4,9 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Transaction
+import androidx.room.TypeConverters
 import androidx.room.Upsert
+import dev.marzahn.gloriana.logic.chat.MessageRole
 import dev.marzahn.gloriana.logic.storage.INSERT_TOMBSTONES
 import dev.marzahn.gloriana.logic.storage.OR_RENEW_TOMBSTONES
 import dev.marzahn.gloriana.logic.storage.UPDATED_AT_BUMPED_TO_NOW
@@ -35,6 +37,18 @@ internal interface ChatDao {
   @Transaction
   @Query("SELECT * FROM $MESSAGES_TABLE WHERE chatId = :chatId ORDER BY position")
   suspend fun messagesWithSwipes(chatId: Uuid): List<MessageWithSwipes>
+
+  @Query("SELECT EXISTS(SELECT 1 FROM $CHATS_TABLE WHERE id = :chatId)")
+  suspend fun exists(chatId: Uuid): Boolean
+
+  @Query("SELECT * FROM $MESSAGES_TABLE WHERE chatId = :chatId ORDER BY position DESC LIMIT 1")
+  suspend fun lastMessage(chatId: Uuid): MessageEntity?
+
+  @TypeConverters(ChatConverters::class)
+  @Query(
+    "SELECT EXISTS(SELECT 1 FROM $MESSAGES_TABLE WHERE chatId = :chatId AND role = :role AND position < :position)",
+  )
+  suspend fun hasEarlier(chatId: Uuid, role: MessageRole, position: Long): Boolean
 
   @Insert
   suspend fun insert(chat: ChatEntity)
@@ -146,6 +160,9 @@ internal interface ChatRemovalDao {
 internal interface SwipeDraftDao {
   @Query("SELECT * FROM $SWIPE_DRAFTS_TABLE")
   suspend fun all(): List<SwipeDraftEntity>
+
+  @Query("SELECT * FROM $SWIPE_DRAFTS_TABLE WHERE messageId = :messageId")
+  suspend fun forMessage(messageId: Uuid): SwipeDraftEntity?
 
   @Query("SELECT MAX(swipeIndex) FROM $SWIPES_TABLE WHERE messageId = :messageId")
   suspend fun lastSwipeIndex(messageId: Uuid): Int?

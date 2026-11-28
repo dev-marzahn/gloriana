@@ -87,11 +87,27 @@ class CardRoundTripTest {
         creatorNotes = "Tested with long chats.",
         systemPrompt = "Stay in role. {{original}}",
         postHistoryInstructions = "{{original}} Keep it short.",
-        characterNote = CharacterNote("Brannoc limps.", depth = 4, role = "system"),
+        characterNote = CharacterNote("Brannoc limps.", depth = 4, role = NoteRole.System),
       ),
       brannoc.fields,
     )
     assertEquals(listOf("smith", "fantasy"), brannoc.keptFields.tags)
+  }
+
+  @Test
+  fun aNoteRoleOutsideTheThreeIsReadAsSystemAndExportedAsItWasWritten() = runTest {
+    listOf("narrator" to NoteRole.System, "User" to NoteRole.User).forEach { (written, read) ->
+      val card = """{"spec": "chara_card_v3", "data": {"name": "Ren",
+        "extensions": {"depth_prompt": {"prompt": "Note.", "depth": 2, "role": "$written"}}}}"""
+      val character = library.importedCharacter(CorpusFile("$written.json", card.toByteArray()))
+
+      val (_, json) = library.export(character.id, CardFormat.Json)
+      val depthPrompt = Json.parseToJsonElement(json.decodeToString()).jsonObject.getValue("data").jsonObject
+        .getValue("extensions").jsonObject.getValue("depth_prompt").jsonObject
+
+      assertEquals(read, character.fields.characterNote?.role)
+      assertEquals(written, depthPrompt.getValue("role").jsonPrimitive.content)
+    }
   }
 
   @Test

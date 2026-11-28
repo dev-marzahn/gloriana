@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.chat.chatsModule
 import dev.marzahn.gloriana.logic.connection.api.modelApiModule
 import dev.marzahn.gloriana.logic.connection.connectionsModule
 import dev.marzahn.gloriana.logic.debug.debugModule
+import dev.marzahn.gloriana.logic.generation.generationModule
 import dev.marzahn.gloriana.logic.keys.keysModule
 import dev.marzahn.gloriana.logic.personas.personasModule
 import dev.marzahn.gloriana.logic.presets.presetsModule
@@ -28,5 +29,6 @@ val logicModule = module {
     shippedDefaultsModule,
     tasksModule,
     chatsModule,
+    generationModule,
   )
 }

@@ -1,9 +1,8 @@
 package dev.marzahn.gloriana.ui.characters
 
 import dev.marzahn.gloriana.logic.characters.Character
+import dev.marzahn.gloriana.logic.characters.NoteRole
 import dev.marzahn.gloriana.logic.characters.Pronouns
-
-enum class NoteRole { System, User, Assistant }
 
 sealed interface FieldLabel {
   data object Nickname : FieldLabel
@@ -49,7 +48,7 @@ fun sentToTheModel(character: Character): List<FieldRow> {
       row(FieldLabel.ExampleMessages, fields.exampleMessages),
       row(FieldLabel.MainPrompt, fields.systemPrompt),
       row(FieldLabel.PostHistoryInstructions, fields.postHistoryInstructions),
-      note?.let { FieldRow(FieldLabel.CharactersNote(it.depth, noteRole(it.role)), it.text) },
+      note?.let { FieldRow(FieldLabel.CharactersNote(it.depth, it.role), it.text) },
     )
 }
 
@@ -63,9 +62,3 @@ private fun row(label: FieldLabel, value: String): FieldRow? =
 
 private fun List<String>.numbered(label: (Int) -> FieldLabel): List<FieldRow> =
   mapIndexedNotNull { index, value -> row(label(index + 1), value) }
-
-private fun noteRole(role: String): NoteRole = when (role.trim().lowercase()) {
-  "user" -> NoteRole.User
-  "assistant" -> NoteRole.Assistant
-  else -> NoteRole.System
-}

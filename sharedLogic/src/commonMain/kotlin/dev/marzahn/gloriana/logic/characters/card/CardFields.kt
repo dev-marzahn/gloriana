@@ -13,7 +13,6 @@ internal const val DEPTH_PROMPT_KEY = "depth_prompt"
 internal const val GLORIANA_KEY = "gloriana"
 internal const val PRONOUNS_KEY = "pronouns"
 internal const val EMBEDDED_LOREBOOK_KEY = "character_book"
-internal const val DEFAULT_NOTE_ROLE = "system"
 
 internal enum class CardTextField(val key: String, val inCcv1: Boolean, val of: (CharacterFields) -> String) {
   Name("name", inCcv1 = true, { it.name }),

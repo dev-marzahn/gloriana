@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.ui.characters
 
 import androidx.compose.runtime.Composable
+import dev.marzahn.gloriana.logic.characters.NoteRole
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.field_alternate_greeting
 import dev.marzahn.gloriana.ui.resources.field_creator_notes

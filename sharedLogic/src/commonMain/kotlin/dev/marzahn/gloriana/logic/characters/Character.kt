@@ -40,7 +40,19 @@ data class CharacterFields(
   val characterNote: CharacterNote? = null,
 )
 
-data class CharacterNote(val text: String, val depth: Int, val role: String)
+data class CharacterNote(val text: String, val depth: Int, val role: NoteRole)
+
+enum class NoteRole(internal val cardValue: String) {
+  System("system"),
+  User("user"),
+  Assistant("assistant"),
+  ;
+
+  internal companion object {
+    fun fromCard(value: String?): NoteRole =
+      entries.firstOrNull { it.cardValue == value?.trim()?.lowercase() } ?: System
+  }
+}
 
 data class Pronouns(
   val subject: String? = null,
