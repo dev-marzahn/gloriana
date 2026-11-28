@@ -15,7 +15,13 @@ class TaskService : Service() {
   private val serviceScope = MainScope()
   private val notifications by lazy { TaskNotifications(this) }
   private val tasks by lazy {
-    TaskForeground(keepAlive.session, { keepAlive.lastStarted }, ServiceForeground(), serviceScope)
+    TaskForeground(
+      keepAlive.session,
+      { keepAlive.lastStarted },
+      notifications.starting,
+      ServiceForeground(),
+      serviceScope,
+    )
   }
   private var lastStartId = 0
 

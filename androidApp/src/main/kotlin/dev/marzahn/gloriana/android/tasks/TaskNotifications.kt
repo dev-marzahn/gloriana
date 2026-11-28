@@ -23,9 +23,12 @@ internal class TaskNotifications(private val context: Context) {
     PendingIntent.FLAG_IMMUTABLE,
   )
 
+  private val channelName = context.getString(R.string.task_channel_name)
+
+  val starting = TaskNotice(title = channelName, detail = "", progress = null)
+
   init {
-    val name = context.getString(R.string.task_channel_name)
-    manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, name, NotificationManager.IMPORTANCE_LOW))
+    manager.createNotificationChannel(NotificationChannel(CHANNEL_ID, channelName, NotificationManager.IMPORTANCE_LOW))
   }
 
   fun show(notice: TaskNotice) {

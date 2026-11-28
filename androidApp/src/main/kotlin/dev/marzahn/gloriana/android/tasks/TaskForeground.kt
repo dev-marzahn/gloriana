@@ -21,6 +21,7 @@ private class Shown(val session: KeepAliveSession, val notice: TaskNotice)
 internal class TaskForeground(
   private val sessions: StateFlow<KeepAliveSession?>,
   private val lastStarted: () -> KeepAliveSession?,
+  private val starting: TaskNotice,
   private val foreground: Foreground,
   private val scope: CoroutineScope,
 ) {
@@ -30,8 +31,8 @@ internal class TaskForeground(
 
   fun started(session: Int) {
     val current = sessions.value
-    val notice = shown?.takeIf { it.session === current }?.notice ?: (current ?: lastStarted())?.opening
-    if (notice == null || !foreground.enter(notice)) {
+    val notice = shown?.takeIf { it.session === current }?.notice ?: (current ?: lastStarted())?.opening ?: starting
+    if (!foreground.enter(notice)) {
       current?.takeIf { it.id == session }?.losses?.refused()
       foreground.leave()
       return

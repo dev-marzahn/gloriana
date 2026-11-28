@@ -60,7 +60,13 @@ class TaskForegroundTest {
   private val foreground = RecordingForeground()
 
   private fun TestScope.tasks() =
-    TaskForeground(sessions, { lastStarted }, foreground, backgroundScope + UnconfinedTestDispatcher(testScheduler))
+    TaskForeground(
+      sessions,
+      { lastStarted },
+      notice("starting"),
+      foreground,
+      backgroundScope + UnconfinedTestDispatcher(testScheduler),
+    )
 
   @Test
   fun `the service enters the foreground with the session's opening notice`() = runTest {
@@ -138,6 +144,14 @@ class TaskForegroundTest {
     sessions.value = null
     tasks().started(session = 1)
     assertEquals(listOf("enter opening 1", "leave"), foreground.events)
+  }
+
+  @Test
+  fun `a start before any session enters with the starting notice and leaves`() = runTest {
+    sessions.value = null
+    lastStarted = null
+    tasks().started(session = NO_SESSION)
+    assertEquals(listOf("enter starting", "leave"), foreground.events)
   }
 }
 
