@@ -1,7 +1,5 @@
 package dev.marzahn.gloriana.ui.connections
 
-import dev.marzahn.gloriana.logic.connection.ConnectionRepository
-import dev.marzahn.gloriana.logic.connection.countHoldingOpenableSecrets
 import dev.marzahn.gloriana.logic.keys.ErasingResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
@@ -55,10 +53,11 @@ internal interface UnlockPromptSlot {
 
 internal class UnlockFlow(
   private val vault: KeyVault,
-  private val repository: ConnectionRepository,
+  private val holding: suspend () -> Int?,
   private val scope: CoroutineScope,
   private val slot: UnlockPromptSlot,
 ) {
+
   fun open(place: (UnlockPrompt) -> Unit) {
     if (vault.state.value != VaultState.PassphraseDamaged) {
       place(UnlockPrompt.Unlocking())
@@ -70,9 +69,9 @@ internal class UnlockFlow(
 
   private fun countDamaged() {
     scope.launch {
-      val holding = holding()
+      val counted = holding()
       if (slot.prompt != UnlockPrompt.CountingDamaged) return@launch
-      slot.show(holding?.let(UnlockPrompt::CountedDamaged) ?: UnlockPrompt.DamagedNotCounted)
+      slot.show(counted?.let(UnlockPrompt::CountedDamaged) ?: UnlockPrompt.DamagedNotCounted)
     }
   }
 
@@ -98,8 +97,6 @@ internal class UnlockFlow(
       PassphraseIntent.Cancel -> if (!prompt.busy) slot.show(null)
     }
   }
-
-  private suspend fun holding(): Int? = vault.countHoldingOpenableSecrets(repository.connections())
 
   private fun submit(prompt: UnlockPrompt, onUnlocked: () -> Unit) {
     if (prompt.busy) return
@@ -127,13 +124,11 @@ internal class UnlockFlow(
       is UnlockPrompt.CountedDamaged -> slot.show(UnlockPrompt.Resetting(NewPassphraseEntry(), prompt.holding))
       is UnlockPrompt.Unlocking -> if (!prompt.busy) {
         scope.launch {
-          val holding = holding()
+          val counted = holding()
           if (slot.prompt != prompt) return@launch
           slot.show(
-            when (holding) {
-              null -> UnlockPrompt.Unlocking(prompt.entry.couldNotCheck())
-              else -> UnlockPrompt.Resetting(NewPassphraseEntry(), holding)
-            },
+            counted?.let { UnlockPrompt.Resetting(NewPassphraseEntry(), it) }
+              ?: UnlockPrompt.Unlocking(prompt.entry.couldNotCheck()),
           )
         }
       }

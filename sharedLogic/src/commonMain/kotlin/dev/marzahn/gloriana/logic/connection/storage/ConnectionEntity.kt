@@ -8,12 +8,14 @@ import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionFields
 import dev.marzahn.gloriana.logic.connection.CustomHeader
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.connection.holdsSealedValues
+import dev.marzahn.gloriana.logic.json.decodedOrNull
 import dev.marzahn.gloriana.logic.keys.SealedSecret
 import dev.marzahn.gloriana.logic.storage.EntityType
 import dev.marzahn.gloriana.logic.storage.StoredJson
 import dev.marzahn.gloriana.logic.storage.nameKey
+import dev.marzahn.gloriana.logic.text.parsedOrNull
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlin.io.encoding.Base64
 import kotlin.uuid.Uuid
@@ -51,46 +53,65 @@ internal sealed interface StoredConnection {
   data object Unreadable : StoredConnection
 }
 
-internal fun ConnectionEntity.decoded(): StoredConnection = try {
-  ApiFormat.entries.firstOrNull { it.name == format }?.let { apiFormat ->
-    StoredConnection.Readable(readable(apiFormat))
-  } ?: StoredConnection.Unreadable
-} catch (_: SerializationException) {
-  StoredConnection.Unreadable
-} catch (_: IllegalArgumentException) {
-  StoredConnection.Unreadable
-}
+internal fun ConnectionEntity.decoded(): StoredConnection =
+  readable()?.let(StoredConnection::Readable) ?: StoredConnection.Unreadable
 
 internal fun ConnectionEntity.readableOrNull(): Connection? = when (val stored = decoded()) {
   is StoredConnection.Readable -> stored.connection
   StoredConnection.Unreadable -> null
 }
 
-internal val ConnectionEntity.needsDataKey: Boolean
-  get() = when (val stored = decoded()) {
-    is StoredConnection.Readable -> stored.connection.holdsSecrets
-    StoredConnection.Unreadable -> true
+internal data class SecretColumns(val id: Uuid, val format: String, val apiKey: String?, val headers: String)
+
+internal val SecretColumns.needsDataKey: Boolean
+  get() = decodedSecrets(format, apiKey, headers)?.let { holdsSealedValues(it.key, it.headers) } ?: true
+
+private class DecodedSecrets(val format: ApiFormat, val key: SealedSecret?, val headers: List<CustomHeader>)
+
+private fun decodedSecrets(format: String, apiKey: String?, headers: String): DecodedSecrets? {
+  val apiFormat = ApiFormat.entries.firstOrNull { it.name == format }
+  val key = apiKey?.let(::sealedSecret)
+  val storedHeaders = customHeaders(headers)
+  val keyReadable = apiKey == null || key != null
+  return if (apiFormat != null && keyReadable && storedHeaders != null) {
+    DecodedSecrets(apiFormat, key, storedHeaders)
+  } else {
+    null
+  }
+}
+
+private fun customHeaders(headers: String): List<CustomHeader>? =
+  StoredJson.decodedOrNull<List<StoredHeader>>(headers)?.allOrNull { stored ->
+    sealedSecret(stored.sealedValue)?.let { CustomHeader(stored.name, it) }
   }
 
-private fun ConnectionEntity.readable(apiFormat: ApiFormat) = Connection(
-  id = id,
-  fields = ConnectionFields(
-    name = name,
-    format = apiFormat,
-    baseUrl = baseUrl,
-    model = model,
-    contextSize = contextSize,
-    maxReplyTokens = maxReplyTokens,
-    streaming = streaming,
-    includeUsage = includeUsage,
-    samplers = StoredJson.decodeFromString<Samplers>(samplers),
-    timeoutSeconds = timeoutSeconds,
-    customBody = StoredJson.decodeFromString<JsonObject>(customBody),
-  ),
-  key = apiKey?.let(::sealedSecret),
-  headers = StoredJson.decodeFromString<List<StoredHeader>>(headers)
-    .map { CustomHeader(it.name, sealedSecret(it.sealedValue)) },
-)
+private fun <T, R : Any> List<T>.allOrNull(transform: (T) -> R?): List<R>? =
+  mapNotNull(transform).takeIf { it.size == size }
+
+private fun ConnectionEntity.readable(): Connection? {
+  val secrets = decodedSecrets(format, apiKey, headers)
+  val storedSamplers = StoredJson.decodedOrNull<Samplers>(samplers)
+  val storedBody = StoredJson.decodedOrNull<JsonObject>(customBody)
+  if (secrets == null || storedSamplers == null || storedBody == null) return null
+  return Connection(
+    id = id,
+    fields = ConnectionFields(
+      name = name,
+      format = secrets.format,
+      baseUrl = baseUrl,
+      model = model,
+      contextSize = contextSize,
+      maxReplyTokens = maxReplyTokens,
+      streaming = streaming,
+      includeUsage = includeUsage,
+      samplers = storedSamplers,
+      timeoutSeconds = timeoutSeconds,
+      customBody = storedBody,
+    ),
+    key = secrets.key,
+    headers = secrets.headers,
+  )
+}
 
 internal fun Connection.toEntity(updatedAt: Long) = ConnectionEntity(
   id = id,
@@ -113,4 +134,4 @@ internal fun Connection.toEntity(updatedAt: Long) = ConnectionEntity(
 
 private fun SealedSecret.base64(): String = Base64.encode(bytes)
 
-private fun sealedSecret(base64: String) = SealedSecret(Base64.decode(base64))
+private fun sealedSecret(base64: String): SealedSecret? = parsedOrNull { Base64.decode(base64) }?.let(::SealedSecret)

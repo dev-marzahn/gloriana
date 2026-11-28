@@ -1,19 +1,15 @@
 package dev.marzahn.gloriana.logic.connection
 
-import kotlin.uuid.Uuid
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 
 sealed interface ConnectionSaveResult {
-  data class Saved(val id: Uuid) : ConnectionSaveResult
+  class Saved(val connection: Connection) : ConnectionSaveResult
 
   data class Refused(val problems: Set<ConnectionProblem>) : ConnectionSaveResult
 
   data object NeedsPassphrase : ConnectionSaveResult
 
-  data object Locked : ConnectionSaveResult
-
-  data object KeysUnavailable : ConnectionSaveResult
-
-  data object KeysUnreadable : ConnectionSaveResult
+  data class Blocked(val keys: KeysBlocked) : ConnectionSaveResult
 
   data object Gone : ConnectionSaveResult
 

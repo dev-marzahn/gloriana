@@ -6,13 +6,14 @@ import dev.marzahn.gloriana.logic.characters.DesktopPickedFile
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.Preset
 import dev.marzahn.gloriana.logic.presets.PresetContent
-import dev.marzahn.gloriana.logic.presets.PresetEntry
 import dev.marzahn.gloriana.logic.presets.PresetImport
 import dev.marzahn.gloriana.logic.presets.PresetImportResult
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.StoredPreset
+import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
-import dev.marzahn.gloriana.ui.connections.LiveLibrary
+import dev.marzahn.gloriana.ui.state.SaveFailure
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -22,8 +23,9 @@ import kotlin.io.path.deleteIfExists
 import kotlin.io.path.writeText
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertFalse
 import kotlin.test.assertIs
-import kotlin.test.assertNull
+import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
 private const val WAIT_MILLIS = 10_000L
@@ -54,19 +56,18 @@ class PresetCommandsTest {
 
     val id: Uuid get() = stored.id
 
+
     fun read(id: Uuid = stored.id): Preset = runBlocking {
       assertIs<StoredPreset.Readable>(repository.preset(id).first()).preset
     }
 
-    fun turnOff(entry: Int, over: PresetContent = stored.content) = sessions.edit(id, over) { content ->
-      val off = content.entries[entry].id
-      content.copy(
-        rows = content.rows.map { row -> if (row is PresetEntry && row.id == off) row.copy(enabled = false) else row },
-      )
-    }
+    fun draft(): PresetContent? = sessions.current(id).unsaved?.draft
+
+    fun turnOff(entry: Int, pageShows: PresetContent = stored.content) =
+      sessions.edit(id, pageShows, PresetIntent.SetOn(stored.content.entries[entry].id, on = false))
 
     fun awaitIdle() = runBlocking {
-      withTimeout(WAIT_MILLIS) { sessions.session(id).first { it.activity == PresetActivity.Idle } }
+      withTimeout(WAIT_MILLIS) { sessions.session(id).first { it.isIdle } }
     }
 
     fun awaitStoreHolds(content: PresetContent) = runBlocking {
@@ -93,59 +94,107 @@ class PresetCommandsTest {
     commands.confirmDelete(stored)
     awaitIdle()
 
-    assertEquals(PresetNote.NotDeleted, sessions.current(id).note)
+    assertTrue(sessions.current(id).notDeleted)
     assertEquals(stored, read())
   }
 
   @Test
   fun anEditOnAPageWhoseStoredValueLagsKeepsTheSavedChange() = withPreset {
     turnOff(0)
-    val saved = checkNotNull(sessions.current(id).draft)
+    val saved = checkNotNull(draft())
     commands.save(stored)
     awaitIdle()
     awaitStoreHolds(saved)
 
-    turnOff(1, over = stored.content)
+    turnOff(1)
 
-    assertEquals(listOf(false, false), sessions.current(id).draft?.entries?.map { it.enabled })
+    assertEquals(listOf(false, false), draft()?.entries?.map { it.enabled })
   }
 
   @Test
-  fun theSavedBaselineIsDroppedOnceThePagesStoredValueHoldsIt() = withPreset {
+  fun theStoredValueTakesOverFromTheSavedBaselineOnceItArrives() = withPreset {
     turnOff(0)
-    val saved = checkNotNull(sessions.current(id).draft)
+    val saved = checkNotNull(draft())
     commands.save(stored)
     awaitIdle()
     awaitStoreHolds(saved)
 
-    turnOff(1, over = saved)
+    sessions.storedNow(id, saved)
+    assertEquals(PresetSession(), sessions.current(id))
+    turnOff(1, pageShows = saved)
 
-    val session = sessions.current(id)
-    assertNull(session.savedAhead)
-    assertEquals(listOf(false, false), session.draft?.entries?.map { it.enabled })
+    val unsaved = checkNotNull(sessions.current(id).unsaved)
+    assertEquals(saved, unsaved.baseline)
+    assertEquals(listOf(false, false), unsaved.draft.entries.map { it.enabled })
   }
 
   @Test
-  fun thePagesStateDropsTheSavedBaselineOnceItsStoredValueHoldsIt() = withPreset {
+  fun aStoredValueThatDiffersFromTheSaveStillEndsTheSavedBaseline() = withPreset {
     turnOff(0)
-    val saved = checkNotNull(sessions.current(id).draft)
+    val saved = checkNotNull(draft())
+    commands.save(stored)
+    awaitIdle()
+    awaitStoreHolds(saved)
+
+    val normalised = saved.copy(wrappers = saved.wrappers.with(WrapperPrompt.NewChat, "Changed in storage"))
+    sessions.storedNow(id, normalised)
+
+    val page = PresetPageState.Shown(stored.copy(content = normalised), sessions.current(id), export = null)
+    assertEquals(normalised, page.unsaved.baseline)
+    assertFalse(page.hasChanges)
+  }
+
+  @Test
+  fun aSavedDraftIsStoredAsWrittenSoTheSavedBaselineEnds() = withPreset {
+    sessions.edit(id, stored.content, PresetIntent.SetWrapper(WrapperPrompt.NewChat, "  Padded wrapper  "))
+    turnOff(0)
+    val saved = checkNotNull(draft())
+
+    commands.save(stored)
+    awaitIdle()
+    awaitStoreHolds(saved)
+    sessions.storedNow(id, read().content)
+
+    assertEquals(saved, read().content)
+    assertEquals(PresetSession(), sessions.current(id))
+  }
+
+  @Test
+  fun aPageStatePairingTheNewSessionWithTheOlderReadKeepsTheSavedChange() = withPreset {
+    turnOff(0)
+    val saved = checkNotNull(draft())
+    commands.save(stored)
+    awaitIdle()
+    awaitStoreHolds(saved)
+    turnOff(1, pageShows = saved)
+    sessions.storedNow(id, saved)
+
+    val page = PresetPageState.Shown(stored, sessions.current(id), export = null)
+
+    assertEquals(listOf(false, false), page.content.entries.map { it.enabled })
+  }
+
+  @Test
+  fun thePagesStateFollowsTheStoredValueAfterASave() = withPreset {
+    turnOff(0)
+    val saved = checkNotNull(draft())
     commands.save(stored)
     awaitIdle()
     awaitStoreHolds(saved)
     val page: PresetViewModel = library.koin.get()
 
-    runBlocking(Dispatchers.Main) {
+    val shown = runBlocking(Dispatchers.Main) {
       page.show(id)
-      withTimeout(WAIT_MILLIS) { page.state.first { (it as? PresetPageState.Shown)?.stored?.content == saved } }
+      withTimeout(WAIT_MILLIS) { page.state.first { (it as? PresetPageState.Shown)?.unsaved?.stored == saved } }
     }
 
-    assertNull(sessions.current(id).savedAhead)
+    assertFalse(assertIs<PresetPageState.Shown>(shown).hasChanges)
   }
 
   @Test
   fun anEditDuringSavingStaysAsTheDraftAfterTheSave() = withPreset {
     turnOff(0)
-    val saved = checkNotNull(sessions.current(id).draft)
+    val saved = checkNotNull(draft())
     commands.save(stored)
     turnOff(1)
 
@@ -153,29 +202,34 @@ class PresetCommandsTest {
     awaitStoreHolds(saved)
 
     assertEquals(listOf(false, true), read().content.entries.map { it.enabled })
-    assertEquals(listOf(false, false), sessions.current(id).draft?.entries?.map { it.enabled })
+    assertEquals(listOf(false, false), draft()?.entries?.map { it.enabled })
   }
 
   @Test
   fun aRefusedSaveKeepsTheDraftAndShowsTheNote() = withPreset {
-    sessions.edit(id, stored.content) { content ->
-      content.copy(
-        rows = content.rows.map { row ->
-          if (row is PresetEntry && row.placement is EntryPlacement.InChat) {
-            row.copy(placement = EntryPlacement.InChat(-1))
-          } else {
-            row
-          }
-        },
-      )
-    }
-    val draft = sessions.current(id).draft
+    val inChat = stored.content.entries.first { it.placement is EntryPlacement.InChat }
+    sessions.edit(id, stored.content, PresetIntent.SetPlacement(inChat.id, EntryPlacement.InChat(-1)))
+    val draft = draft()
 
     commands.save(stored)
     awaitIdle()
 
-    assertEquals(PresetNote.NotSaved, sessions.current(id).note)
-    assertEquals(draft, sessions.current(id).draft)
+    assertEquals(SaveFailure.Other, sessions.current(id).notSaved)
+    assertEquals(draft, draft())
     assertEquals(stored.content, read().content)
+  }
+
+  @Test
+  fun anEditFromAPageShowingAnOlderRowKeepsTheNewerRowUnderTheEdits() = withPreset {
+    turnOff(0)
+    val newer = stored.content.copy(wrappers = stored.content.wrappers.with(WrapperPrompt.NewChat, "From storage"))
+    sessions.storedNow(id, newer)
+
+    turnOff(1, pageShows = stored.content)
+
+    val unsaved = checkNotNull(sessions.current(id).unsaved)
+    assertEquals(newer, unsaved.baseline)
+    assertEquals("From storage", unsaved.draft.wrappers[WrapperPrompt.NewChat])
+    assertEquals(listOf(false, false), unsaved.draft.entries.map { it.enabled })
   }
 }

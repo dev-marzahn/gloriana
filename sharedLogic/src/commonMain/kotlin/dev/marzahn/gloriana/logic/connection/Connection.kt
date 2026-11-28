@@ -1,12 +1,13 @@
 package dev.marzahn.gloriana.logic.connection
 
+import dev.marzahn.gloriana.logic.json.NoFields
 import dev.marzahn.gloriana.logic.keys.SealedSecret
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
 
-enum class ApiFormat(val samplerRanges: Map<Sampler, SamplerRange>, val reportsUsageOnRequest: Boolean = false) {
+enum class ApiFormat(val samplerRanges: Map<Sampler, SamplerRange>) {
   AnthropicMessages(anthropicSamplerRanges),
-  OpenAiChatCompletions(chatCompletionsSamplerRanges, reportsUsageOnRequest = true),
+  OpenAiChatCompletions(chatCompletionsSamplerRanges),
   OpenAiResponses(responsesSamplerRanges),
 }
 
@@ -21,10 +22,8 @@ data class ConnectionFields(
   val includeUsage: Boolean = true,
   val samplers: Samplers = Samplers(),
   val timeoutSeconds: Int = DEFAULT_TIMEOUT_SECONDS,
-  val customBody: JsonObject = JsonObject(emptyMap()),
+  val customBody: JsonObject = NoFields,
 ) {
-  fun switchedTo(format: ApiFormat): ConnectionFields = copy(format = format)
-
   companion object {
     const val DEFAULT_CONTEXT_SIZE = 16_384
     const val DEFAULT_MAX_REPLY_TOKENS = 1_024
@@ -40,8 +39,11 @@ class Connection(
   val key: SealedSecret?,
   val headers: List<CustomHeader>,
 ) {
-  val holdsSecrets: Boolean get() = key != null || headers.isNotEmpty()
+  val holdsSecrets: Boolean get() = holdsSealedValues(key, headers)
 }
+
+internal fun holdsSealedValues(key: SealedSecret?, headers: List<CustomHeader>): Boolean =
+  key != null || headers.isNotEmpty()
 
 enum class ConnectionTemplate(val templateName: String, val format: ApiFormat, val baseUrl: String) {
   Anthropic("Anthropic", ApiFormat.AnthropicMessages, "https://api.anthropic.com/v1"),

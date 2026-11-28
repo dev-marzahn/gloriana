@@ -3,6 +3,8 @@ package dev.marzahn.gloriana.stubhost
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.milliseconds
 
+internal const val NORMAL_MODE = "normal"
+
 internal sealed interface Outcome {
   data class Replied(val reply: Reply) : Outcome
 
@@ -31,7 +33,7 @@ internal data class Mode(
 
 internal class Modes(defaultDelay: Duration, defaultSlowPause: Duration) {
   private val fixed: Map<String, Mode> = mapOf(
-    "normal" to Mode(Outcome.Replied(Reply.plain)),
+    NORMAL_MODE to Mode(Outcome.Replied(Reply.plain)),
     "reasoning" to Mode(Outcome.Replied(Reply.withReasoning)),
     "status" to Mode(Outcome.Replied(Reply.withStatus)),
     "refusal" to Mode(Outcome.Replied(Reply.refusal)),

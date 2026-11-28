@@ -35,7 +35,6 @@ import dev.marzahn.gloriana.ui.resources.delete_group_detail
 import dev.marzahn.gloriana.ui.resources.filled_in
 import dev.marzahn.gloriana.ui.resources.fold_group
 import dev.marzahn.gloriana.ui.resources.group_empty_hint
-import dev.marzahn.gloriana.ui.resources.group_more
 import dev.marzahn.gloriana.ui.resources.group_no_entries
 import dev.marzahn.gloriana.ui.resources.ic_auto_awesome
 import dev.marzahn.gloriana.ui.resources.ic_chevron_right
@@ -43,6 +42,7 @@ import dev.marzahn.gloriana.ui.resources.ic_delete
 import dev.marzahn.gloriana.ui.resources.ic_drag_indicator
 import dev.marzahn.gloriana.ui.resources.ic_edit
 import dev.marzahn.gloriana.ui.resources.ic_expand_more
+import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.rename_group
 import dev.marzahn.gloriana.ui.resources.unfold_group
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
@@ -167,7 +167,7 @@ internal fun GroupRow(
         Text(count, style = type.bodySmall, color = colors.textSubtle, maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
       GlorianaMoreMenu(
-        stringResource(Res.string.group_more, group.name),
+        stringResource(Res.string.more_for, group.name),
         listOf(
           MenuItem(stringResource(Res.string.rename_group), Res.drawable.ic_edit, {
             actions.onAskGroup(GroupPrompt.Rename(group.id, group.name))

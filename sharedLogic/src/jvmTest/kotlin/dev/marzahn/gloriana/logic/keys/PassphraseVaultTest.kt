@@ -56,7 +56,7 @@ class PassphraseVaultTest {
     val key = passphraseSet().sealed(apiKey(connection), "sk-passphrase")
 
     val restarted = vaults.start()
-    assertEquals(OpenResult.Locked, restarted.open(apiKey(connection), key))
+    assertEquals(OpenResult.Blocked(KeysBlocked.Locked), restarted.open(apiKey(connection), key))
     assertEquals(VaultState.Locked, restarted.state.value)
     assertEquals(PassphraseResult.Accepted, restarted.unlock("correct horse".passphrase()))
     assertEquals("sk-passphrase", restarted.opened(apiKey(connection), key))
@@ -111,8 +111,8 @@ class PassphraseVaultTest {
 
     val restarted = vaults.start()
     assertEquals(VaultState.PassphraseDamaged, restarted.prepare())
-    assertEquals(OpenResult.Locked, restarted.open(apiKey(connection), key))
-    assertEquals(SealResult.Locked, restarted.seal(apiKey(connection), "sk-new"))
+    assertEquals(OpenResult.Blocked(KeysBlocked.Locked), restarted.open(apiKey(connection), key))
+    assertEquals(SealResult.Blocked(KeysBlocked.Locked), restarted.seal(apiKey(connection), "sk-new"))
   }
 
   @Test
@@ -123,8 +123,8 @@ class PassphraseVaultTest {
     val restarted = vaults.start()
     restarted.deferUnlock()
     assertEquals(VaultState.Locked, restarted.state.value)
-    assertEquals(OpenResult.Locked, restarted.open(apiKey(connection), key))
-    assertEquals(SealResult.Locked, restarted.seal(apiKey(connection), "sk-new"))
+    assertEquals(OpenResult.Blocked(KeysBlocked.Locked), restarted.open(apiKey(connection), key))
+    assertEquals(SealResult.Blocked(KeysBlocked.Locked), restarted.seal(apiKey(connection), "sk-new"))
     assertEquals(VaultState.Locked, restarted.state.value)
     assertEquals(PassphraseResult.NotAvailable, restarted.unlock("correct horse".passphrase()))
 
@@ -232,7 +232,7 @@ class PassphraseVaultTest {
   fun aLockedVaultAsksForThePassphraseNotANewOne() = runTest {
     passphraseSet()
 
-    assertEquals(SealResult.Locked, vaults.start().seal(apiKey(connection), "sk-later"))
+    assertEquals(SealResult.Blocked(KeysBlocked.Locked), vaults.start().seal(apiKey(connection), "sk-later"))
   }
 
   @Test

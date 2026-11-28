@@ -14,11 +14,12 @@ val connectionsModule = module {
   single { get<GlorianaDatabase>().connectionDao() }
   single { ConnectionsNeedingDataKeys(get()) } bind StoredConnections::class
   single { DefaultConnection(get(), get()) }
-  single { ConnectionWrites(get(), get(), get(), get(), get()) }
+  single { ConnectionWrites(get(), get(), get(), get(), get(), get()) }
   single { ConnectionRepository(get(), get(), get(), get(), get(), get()) }
   single { GlobalModelSettings(get()) }
+  single { KeysUnlock(get(), get()) }
 }
 
 internal class ConnectionsNeedingDataKeys(private val dao: ConnectionDao) : StoredConnections {
-  override suspend fun ids(): Set<Uuid> = dao.all().filter { it.needsDataKey }.mapTo(HashSet()) { it.id }
+  override suspend fun ids(): Set<Uuid> = dao.allSecretColumns().filter { it.needsDataKey }.mapTo(HashSet()) { it.id }
 }

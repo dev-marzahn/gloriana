@@ -12,17 +12,16 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextReplacement
 import androidx.compose.ui.test.v2.runComposeUiTest
+import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.ui.App
-import dev.marzahn.gloriana.ui.connections.LiveLibrary
-import dev.marzahn.gloriana.ui.connections.MemoryKeychain
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.connections_error
 import dev.marzahn.gloriana.ui.resources.destination_settings
 import dev.marzahn.gloriana.ui.resources.discard
+import dev.marzahn.gloriana.ui.resources.key_file_unreadable_detail
 import dev.marzahn.gloriana.ui.resources.key_missing_key_short
 import dev.marzahn.gloriana.ui.resources.keys_unreadable
-import dev.marzahn.gloriana.ui.resources.key_file_unreadable_detail
 import dev.marzahn.gloriana.ui.resources.keys_unreadable_until_loaded_detail
 import dev.marzahn.gloriana.ui.resources.model_settings
 import dev.marzahn.gloriana.ui.resources.no_keys_held
@@ -31,7 +30,11 @@ import dev.marzahn.gloriana.ui.resources.show_key
 import dev.marzahn.gloriana.ui.resources.start_over
 import dev.marzahn.gloriana.ui.resources.start_over_confirm
 import dev.marzahn.gloriana.ui.resources.start_over_keys_erased
+import dev.marzahn.gloriana.ui.resources.start_over_text
 import dev.marzahn.gloriana.ui.resources.unreadable_note_saved
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
+import dev.marzahn.gloriana.ui.testing.MemoryKeychain
+import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
 import kotlin.test.assertEquals
@@ -200,6 +203,23 @@ class StartOverTest {
         waitFor(hasText(getString(Res.string.start_over)) and hasClickAction())
         assertEquals(emptyList(), library.keysetFiles())
       }
+    }
+  }
+
+  @Test
+  fun theStartOverQuestionCountsTheConnectionsHoldingKeysNowNotWhenItOpened() = LiveLibrary.use { library ->
+    runComposeUiTest {
+      val work = library.created("Work", KeyInput.Entered("sk-made-up"))
+      library.created("Home", KeyInput.Entered("sk-made-up-too"))
+      library.damageDeviceKeyset()
+      library.restart()
+      openSettings(library)
+      tap(hasText(getString(Res.string.start_over)) and hasClickAction())
+      waitFor(hasText(getPluralString(Res.plurals.start_over_text, 2, 2)))
+
+      library.koin.get<ConnectionRepository>().delete(work.id)
+
+      waitFor(hasText(getPluralString(Res.plurals.start_over_text, 1, 1)))
     }
   }
 }

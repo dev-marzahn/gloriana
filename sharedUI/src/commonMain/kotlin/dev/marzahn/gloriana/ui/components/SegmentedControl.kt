@@ -27,7 +27,8 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.theme.GlorianaIndication
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
-import dev.marzahn.gloriana.ui.theme.disabled
+import dev.marzahn.gloriana.ui.theme.animateLookColor
+import dev.marzahn.gloriana.ui.theme.disabledUnless
 import dev.marzahn.gloriana.ui.theme.lookShadow
 
 private val TrackInset = 3.dp
@@ -98,7 +99,7 @@ private fun RowScope.SegmentView(
     Text(
       segment.label,
       style = GlorianaTheme.type.material.labelLarge,
-      color = if (enabled) textColor else textColor.disabled(),
+      color = textColor.disabledUnless(enabled),
       maxLines = 1,
     )
   }

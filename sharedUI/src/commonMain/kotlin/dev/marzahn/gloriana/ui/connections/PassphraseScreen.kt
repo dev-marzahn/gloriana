@@ -2,11 +2,7 @@ package dev.marzahn.gloriana.ui.connections
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -15,12 +11,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.marzahn.gloriana.ui.components.BackButton
 import dev.marzahn.gloriana.ui.components.ButtonKind
+import dev.marzahn.gloriana.ui.components.DetailPage
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.LabelledField
 import dev.marzahn.gloriana.ui.components.NoteCard
 import dev.marzahn.gloriana.ui.components.NoteLine
+import dev.marzahn.gloriana.ui.components.PageBack
+import dev.marzahn.gloriana.ui.components.PageTitle
 import dev.marzahn.gloriana.ui.components.Panel
 import dev.marzahn.gloriana.ui.components.boldThenPlain
 import dev.marzahn.gloriana.ui.navigation.Destination
@@ -39,7 +37,6 @@ import dev.marzahn.gloriana.ui.resources.ic_password_20
 import dev.marzahn.gloriana.ui.resources.new_passphrase
 import dev.marzahn.gloriana.ui.resources.passphrase
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
-import dev.marzahn.gloriana.ui.theme.Navigation
 import org.jetbrains.compose.resources.stringResource
 import org.koin.compose.viewmodel.koinViewModel
 
@@ -62,19 +59,9 @@ internal fun PassphraseContent(
   modifier: Modifier = Modifier,
 ) {
   val spacing = GlorianaTheme.spacing
-  val colors = GlorianaTheme.colors
-  val type = GlorianaTheme.type.material
-  val onWorkbench = GlorianaTheme.widthClass.navigation == Navigation.Workbench
   val entry = state.entry
-  Column(
-    modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(if (onWorkbench) spacing.s20 else spacing.s16),
-    verticalArrangement = Arrangement.spacedBy(spacing.s16),
-  ) {
-    if (!onWorkbench) BackButton(stringResource(Res.string.back_to_settings), onBack)
-    Column(verticalArrangement = Arrangement.spacedBy(spacing.s6)) {
-      Text(stringResource(Res.string.passphrase), style = type.headlineLarge, color = colors.text)
-      Text(stringResource(Res.string.change_passphrase_text), style = type.bodyMedium, color = colors.textMuted)
-    }
+  DetailPage(PageBack(stringResource(Res.string.back_to_settings), onBack), modifier) {
+    PageTitle(stringResource(Res.string.passphrase), intro = stringResource(Res.string.change_passphrase_text))
     GlorianaButton(
       stringResource(if (entry.busy) Res.string.changing else Res.string.change_passphrase),
       { onIntent(ChangeIntent.Change) },

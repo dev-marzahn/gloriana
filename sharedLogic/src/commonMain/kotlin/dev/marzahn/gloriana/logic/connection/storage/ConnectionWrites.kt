@@ -23,13 +23,12 @@ internal enum class RowDelete { Deleted, Gone }
 
 internal class ConnectionWrites(
   private val database: GlorianaDatabase,
+  private val dao: ConnectionDao,
   private val default: DefaultConnection,
   private val tombstones: Tombstones,
   private val clock: UpdatedAtClock,
   private val faults: Faults,
 ) {
-  private val dao = database.connectionDao()
-
   suspend fun nameTakenByAnother(id: Uuid, name: String): Boolean =
     dao.idNamed(nameKey(name)).let { it != null && it != id }
 
@@ -40,7 +39,7 @@ internal class ConnectionWrites(
       dao.insert(connection.toEntity(clock.updatedAt(previous = null)))
       faults.reached(ConnectionWritePoint.InsertRowWritten)
       default.claimIfUnset(connection.id)
-      ConnectionSaveResult.Saved(connection.id)
+      ConnectionSaveResult.Saved(connection)
     }
   }
 
@@ -53,7 +52,7 @@ internal class ConnectionWrites(
       else -> {
         dao.update(connection.toEntity(clock.updatedAt(previous.updatedAt)))
         faults.reached(ConnectionWritePoint.UpdateRowWritten)
-        ConnectionSaveResult.Saved(connection.id)
+        ConnectionSaveResult.Saved(connection)
       }
     }
   }

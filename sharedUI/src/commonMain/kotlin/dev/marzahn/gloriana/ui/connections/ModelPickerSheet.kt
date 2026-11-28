@@ -33,6 +33,7 @@ import dev.marzahn.gloriana.ui.components.SkeletonBlock
 import dev.marzahn.gloriana.ui.components.SkeletonSurface
 import dev.marzahn.gloriana.ui.components.boldThenPlain
 import dev.marzahn.gloriana.ui.components.tappable
+import dev.marzahn.gloriana.ui.components.textWith
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.asking_models
 import dev.marzahn.gloriana.ui.resources.cancel
@@ -88,7 +89,7 @@ fun ModelPickerSheet(
           when (val refusal = list.refusal) {
             is Refusal.Host -> NoteLine(
               boldThenPlain(
-                stringResource(Res.string.model_list_failed, refusal.failure.reason()),
+                textWith(Res.string.model_list_failed, refusal.failure.reason()),
                 refusal.failure.details(StepFor.ModelList),
               ),
             )

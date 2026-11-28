@@ -1,9 +1,9 @@
 package dev.marzahn.gloriana.logic.presets.file
 
 import dev.marzahn.gloriana.logic.json.arrayAt
-import dev.marzahn.gloriana.logic.json.boolean
 import dev.marzahn.gloriana.logic.json.int
 import dev.marzahn.gloriana.logic.json.objectAt
+import dev.marzahn.gloriana.logic.json.quotedOrBareBoolean
 import dev.marzahn.gloriana.logic.json.string
 import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import kotlinx.serialization.json.JsonArray
@@ -49,7 +49,7 @@ internal class PresetFileView(val source: JsonObject) {
   val entries: List<FileEntry> = if (globalOrder == null) {
     firstPrompts.keys.map { entry(it, enabled = true) }
   } else {
-    entrySlots.map { entry(it.identifier, enabled = it.item.boolean(ENABLED_KEY) ?: true) }
+    entrySlots.map { entry(it.identifier, enabled = it.item.quotedOrBareBoolean(ENABLED_KEY) ?: true) }
   }
 
   val gloriana: JsonObject? = source.objectAt(GLORIANA_KEY)
@@ -68,7 +68,7 @@ internal class PresetFileView(val source: JsonObject) {
     holder(prompt.home)?.string(prompt.key) ?: prompt.pinnedDefault
   }
 
-  fun holder(home: WrapperHome): JsonObject? = when (home) {
+  private fun holder(home: WrapperHome): JsonObject? = when (home) {
     WrapperHome.TopLevel -> source
     WrapperHome.GlorianaKey -> gloriana
   }

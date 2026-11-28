@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.logic.storage
+package dev.marzahn.gloriana.logic.connection.storage
 
 import androidx.room.migration.Migration
 import androidx.sqlite.SQLiteConnection

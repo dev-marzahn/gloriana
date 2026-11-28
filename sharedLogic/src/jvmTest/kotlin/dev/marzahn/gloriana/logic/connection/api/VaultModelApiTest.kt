@@ -6,11 +6,13 @@ import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
 import dev.marzahn.gloriana.logic.connection.HeaderDraft
 import dev.marzahn.gloriana.logic.connection.HeldSecrets
 import dev.marzahn.gloriana.logic.connection.KeyInput
+import dev.marzahn.gloriana.logic.connection.MASK
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.draft
 import dev.marzahn.gloriana.logic.connection.entered
 import dev.marzahn.gloriana.logic.keys.KeyFileResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysBlocked
 import dev.marzahn.gloriana.logic.keys.OpenResult
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
@@ -129,15 +131,12 @@ class VaultModelApiTest {
   fun aLockedOrUnavailableVaultIsRefusedAndNothingIsSent() = runBlocking {
     val connection = stored(KeyInput.Removed, listOf(HeaderDraft("X-Org", entered("org-7"))))
 
-    mapOf(
-      OpenResult.Locked to ModelApiError.KeysLocked,
-      OpenResult.Unavailable to ModelApiError.KeysUnavailable(HeldSecrets.HeaderValues),
-    )
-      .forEach { (answer, refusal) ->
-        val events = api(AnsweringVault(library.vault, answer)).reply(greeting, connection).toList()
+    listOf(KeysBlocked.Locked, KeysBlocked.Unavailable).forEach { why ->
+      val events = api(AnsweringVault(library.vault, OpenResult.Blocked(why))).reply(greeting, connection).toList()
 
-        assertEquals(listOf<ModelEvent>(ModelEvent.Failed(refusal)), events, "$answer")
-      }
+      val refusal = ModelApiError.KeysNotOpened(why, HeldSecrets.HeaderValues)
+      assertEquals(listOf<ModelEvent>(ModelEvent.Failed(refusal)), events, "$why")
+    }
     assertEquals(emptyList(), stub.recordedRequests())
   }
 }

@@ -44,7 +44,9 @@ fun RetryNote(headline: String, detail: StringResource, modifier: Modifier = Mod
   }
 }
 
-fun boldThenPlain(bold: String, plain: String?): AnnotatedString = buildAnnotatedString {
+fun boldThenPlain(bold: String, plain: String?): AnnotatedString = boldThenPlain(AnnotatedString(bold), plain)
+
+fun boldThenPlain(bold: AnnotatedString, plain: String?): AnnotatedString = buildAnnotatedString {
   withStyle(SpanStyle(fontWeight = FontWeight.Medium)) { append(bold) }
   if (plain != null) append(" $plain")
 }

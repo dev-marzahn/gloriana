@@ -20,10 +20,8 @@ internal class HostRequest(
   val body: JsonObject?,
   val timeoutSeconds: Int,
 ) {
-  val secrets: Set<String> =
-    headers.filter { it.name in credentialHeaders }.flatMap { credentialParts(it.value) }.toSet()
-
-  val scrubber: Scrubber = Scrubber(secrets)
+  val scrubber: Scrubber =
+    Scrubber(headers.filter { it.name in credentialHeaders }.flatMap { credentialParts(it.value) }.toSet())
 }
 
 private val credentialHeaders: Set<HeaderName> =

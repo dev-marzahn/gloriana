@@ -9,3 +9,16 @@ internal inline fun <S, T> MutableStateFlow<S>.updateAndClaim(change: (S) -> Pai
     if (compareAndSet(before, after)) return claimed
   }
 }
+
+interface StateCell<S> {
+  fun <R : Any> claim(change: (S) -> Pair<S, R>?): R?
+}
+
+fun <S> MutableStateFlow<S>.asCell(): StateCell<S> = object : StateCell<S> {
+  override fun <R : Any> claim(change: (S) -> Pair<S, R>?): R? =
+    updateAndClaim { current -> change(current) ?: (current to null) }
+}
+
+fun <S> StateCell<S>.update(change: (S) -> S) {
+  claim { current -> change(current) to Unit }
+}

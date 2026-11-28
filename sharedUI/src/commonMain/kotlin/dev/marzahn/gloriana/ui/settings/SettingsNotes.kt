@@ -22,7 +22,6 @@ import dev.marzahn.gloriana.ui.resources.delete_failed
 import dev.marzahn.gloriana.ui.resources.delete_failed_detail
 import dev.marzahn.gloriana.ui.resources.ic_lock_20
 import dev.marzahn.gloriana.ui.resources.ic_lock_open_20
-import dev.marzahn.gloriana.ui.resources.ic_refresh_20
 import dev.marzahn.gloriana.ui.resources.ic_restart_alt_20
 import dev.marzahn.gloriana.ui.resources.key_file_unreadable
 import dev.marzahn.gloriana.ui.resources.key_file_unreadable_detail
@@ -35,14 +34,12 @@ import dev.marzahn.gloriana.ui.resources.keys_unreadable_detail
 import dev.marzahn.gloriana.ui.resources.keys_unreadable_until_loaded_detail
 import dev.marzahn.gloriana.ui.resources.not_made_default
 import dev.marzahn.gloriana.ui.resources.not_made_default_detail
-import dev.marzahn.gloriana.ui.resources.retry
 import dev.marzahn.gloriana.ui.resources.start_over
 import dev.marzahn.gloriana.ui.resources.start_over_failed_detail
 import dev.marzahn.gloriana.ui.resources.start_over_keys_erased
 import dev.marzahn.gloriana.ui.resources.start_over_keys_erased_detail
 import dev.marzahn.gloriana.ui.resources.unlock
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 

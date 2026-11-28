@@ -9,7 +9,6 @@ import androidx.compose.foundation.lazy.grid.LazyGridScope
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -19,7 +18,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import dev.marzahn.gloriana.ui.characters.CardFiles
 import dev.marzahn.gloriana.ui.characters.CharacterRoute
 import dev.marzahn.gloriana.ui.characters.FullScreenAvatar
 import dev.marzahn.gloriana.ui.characters.pickCharacter
@@ -28,10 +26,12 @@ import dev.marzahn.gloriana.ui.components.EmptyBlock
 import dev.marzahn.gloriana.ui.components.ErrorNote
 import dev.marzahn.gloriana.ui.components.Segment
 import dev.marzahn.gloriana.ui.components.SegmentedControl
+import dev.marzahn.gloriana.ui.files.FileChoice
 import dev.marzahn.gloriana.ui.files.rememberFilePicker
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LibraryKind
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
+import dev.marzahn.gloriana.ui.navigation.OpenPagesWhileShown
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
 import dev.marzahn.gloriana.ui.presets.PresetsLibrary
@@ -51,12 +51,12 @@ import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Navigation
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
-import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.uuid.Uuid
 
 private const val COLUMNS = 3
 private const val SKELETON_TILES = 6
+private val CardFiles = FileChoice(listOf("png", "json", "charx"), several = true)
 
 class LibraryActions(
   val onCreate: () -> Unit = {},
@@ -102,7 +102,7 @@ private fun CharactersLibrary(
   var creating by rememberSaveable { mutableStateOf(false) }
   var previewing by rememberSaveable { mutableStateOf<String?>(null) }
   var enlarged by rememberSaveable { mutableStateOf(false) }
-  LaunchedEffect(viewModel, navigator) { viewModel.openPagesWhileShown { navigator.pickCharacter(it) } }
+  OpenPagesWhileShown(Destination.Library, viewModel::openPagesWhileShown) { navigator.pickCharacter(it) }
   val actions = LibraryActions(
     onCreate = { creating = true },
     onTile = { id -> if (onWorkbench) navigator.pickCharacter(id) else previewing = id.toString() },

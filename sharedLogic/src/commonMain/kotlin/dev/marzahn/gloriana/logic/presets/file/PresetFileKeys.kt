@@ -16,9 +16,9 @@ internal const val GROUPS_KEY = "groups"
 internal const val GROUP_NAME_KEY = "name"
 internal const val GROUP_AT_KEY = "at"
 
-internal enum class WrapperHome {
-  TopLevel,
-  GlorianaKey,
+internal enum class WrapperHome(val omitsDefault: Boolean) {
+  TopLevel(omitsDefault = false),
+  GlorianaKey(omitsDefault = true),
 }
 
 internal val WrapperPrompt.home: WrapperHome
@@ -39,14 +39,7 @@ internal val WrapperPrompt.home: WrapperHome
 
 internal val PresetSampler.fileKey: String
   get() = when (this) {
-    is PresetSampler.OnConnection -> when (sampler) {
-      Sampler.Temperature -> "temperature"
-      Sampler.TopP -> "top_p"
-      Sampler.TopK -> "top_k"
-      Sampler.FrequencyPenalty -> "frequency_penalty"
-      Sampler.PresencePenalty -> "presence_penalty"
-      Sampler.Seed -> "seed"
-    }
+    is PresetSampler.OnConnection -> sampler.wireName
     PresetSampler.WithoutConnectionField.TopA -> "top_a"
     PresetSampler.WithoutConnectionField.MinP -> "min_p"
     PresetSampler.WithoutConnectionField.RepetitionPenalty -> "repetition_penalty"

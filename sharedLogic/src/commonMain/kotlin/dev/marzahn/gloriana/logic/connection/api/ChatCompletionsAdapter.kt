@@ -25,6 +25,7 @@ internal object ChatCompletionsAdapter : FormatAdapter {
   override val fixedHeaders = emptyList<HostHeader>()
 
   override val keyHeaderName = AuthorizationHeader
+  override val reportsUsageOnRequest = true
 
   override fun keyValue(key: String) = bearer(key)
 

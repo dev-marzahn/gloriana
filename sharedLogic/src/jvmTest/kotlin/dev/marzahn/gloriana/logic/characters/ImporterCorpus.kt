@@ -4,27 +4,13 @@ import dev.marzahn.gloriana.logic.characters.CardFixtures.base64
 import dev.marzahn.gloriana.logic.characters.CardFixtures.image
 import dev.marzahn.gloriana.logic.characters.CardFixtures.png
 import dev.marzahn.gloriana.logic.characters.CardFixtures.zip
-import dev.marzahn.gloriana.logic.files.ByteSource
-import dev.marzahn.gloriana.logic.files.OpenedFile
-import dev.marzahn.gloriana.logic.files.PickedFile
+import dev.marzahn.gloriana.logic.files.CorpusFile
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import java.util.zip.ZipEntry
 
 private const val PNG_IHDR_DATA_BYTE = 18
-
-class CorpusFile(override val name: String, val bytes: ByteArray) : PickedFile {
-  override fun open(): OpenedFile = bytes.inputStream().let { input ->
-    OpenedFile.Opened(
-      object : ByteSource {
-        override fun read(into: ByteArray, offset: Int, length: Int) = input.read(into, offset, length)
-
-        override fun close() = input.close()
-      },
-    )
-  }
-}
 
 object ImporterCorpus {
   private fun card(text: String): JsonObject = Json.parseToJsonElement(text).jsonObject

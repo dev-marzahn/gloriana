@@ -5,24 +5,38 @@ import androidx.lifecycle.viewModelScope
 import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
 import dev.marzahn.gloriana.logic.connection.GlobalSamplersSave
 import dev.marzahn.gloriana.logic.connection.Sampler
+import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_model_settings_saved
+import dev.marzahn.gloriana.ui.state.DraftEdit
+import dev.marzahn.gloriana.ui.state.SaveFailure
+import dev.marzahn.gloriana.ui.state.StateCell
+import dev.marzahn.gloriana.ui.state.StoredReads
+import dev.marzahn.gloriana.ui.state.StoredValue
+import dev.marzahn.gloriana.ui.state.UnsavedCopy
+import dev.marzahn.gloriana.ui.state.UnsavedSaves
+import dev.marzahn.gloriana.ui.state.WhileCollected
+import dev.marzahn.gloriana.ui.state.alongside
+import dev.marzahn.gloriana.ui.state.asCell
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 
-enum class ModelSettingsNote { NotSavedStorage, NotSaved }
+data class SetSampler(val sampler: Sampler, val text: String) : DraftEdit<SamplerTexts> {
+  override fun applied(to: SamplerTexts) = to.with(sampler, text)
+
+  override fun replaces(earlier: DraftEdit<SamplerTexts>) = earlier is SetSampler && earlier.sampler == sampler
+}
 
 sealed interface ModelSettingsState {
   data object Loading : ModelSettingsState
@@ -30,87 +44,111 @@ sealed interface ModelSettingsState {
   data object CouldNotLoad : ModelSettingsState
 
   data class Shown(
-    val copy: EditedCopy<SamplerTexts>,
+    val unsaved: UnsavedCopy<SamplerTexts>,
     val errors: Map<Sampler, SamplerError> = emptyMap(),
-    val saving: Boolean = false,
-    val note: ModelSettingsNote? = null,
-  ) : ModelSettingsState
+    val note: SaveFailure? = null,
+  ) : ModelSettingsState {
+    val canSave: Boolean get() = unsaved.canSave
+  }
 }
+
+internal enum class SettingsRead { Loading, Failed, Read }
+
+internal data class ModelSettingsSession(
+  val read: SettingsRead = SettingsRead.Loading,
+  val page: ModelSettingsState.Shown? = null,
+) {
+  val state: ModelSettingsState
+    get() = when (read) {
+      SettingsRead.Loading -> ModelSettingsState.Loading
+      SettingsRead.Failed -> ModelSettingsState.CouldNotLoad
+      SettingsRead.Read -> page ?: ModelSettingsState.Loading
+    }
+
+  fun withStored(stored: StoredValue<Samplers>): ModelSettingsSession = when (stored) {
+    StoredValue.Loading -> copy(read = SettingsRead.Loading)
+    StoredValue.CouldNotLoad -> copy(read = SettingsRead.Failed)
+    is StoredValue.Found -> {
+      val texts = SamplerTexts.of(stored.value)
+      val shown = page ?: ModelSettingsState.Shown(UnsavedCopy.of(texts, SamplerTexts::sameAs))
+      ModelSettingsSession(SettingsRead.Read, shown.copy(unsaved = shown.unsaved.storedNow(texts)))
+    }
+  }
+
+  fun withPage(change: (ModelSettingsState.Shown) -> ModelSettingsState.Shown) = copy(page = page?.let(change))
+
+  fun withNote(note: SaveFailure?) = withPage { it.copy(note = note) }
+}
+
+internal fun modelSettingsSaves(cell: StateCell<ModelSettingsSession>) =
+  UnsavedSaves(cell, { it.page?.unsaved }) { current, unsaved -> current.withPage { it.copy(unsaved = unsaved) } }
 
 class ModelSettingsViewModel(
   private val settings: GlobalModelSettings,
   private val messages: AppMessages,
 ) : ViewModel() {
-  private val mutableState = MutableStateFlow<ModelSettingsState>(ModelSettingsState.Loading)
+  private val session = MutableStateFlow(ModelSettingsSession())
+  private val reads = StoredReads.values<Samplers>()
   private val focusChannel = Channel<Sampler>(Channel.BUFFERED)
+  private val saves = modelSettingsSaves(session.asCell())
 
-  val state: StateFlow<ModelSettingsState> = mutableState.asStateFlow()
+  private val following = reads.follow(key = Unit) { settings.samplers() }
+    .onEach { read -> session.update { it.withStored(read) } }
+
+  val state: StateFlow<ModelSettingsState> = session.map { it.state }
+    .alongside(following)
+    .stateIn(viewModelScope, WhileCollected, ModelSettingsState.Loading)
 
   val focusRequests: Flow<Sampler> = focusChannel.receiveAsFlow()
 
-  init {
-    load()
+  fun retry() = reads.retry()
+
+  fun edit(sampler: Sampler, text: String) = update { shown ->
+    shown.copy(unsaved = shown.unsaved.edited(SetSampler(sampler, text)), errors = shown.errors - sampler, note = null)
   }
 
-  fun retry() {
-    mutableState.value = ModelSettingsState.Loading
-    load()
-  }
-
-  fun edit(sampler: Sampler, text: String) {
-    update {
-      it.copy(copy = it.copy.edited { texts -> texts.with(sampler, text) }, errors = it.errors - sampler, note = null)
-    }
-  }
-
-  fun discard() {
-    update { it.copy(copy = it.copy.discarded(), errors = emptyMap(), note = null) }
-  }
+  fun discard() = update { it.copy(unsaved = it.unsaved.discarded(), errors = emptyMap(), note = null) }
 
   fun save() {
-    val shown = (mutableState.value as? ModelSettingsState.Shown)?.takeUnless { it.saving } ?: return
-    val draft = shown.copy.draft
-    val entryErrors = draft.entryErrors()
-    if (entryErrors.isNotEmpty()) {
-      refuse(entryErrors)
-      return
-    }
-    update { it.copy(saving = true, note = null) }
-    viewModelScope.launch {
-      val samplers = draft.toSamplers()
-      when (val result = settings.setSamplers(samplers)) {
-        GlobalSamplersSave.Saved -> {
-          update { it.copy(copy = it.copy.copy(stored = SamplerTexts.of(samplers)), saving = false) }
-          messages.show(AppMessage(getString(Res.string.snack_model_settings_saved)))
-        }
-        is GlobalSamplersSave.Refused -> refuse(
-          result.outsideEveryFormat.mapNotNull { sampler ->
-            val value = sampler.valueIn(samplers) ?: return@mapNotNull null
-            val widest = sampler.widestRange() ?: return@mapNotNull null
-            sampler to SamplerError.NoFormatTakes(value, widest)
-          }.toMap(),
-        )
-        GlobalSamplersSave.StorageFull -> update { it.copy(saving = false, note = ModelSettingsNote.NotSavedStorage) }
-        GlobalSamplersSave.Failed -> update { it.copy(saving = false, note = ModelSettingsNote.NotSaved) }
-      }
+    val texts = (session.value.state as? ModelSettingsState.Shown)?.takeIf { it.canSave }?.unsaved?.draft ?: return
+    val errors = texts.entryErrors()
+    when {
+      errors.isNotEmpty() -> refuse(errors)
+      saves.start(ready = { _, unsaved -> unsaved.draft === texts }, started = { it.withNote(null) }) != null ->
+        viewModelScope.launch { write(texts) }
     }
   }
+
+  private fun update(change: (ModelSettingsState.Shown) -> ModelSettingsState.Shown) =
+    session.update { it.withPage(change) }
+
+  private suspend fun write(texts: SamplerTexts) {
+    val samplers = texts.toSamplers()
+    when (val result = settings.setSamplers(samplers)) {
+      GlobalSamplersSave.Saved -> {
+        saves.saved(SamplerTexts.of(samplers))
+        messages.show(AppMessage(getString(Res.string.snack_model_settings_saved)))
+      }
+      is GlobalSamplersSave.Refused -> {
+        saves.notSaved()
+        refuse(outsideEveryFormat(result, samplers))
+      }
+      GlobalSamplersSave.StorageFull -> notSaved(SaveFailure.Storage)
+      GlobalSamplersSave.Failed -> notSaved(SaveFailure.Other)
+    }
+  }
+
+  private fun notSaved(failure: SaveFailure) = saves.notSaved { it.withNote(failure) }
 
   private fun refuse(errors: Map<Sampler, SamplerError>) {
-    update { it.copy(saving = false, errors = errors) }
+    update { it.copy(errors = errors) }
     Sampler.entries.firstOrNull { it in errors }?.let { focusChannel.trySend(it) }
   }
-
-  private fun load() {
-    viewModelScope.launch {
-      mutableState.value = settings.samplers()
-        .map<_, ModelSettingsState> { ModelSettingsState.Shown(EditedCopy.of(SamplerTexts.of(it))) }
-        .catch { emit(ModelSettingsState.CouldNotLoad) }
-        .first()
-    }
-  }
-
-  private fun update(change: (ModelSettingsState.Shown) -> ModelSettingsState.Shown) {
-    mutableState.update { current -> (current as? ModelSettingsState.Shown)?.let(change) ?: current }
-  }
 }
+
+private fun outsideEveryFormat(result: GlobalSamplersSave.Refused, samplers: Samplers): Map<Sampler, SamplerError> =
+  result.outsideEveryFormat.mapNotNull { sampler ->
+    val value = sampler.valueIn(samplers) ?: return@mapNotNull null
+    val widest = sampler.widestRange() ?: return@mapNotNull null
+    sampler to SamplerError.NoFormatTakes(value, widest)
+  }.toMap()

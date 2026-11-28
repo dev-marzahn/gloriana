@@ -46,7 +46,7 @@ private fun Route.recordAndAnswerEveryOtherRequest(record: RequestRecord, endpoi
       record.append(request.httpMethod.value, request.path(), request.queryString(), request.headers.toMap(), body)
       when (val target = endpoints.resolve(request.httpMethod, request.path())) {
         is Target.Model -> call.serve(target, body)
-        is Target.ModelList -> call.listModels(target.mode)
+        is Target.ModelList -> call.listModels(target)
         is Target.NoModel -> call.respondFailure(target.format, Failure(FailureKind.NOT_FOUND, endpoints.howToCall))
         Target.Nowhere -> call.respondText(endpoints.howToCall, ContentType.Text.Plain, HttpStatusCode.NotFound)
       }
@@ -66,7 +66,8 @@ private suspend fun ApplicationCall.serve(target: Target.Model, body: String) {
 }
 
 private suspend fun ApplicationCall.answer(target: Target.Model, modelRequest: ModelRequest) {
-  val (mode, format) = target
+  val mode = target.mode
+  val format = target.format
   delay(mode.startPause)
   when (val outcome = mode.outcome) {
     is Outcome.Replied ->
@@ -90,15 +91,15 @@ private suspend fun ApplicationCall.answer(target: Target.Model, modelRequest: M
       } else {
         respondJson(format.whole(outcome.reply, modelRequest), HttpStatusCode.OK)
       }
-    Outcome.Redirects -> respondRedirect()
+    Outcome.Redirects -> respondRedirect(target.path)
   }
 }
 
 internal suspend fun ApplicationCall.respondEcho(format: ApiFormat, outcome: Outcome.EchoesKey) =
   respondFailure(format, outcome.failure(format.key(request.headers)))
 
-internal suspend fun ApplicationCall.respondRedirect() {
-  response.header(HttpHeaders.Location, request.path().replace("/redirect/", "/normal/"))
+internal suspend fun ApplicationCall.respondRedirect(path: PathAroundMode) {
+  response.header(HttpHeaders.Location, path.withMode(NORMAL_MODE))
   respond(HttpStatusCode.TemporaryRedirect)
 }
 

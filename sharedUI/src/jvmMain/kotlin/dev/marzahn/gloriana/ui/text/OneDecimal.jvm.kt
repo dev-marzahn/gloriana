@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.connections
+package dev.marzahn.gloriana.ui.text
 
 import java.util.Locale
 

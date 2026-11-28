@@ -18,20 +18,19 @@ import dev.marzahn.gloriana.logic.presets.presetName
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.messages.MessageAction
+import dev.marzahn.gloriana.ui.navigation.PageOpener
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.open
 import dev.marzahn.gloriana.ui.resources.preset_imported
 import dev.marzahn.gloriana.ui.resources.preset_not_imported
 import dev.marzahn.gloriana.ui.resources.samplers_copied
 import dev.marzahn.gloriana.ui.state.updateAndClaim
-import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getPluralString
@@ -83,20 +82,11 @@ class PresetImports(
   private val messages: AppMessages,
 ) {
   private val mutableState = MutableStateFlow(PresetImportState())
-  private val pages = Channel<Uuid>(Channel.BUFFERED)
-  private val listsShown = MutableStateFlow(0)
+  private val pages = PageOpener<ImportedPreset> { preset -> scope.launch { messages.showImported(preset) } }
 
   val state: StateFlow<PresetImportState> = mutableState.asStateFlow()
 
-  suspend fun openPagesWhileShown(open: (Uuid) -> Unit): Nothing {
-    listsShown.update { it + 1 }
-    try {
-      pages.receiveAsFlow().collect(open)
-      error("The pages channel never closes")
-    } finally {
-      listsShown.update { it - 1 }
-    }
-  }
+  suspend fun openPagesWhileShown(open: (Uuid) -> Unit): Nothing = pages.openWhileShown { open(it.id) }
 
   fun start(file: PickedFile) {
     mutableState.update { state ->
@@ -117,7 +107,7 @@ class PresetImports(
           val note = ImportFailureNote(queued.id, queued.fileName, result.reason)
           mutableState.update { it.copy(running = null, failures = it.failures + note) }
           next()
-          if (listsShown.value == 0) {
+          if (!pages.shown) {
             val open = MessageAction(getString(Res.string.open)) { it.showPresets() }
             messages.show(AppMessage(getString(Res.string.preset_not_imported, note.fileName), open))
           }
@@ -172,7 +162,7 @@ class PresetImports(
     when {
       offer != null -> {
         mutableState.update { it.copy(running = null, offer = offer) }
-        if (listsShown.value == 0) {
+        if (!pages.shown) {
           val open = MessageAction(getString(Res.string.open)) { it.showPresets() }
           messages.show(AppMessage(getString(Res.string.preset_imported, name), open))
         }
@@ -225,13 +215,16 @@ class PresetImports(
     sessions.importNotes(id, notes)
     mutableState.update { it.copy(running = null) }
     next()
-    if (listsShown.value > 0) {
-      pages.send(id)
-    } else {
-      val open = MessageAction(getString(Res.string.open)) { it.openPreset(id) }
-      messages.show(AppMessage(getString(Res.string.preset_imported, name), open))
-    }
+    val preset = ImportedPreset(id, name)
+    if (!pages.offer(preset)) messages.showImported(preset)
   }
+}
+
+private data class ImportedPreset(val id: Uuid, val name: String)
+
+private suspend fun AppMessages.showImported(preset: ImportedPreset) {
+  val open = MessageAction(getString(Res.string.open)) { it.openPreset(preset.id) }
+  show(AppMessage(getString(Res.string.preset_imported, preset.name), open))
 }
 
 private fun MutableStateFlow<PresetImportState>.updateOffer(change: (SamplerOfferState) -> SamplerOfferState) =
@@ -257,10 +250,7 @@ private fun SamplerOfferState.notes(copyFailed: CopyFailed? = null) =
 private suspend fun ConnectionRepository.offerChoices(): OfferChoices {
   val default = defaultConnection().catch { emit(null) }.first()
   val read = connections().map<List<Connection>, OfferChoices> { stored ->
-    OfferChoices.Read(
-      stored.sortedBy { it.fields.name.lowercase() }
-        .map { OfferChoice(it.id, it.fields.name, it.fields.format, it.id == default) },
-    )
+    OfferChoices.Read(stored.map { OfferChoice(it.id, it.fields.name, it.fields.format, it.id == default) })
   }
   return read.catch { emit(OfferChoices.Unreadable) }.first()
 }

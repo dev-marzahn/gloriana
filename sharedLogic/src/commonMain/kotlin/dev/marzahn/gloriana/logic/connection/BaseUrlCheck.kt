@@ -8,7 +8,6 @@ import dev.marzahn.gloriana.logic.connection.ConnectionProblem.BaseUrlHasUserInf
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.BaseUrlNoHost
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem.BaseUrlNotHttp
 
-private const val SCHEME_END = "://"
 private const val HIGHEST_PORT = 65_535
 private const val IPV6_GROUPS = 8
 private const val IPV4_AS_IPV6_GROUPS = 2
@@ -17,24 +16,18 @@ private const val HIGHEST_IPV4_PART = 255
 private const val ASCII_END = 0x7F
 private val COMBINING_MARKS = setOf(CharCategory.NON_SPACING_MARK, CharCategory.COMBINING_SPACING_MARK)
 private const val NOT_IN_A_URL ="\"<>\\^`{|}"
-private val HTTP_SCHEMES = setOf("http", "https")
+private val HTTP_SCHEMES = setOf(PLAIN_HTTP, "https")
 private val PORT = Regex("[0-9]{1,5}")
 private val HEX_GROUP = Regex("[0-9A-Fa-f]{1,4}")
 private val IPV4_PART = Regex("[0-9]{1,3}")
-
-internal fun withoutTrailingSlash(baseUrl: String): String {
-  val authorityStart = baseUrl.indexOf(SCHEME_END).let { if (it < 0) 0 else it + SCHEME_END.length }
-  return baseUrl.take(authorityStart) + baseUrl.drop(authorityStart).trimEnd('/')
-}
 
 internal fun baseUrlProblems(baseUrl: String): Set<ConnectionProblem> = buildSet {
   if (baseUrl.any { it.isWhitespace() || it.isISOControl() || it in NOT_IN_A_URL }) add(BaseUrlBadCharacter)
   if ('#' in baseUrl) add(BaseUrlHasFragment)
   if ('?' in baseUrl) add(BaseUrlHasQuery)
-  val beforeQuery = baseUrl.substringBefore('#').substringBefore('?')
-  val scheme = beforeQuery.substringBefore(SCHEME_END, missingDelimiterValue = "")
-  if (scheme.lowercase() !in HTTP_SCHEMES) add(BaseUrlNotHttp)
-  if (SCHEME_END in beforeQuery) addAll(authorityProblems(beforeQuery.substringAfter(SCHEME_END).substringBefore('/')))
+  val parsed = BaseUrl(baseUrl)
+  if (parsed.scheme !in HTTP_SCHEMES) add(BaseUrlNotHttp)
+  parsed.authority?.let { addAll(authorityProblems(it)) }
 }
 
 private fun authorityProblems(authority: String): Set<ConnectionProblem> = buildSet {

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -32,6 +31,7 @@ import dev.marzahn.gloriana.ui.resources.ic_close
 import dev.marzahn.gloriana.ui.resources.ic_search
 import dev.marzahn.gloriana.ui.resources.search_clear
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
+import dev.marzahn.gloriana.ui.theme.animateLookColor
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
 

@@ -11,6 +11,7 @@ import dev.marzahn.gloriana.logic.characters.storage.CharacterChildDao
 import dev.marzahn.gloriana.logic.characters.storage.CharacterDao
 import dev.marzahn.gloriana.logic.characters.storage.CharacterEntity
 import dev.marzahn.gloriana.logic.characters.storage.CharacterGreetingEntity
+import dev.marzahn.gloriana.logic.connection.storage.AddConnectionsAndLibrarySettings
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionEntity
 import dev.marzahn.gloriana.logic.presets.storage.AddPresets
@@ -20,6 +21,7 @@ import dev.marzahn.gloriana.logic.presets.storage.PresetEntryEntity
 import dev.marzahn.gloriana.logic.presets.storage.PresetGroupEntity
 import dev.marzahn.gloriana.logic.settings.storage.LibrarySettingDao
 import dev.marzahn.gloriana.logic.settings.storage.LibrarySettingEntity
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
@@ -57,9 +59,11 @@ abstract class GlorianaDatabase : RoomDatabase() {
 
 internal val migrations: List<Migration> = listOf(AddCharacters, AddConnectionsAndLibrarySettings, AddPresets)
 
-internal fun RoomDatabase.Builder<GlorianaDatabase>.buildGlorianaDatabase(): GlorianaDatabase =
+internal fun RoomDatabase.Builder<GlorianaDatabase>.buildGlorianaDatabase(
+  queries: CoroutineDispatcher = Dispatchers.IO,
+): GlorianaDatabase =
   setDriver(BundledSQLiteDriver())
-    .setQueryCoroutineContext(Dispatchers.IO)
+    .setQueryCoroutineContext(queries)
     .setJournalMode(RoomDatabase.JournalMode.WRITE_AHEAD_LOGGING)
     .addMigrations(*migrations.toTypedArray())
     .build()

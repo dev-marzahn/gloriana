@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.stubhost
 import io.ktor.http.HttpMethod
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertIs
 
 class EndpointsTest {
   private val endpoints = Endpoints(testModes)
@@ -11,14 +12,28 @@ class EndpointsTest {
   @Test
   fun `labels before the mode give each Connection its own base URL`() {
     assertEquals(
-      Target.Model(normal, ChatCompletions),
+      Target.Model(normal, ChatCompletions, PathAroundMode("/summary", "chat/completions")),
       endpoints.resolve(HttpMethod.Post, "/summary/normal/v1/chat/completions"),
     )
     assertEquals(
-      Target.Model(Mode(Outcome.EchoesKey(FailureKind.KEY_REJECTED)), OpenAiResponses),
+      Target.Model(
+        Mode(Outcome.EchoesKey(FailureKind.KEY_REJECTED)),
+        OpenAiResponses,
+        PathAroundMode("/a/b", "responses"),
+      ),
       endpoints.resolve(HttpMethod.Post, "/a/b/key-echo/v1/responses"),
     )
-    assertEquals(Target.Model(normal, AnthropicMessages), endpoints.resolve(HttpMethod.Post, "/v1/normal/v1/messages"))
+    assertEquals(
+      Target.Model(normal, AnthropicMessages, PathAroundMode("/v1", "messages")),
+      endpoints.resolve(HttpMethod.Post, "/v1/normal/v1/messages"),
+    )
+  }
+
+  @Test
+  fun `a path with its mode swapped keeps its labels and format`() {
+    val target = assertIs<Target.Model>(endpoints.resolve(HttpMethod.Post, "/redirect/redirect/v1/responses"))
+
+    assertEquals("/redirect/normal/v1/responses", target.path.withMode("normal"))
   }
 
   @Test
@@ -35,7 +50,10 @@ class EndpointsTest {
 
   @Test
   fun `a GET of models in a mode is the model list, anything else there is nowhere`() {
-    assertEquals(Target.ModelList(normal), endpoints.resolve(HttpMethod.Get, "/summary/normal/v1/models"))
+    assertEquals(
+      Target.ModelList(normal, PathAroundMode("/summary", "models")),
+      endpoints.resolve(HttpMethod.Get, "/summary/normal/v1/models"),
+    )
     listOf(
       HttpMethod.Post to "/normal/v1/models",
       HttpMethod.Get to "/v1/models",

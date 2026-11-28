@@ -1,8 +1,10 @@
 package dev.marzahn.gloriana.logic.keys
 
 import com.google.crypto.tink.KeysetHandle
+import dev.marzahn.gloriana.logic.json.decodedOrNull
 import dev.marzahn.gloriana.logic.storage.createDirectoriesDurably
 import dev.marzahn.gloriana.logic.storage.writeAtomically
+import dev.marzahn.gloriana.logic.text.parsedOrNull
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -32,7 +34,7 @@ internal sealed interface KeysetProtection {
     val isAccepted: Boolean
       get() = cost.isAccepted && saltBytes()?.size == SALT_BYTES
 
-    fun saltBytes(): ByteArray? = decodedOrNull { Base64.getDecoder().decode(salt) }
+    fun saltBytes(): ByteArray? = parsedOrNull { Base64.getDecoder().decode(salt) }
   }
 }
 
@@ -61,12 +63,6 @@ internal sealed interface StoredKeyset {
   data class Damaged(val kind: KeysetKind) : StoredKeyset
 }
 
-private inline fun <T> decodedOrNull(decode: () -> T): T? = try {
-  decode()
-} catch (_: IllegalArgumentException) {
-  null
-}
-
 internal class KeysetFiles(private val directory: Path) {
   fun storedKind(): KeysetKind? = KeysetKind.entries.reversed().firstOrNull { isStored(directory.resolve(it.fileName)) }
 
@@ -89,8 +85,8 @@ internal class KeysetFiles(private val directory: Path) {
 
   private fun parse(kind: KeysetKind, text: String): StoredKeyset {
     val header = text.substringBefore(LINE_BREAK)
-    val protection = decodedOrNull { Json.decodeFromString<KeysetProtection>(header) }
-    val body = decodedOrNull { Base64.getDecoder().decode(text.substringAfter(LINE_BREAK, "").trim()) }
+    val protection = Json.decodedOrNull<KeysetProtection>(header)
+    val body = parsedOrNull { Base64.getDecoder().decode(text.substringAfter(LINE_BREAK, "").trim()) }
       ?.takeIf { it.isNotEmpty() }
     return when {
       body == null || protection?.kind != kind -> StoredKeyset.Damaged(kind)

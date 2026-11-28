@@ -1,21 +1,16 @@
-package dev.marzahn.gloriana.ui.presets
+package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.presets.PresetGroup
-import dev.marzahn.gloriana.logic.presets.PresetRow
 import kotlin.uuid.Uuid
-
-enum class MoveDirection(val step: Int) {
-  Up(-1),
-  Down(1),
-}
 
 internal fun List<PresetRow>.indexOfRow(id: Uuid): Int = indexOfFirst { it.id == id }
 
 internal fun List<PresetRow>.blockEnd(headerIndex: Int): Int =
   (headerIndex + 1 until size).firstOrNull { this[it] is PresetGroup } ?: size
 
-private fun List<PresetRow>.carriesEntries(index: Int): Boolean =
-  this[index] is PresetGroup && blockEnd(index) > index + 1
+fun List<PresetRow>.carriesEntries(id: Uuid): Boolean = carriesEntriesAt(indexOfRow(id))
+
+private fun List<PresetRow>.carriesEntriesAt(index: Int): Boolean =
+  index >= 0 && this[index] is PresetGroup && blockEnd(index) > index + 1
 
 private sealed interface Move {
   class Swap(val index: Int, val other: Int) : Move
@@ -27,7 +22,7 @@ private fun List<PresetRow>.moveOf(id: Uuid, direction: MoveDirection): Move? {
   val index = indexOfRow(id)
   return when {
     index < 0 -> null
-    carriesEntries(index) -> neighbourBlock(index, direction)?.let { neighbour ->
+    carriesEntriesAt(index) -> neighbourBlock(index, direction)?.let { neighbour ->
       val own = index until blockEnd(index)
       if (direction == MoveDirection.Up) Move.Blocks(neighbour, own) else Move.Blocks(own, neighbour)
     }

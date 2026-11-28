@@ -4,6 +4,8 @@ import dev.marzahn.gloriana.logic.connection.HeaderDraft
 import dev.marzahn.gloriana.logic.connection.HeaderValueInput
 import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.connection.SecretsState
+import dev.marzahn.gloriana.ui.testing.LiveLibrary
+import dev.marzahn.gloriana.ui.testing.NoKeychain
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -115,14 +117,14 @@ class LockedPageTest {
       val page = lockedPage(library)
       val row = page.shown { it.secrets is SecretsState.Locked }.header()
       val enter: FormChange = {
-        it.withHeaderChanged(row.id) { header -> header.copy(value = ValueEdit.Typed(SecretText.Empty)) }
+        it.withHeaderChanged(row.id) { header -> header.copy(value = ValueEdit.Entering) }
       }
 
       page.on(PageIntent.Edit(FormField.HeaderValue(row.id), enter))
       assertEquals(ValueEdit.Kept, page.shown { it.activity is PageActivity.Unlocking }.header().value)
-      assertEquals(FormField.HeaderValue(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
+      assertEquals(FormField.HeaderValue(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).edit.field)
 
-      page.shown { it.activity == PageActivity.Idle && it.header().value == ValueEdit.Typed(SecretText.Empty) }
+      page.shown { it.activity == PageActivity.Idle && it.header().value == ValueEdit.Entering }
       coroutineContext.cancelChildren()
     }
   }
@@ -135,7 +137,7 @@ class LockedPageTest {
       val rename: FormChange = { it.withHeaderChanged(row.id) { header -> header.copy(name = "X-Key") } }
 
       page.on(PageIntent.Edit(FormField.HeaderName(row.id), rename))
-      assertEquals(FormField.HeaderName(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
+      assertEquals(FormField.HeaderName(row.id), assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).edit.field)
 
       page.shown { it.activity == PageActivity.Idle && it.header().name == "X-Key" }
       coroutineContext.cancelChildren()
@@ -151,7 +153,7 @@ class LockedPageTest {
       val added = page.shown { shown -> shown.form.headers.any { it.storedName == null } }
         .form.headers.single { it.storedName == null }
       val typed: FormChange = {
-        it.withHeaderChanged(added.id) { header -> header.copy(value = ValueEdit.Typed(SecretText("v"))) }
+        it.withHeaderChanged(added.id) { header -> header.copy(value = ValueEdit.typing(SecretText("v"))) }
       }
 
       page.on(PageIntent.Edit(FormField.HeaderValue(added.id), typed))
@@ -159,7 +161,7 @@ class LockedPageTest {
 
       page.shown { shown ->
         shown.activity == PageActivity.Idle &&
-          shown.form.headers.single { it.id == added.id }.value == ValueEdit.Typed(SecretText("v"))
+          shown.form.headers.single { it.id == added.id }.value == ValueEdit.typing(SecretText("v"))
       }
       coroutineContext.cancelChildren()
     }
@@ -171,10 +173,10 @@ class LockedPageTest {
       val page = lockedPage(library, key = KeyInput.Kept)
       page.shown { it.secrets is SecretsState.Locked }
 
-      page.on(PageIntent.Edit(FormField.Key) { it.copy(key = KeyEdit.Typed(SecretText("s"))) })
-      assertEquals(FormField.Key, assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).field)
+      page.on(PageIntent.Edit(FormField.Key) { it.copy(key = KeyEdit.typing(SecretText("s"))) })
+      assertEquals(FormField.Key, assertIs<AfterUnlock.Edit>(page.unlocksWhenAsked()).edit.field)
 
-      page.shown { it.activity == PageActivity.Idle && it.form.key == KeyEdit.Typed(SecretText("s")) }
+      page.shown { it.activity == PageActivity.Idle && it.form.key == KeyEdit.typing(SecretText("s")) }
       coroutineContext.cancelChildren()
     }
   }

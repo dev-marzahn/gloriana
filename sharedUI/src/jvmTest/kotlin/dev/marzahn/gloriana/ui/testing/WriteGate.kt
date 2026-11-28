@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.connections
+package dev.marzahn.gloriana.ui.testing
 
 import java.awt.EventQueue
 import java.util.concurrent.CountDownLatch

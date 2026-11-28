@@ -18,8 +18,11 @@ internal interface ConnectionDao {
   @Query("SELECT * FROM $CONNECTIONS_TABLE WHERE id = :id")
   suspend fun find(id: Uuid): ConnectionEntity?
 
-  @Query("SELECT * FROM $CONNECTIONS_TABLE")
-  suspend fun all(): List<ConnectionEntity>
+  @Query("SELECT id, format, apiKey, headers FROM $CONNECTIONS_TABLE")
+  suspend fun allSecretColumns(): List<SecretColumns>
+
+  @Query("SELECT id, format, apiKey, headers FROM $CONNECTIONS_TABLE WHERE id = :id")
+  suspend fun secretColumns(id: Uuid): SecretColumns?
 
   @Query("SELECT id FROM $CONNECTIONS_TABLE")
   fun observeIds(): Flow<List<Uuid>>

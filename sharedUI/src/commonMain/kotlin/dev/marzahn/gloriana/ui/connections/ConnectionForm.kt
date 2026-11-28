@@ -16,33 +16,62 @@ import dev.marzahn.gloriana.logic.connection.problems
 import dev.marzahn.gloriana.logic.connection.samplerProblems
 import dev.marzahn.gloriana.logic.connection.textProblems
 import dev.marzahn.gloriana.logic.connection.withCustomBody
+@ConsistentCopyVisibility
+data class TypedSecret private constructor(val text: SecretText) : KeyEdit, ValueEdit {
+  override val isEntering: Boolean get() = true
+
+  override val typedText: SecretText get() = text
+
+  companion object {
+    fun of(text: SecretText): TypedSecret? = if (text.isEmpty) null else TypedSecret(text)
+  }
+}
 
 sealed interface KeyEdit {
   data object Kept : KeyEdit
 
   data object Removed : KeyEdit
 
-  data class Typed(val text: SecretText) : KeyEdit
+  data object Entering : KeyEdit
+
+  val isEntering: Boolean get() = this == Entering
+
+  val typedText: SecretText get() = SecretText.Empty
+
+  companion object {
+    fun typing(text: SecretText): KeyEdit = TypedSecret.of(text) ?: Entering
+  }
 }
 
 sealed interface ValueEdit {
   data object Kept : ValueEdit
 
-  data class Typed(val text: SecretText) : ValueEdit
+  data object Entering : ValueEdit
+
+  val isEntering: Boolean get() = this == Entering
+
+  val typedText: SecretText get() = SecretText.Empty
+
+  companion object {
+    fun typing(text: SecretText): ValueEdit = TypedSecret.of(text) ?: Entering
+  }
 }
 
 data class HeaderRow(val id: Int, val name: String, val storedName: String?, val value: ValueEdit) {
-  val isBlank: Boolean get() = storedName == null && name.isEmpty() && value == ValueEdit.Typed(SecretText.Empty)
-
-  val effectiveValue: ValueEdit
-    get() = if (storedName != null && value == ValueEdit.Typed(SecretText.Empty)) ValueEdit.Kept else value
+  val isBlank: Boolean get() = storedName == null && name.isEmpty() && value == ValueEdit.Entering
 
   fun needsKeysToBecome(after: HeaderRow): Boolean = renamesStoredValue(after) || startsEnteringValue(after)
 
+  fun valueInput(): HeaderValueInput = when (value) {
+    ValueEdit.Kept -> HeaderValueInput.Kept(storedName.orEmpty())
+    ValueEdit.Entering -> storedName?.let(HeaderValueInput::Kept) ?: HeaderValueInput.Entered("")
+    is TypedSecret -> HeaderValueInput.Entered(value.text.text)
+  }
+
   private fun renamesStoredValue(after: HeaderRow) = storedName != null && after.name != name
 
-  private fun startsEnteringValue(after: HeaderRow) = after.value is ValueEdit.Typed && after.value != value &&
-    (value == ValueEdit.Kept || value == ValueEdit.Typed(SecretText.Empty))
+  private fun startsEnteringValue(after: HeaderRow) = after.value.isEntering && after.value != value &&
+    (value == ValueEdit.Kept || value == ValueEdit.Entering)
 }
 
 data class ConnectionForm(
@@ -60,13 +89,8 @@ data class ConnectionForm(
   val keyStored: Boolean,
   val key: KeyEdit,
   val headers: List<HeaderRow>,
-) : ComparesByValue<ConnectionForm> {
+) {
   val keptHeaders: List<HeaderRow> get() = headers.filterNot { it.isBlank }
-
-  val effectiveKey: KeyEdit
-    get() = if (key == KeyEdit.Typed(SecretText.Empty)) (if (keyStored) KeyEdit.Kept else KeyEdit.Removed) else key
-
-  val timeoutSeconds: Int? get() = timeout.wholeNumber()
 
   val promptBudget: Int?
     get() {
@@ -76,41 +100,60 @@ data class ConnectionForm(
     }
 
   val keyContext: KeyContext
-    get() = when (val edit = effectiveKey) {
-      is KeyEdit.Typed -> KeyContext.TypedKey
-      KeyEdit.Kept -> if (keyStored) KeyContext.SavedKey else headersOrNoKey()
-      KeyEdit.Removed -> headersOrNoKey()
+    get() = when (keyInput()) {
+      is KeyInput.Entered -> KeyContext.TypedKey
+      KeyInput.Kept -> if (keyStored) KeyContext.SavedKey else headersOrNoKey()
+      KeyInput.Removed -> headersOrNoKey()
     }
 
   fun needsKeysToBecome(after: ConnectionForm): Boolean = startsEnteringKey(after) || after.headers.any { row ->
     headers.firstOrNull { it.id == row.id }?.needsKeysToBecome(row) == true
   }
 
-  private fun startsEnteringKey(after: ConnectionForm) = after.key is KeyEdit.Typed && after.key != key &&
-    (key == KeyEdit.Kept || key == KeyEdit.Typed(SecretText.Empty))
+  private fun startsEnteringKey(after: ConnectionForm) = after.key.isEntering && after.key != key &&
+    (key == KeyEdit.Kept || key == KeyEdit.Entering)
 
-  fun withHeader() = copy(headers = headers + HeaderRow(nextHeaderId(), "", null, ValueEdit.Typed(SecretText.Empty)))
+  fun withHeader() = copy(headers = headers + HeaderRow(nextHeaderId(), "", null, ValueEdit.Entering))
 
   fun withoutHeader(id: Int) = copy(headers = headers.filterNot { it.id == id })
 
   fun withHeaderChanged(id: Int, change: (HeaderRow) -> HeaderRow) =
     copy(headers = headers.map { if (it.id == id) change(it) else it })
 
-  override fun sameAs(other: ConnectionForm): Boolean =
+  fun sameAs(other: ConnectionForm): Boolean =
     comparable() == other.comparable() && samplers.sameAs(other.samplers)
 
   private fun headersOrNoKey() = if (keptHeaders.isNotEmpty()) KeyContext.HeadersOnly else KeyContext.NoKey
 
   private fun nextHeaderId(): Int = (headers.maxOfOrNull { it.id } ?: -1) + 1
 
-  private fun comparable() = copy(
-    contextSize = contextSize.byValue(),
-    maxReplyTokens = maxReplyTokens.byValue(),
-    timeout = timeout.byValue(),
-    samplers = SamplerTexts(emptyMap()),
-    key = effectiveKey,
-    headers = keptHeaders.map { it.copy(id = 0, value = it.effectiveValue) },
+  private fun comparable() = ComparedForm(
+    fields = copy(
+      contextSize = contextSize.byValue(),
+      maxReplyTokens = maxReplyTokens.byValue(),
+      timeout = timeout.byValue(),
+      samplers = SamplerTexts(emptyMap()),
+      key = KeyEdit.Kept,
+      headers = emptyList(),
+    ),
+    key = keyInput(),
+    headers = keptHeaders.map { it.draft() },
   )
+
+  fun withHeaderIdsOf(vararg earlier: ConnectionForm?): ConnectionForm {
+    val earlierRows = earlier.flatMap { it?.headers.orEmpty() }
+    val earlierIds = earlierRows.map { it.id }.toSet()
+    var nextId = (earlierRows + headers).maxOfOrNull { it.id + 1 } ?: 0
+    val claimed = mutableSetOf<Int>()
+    return copy(
+      headers = headers.map { row ->
+        val match = earlierRows.firstOrNull { it.id !in claimed && it.name.trim().equals(row.name, ignoreCase = true) }
+        val id = match?.id ?: row.id.takeUnless { it in earlierIds || it in claimed } ?: nextId++
+        claimed += id
+        row.copy(id = id)
+      },
+    )
+  }
 
   companion object {
     fun of(connection: Connection) = fromFields(
@@ -136,7 +179,7 @@ data class ConnectionForm(
       timeout = ConnectionFields.DEFAULT_TIMEOUT_SECONDS.toString(),
       customBody = "",
       keyStored = false,
-      key = KeyEdit.Typed(SecretText.Empty),
+      key = KeyEdit.Entering,
       headers = emptyList(),
     )
 
@@ -153,7 +196,7 @@ data class ConnectionForm(
       timeout = fields.timeoutSeconds.toString(),
       customBody = fields.customBodyText,
       keyStored = keyStored,
-      key = if (keyStored) KeyEdit.Kept else KeyEdit.Typed(SecretText.Empty),
+      key = if (keyStored) KeyEdit.Kept else KeyEdit.Entering,
       headers = headers,
     )
   }
@@ -228,19 +271,16 @@ private fun CustomBodyText.error(): FieldError? = when (this) {
   CustomBodyText.NotAnObject -> FieldError.NotAnObject
 }
 
-private fun ConnectionForm.keyInput(): KeyInput = when (val edit = effectiveKey) {
+private fun ConnectionForm.keyInput(): KeyInput = when (val edit = key) {
   KeyEdit.Kept -> KeyInput.Kept
   KeyEdit.Removed -> KeyInput.Removed
-  is KeyEdit.Typed -> KeyInput.Entered(edit.text.text)
+  KeyEdit.Entering -> if (keyStored) KeyInput.Kept else KeyInput.Removed
+  is TypedSecret -> KeyInput.Entered(edit.text.text)
 }
 
-private fun HeaderRow.draft(): HeaderDraft = HeaderDraft(
-  name,
-  when (val edit = effectiveValue) {
-    ValueEdit.Kept -> HeaderValueInput.Kept(storedName.orEmpty())
-    is ValueEdit.Typed -> HeaderValueInput.Entered(edit.text.text)
-  },
-)
+private fun HeaderRow.draft(): HeaderDraft = HeaderDraft(name, valueInput())
+
+private data class ComparedForm(val fields: ConnectionForm, val key: KeyInput, val headers: List<HeaderDraft>)
 
 fun ConnectionForm.errorsOf(problems: Collection<ConnectionProblem>): FormErrors =
   FormErrors(problems.mapNotNull(::fieldError).associate { it.field to it.error })

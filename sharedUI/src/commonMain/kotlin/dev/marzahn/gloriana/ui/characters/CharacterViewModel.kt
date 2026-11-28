@@ -13,12 +13,12 @@ import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_deleted
+import dev.marzahn.gloriana.ui.state.WhileCollected
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.catch
@@ -31,8 +31,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import kotlin.uuid.Uuid
-
-private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 enum class DeleteProgress { Idle, Confirming, Deleting, Failed }
 
@@ -66,7 +64,7 @@ class CharacterViewModel(
   @OptIn(ExperimentalCoroutinesApi::class)
   val state: StateFlow<CharacterPageState> = inputs.filterNotNull()
     .flatMapLatest { (id) -> combine(characterOf(id), exports.runs.state(id), delete, ::pageState) }
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), CharacterPageState.Loading)
+    .stateIn(viewModelScope, WhileCollected, CharacterPageState.Loading)
 
   val closeRequests: SharedFlow<Unit> = closes.asSharedFlow()
 

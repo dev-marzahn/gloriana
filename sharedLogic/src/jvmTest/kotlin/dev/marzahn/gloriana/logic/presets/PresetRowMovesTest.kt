@@ -1,10 +1,5 @@
-package dev.marzahn.gloriana.ui.presets
+package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.presets.EntryPlacement
-import dev.marzahn.gloriana.logic.presets.EntryRole
-import dev.marzahn.gloriana.logic.presets.PresetEntry
-import dev.marzahn.gloriana.logic.presets.PresetGroup
-import dev.marzahn.gloriana.logic.presets.PresetRow
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse

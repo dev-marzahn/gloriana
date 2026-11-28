@@ -59,16 +59,18 @@ sealed interface SecretSlot {
 
 class SealedSecret(val bytes: ByteArray)
 
+enum class KeysBlocked {
+  Locked,
+  Unavailable,
+  Unreadable,
+}
+
 sealed interface SealResult {
   class Sealed(val secret: SealedSecret) : SealResult
 
   data object NeedsPassphrase : SealResult
 
-  data object Locked : SealResult
-
-  data object Unavailable : SealResult
-
-  data object Unreadable : SealResult
+  data class Blocked(val why: KeysBlocked) : SealResult
 }
 
 sealed interface OpenResult {
@@ -76,11 +78,7 @@ sealed interface OpenResult {
 
   data object Missing : OpenResult
 
-  data object Locked : OpenResult
-
-  data object Unavailable : OpenResult
-
-  data object Unreadable : OpenResult
+  data class Blocked(val why: KeysBlocked) : OpenResult
 }
 
 enum class VaultState(val hasPassphrase: Boolean = false, val needsStartingOver: Boolean = false) {

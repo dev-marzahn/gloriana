@@ -21,7 +21,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
-import dev.marzahn.gloriana.logic.connection.api.hostOf
 import dev.marzahn.gloriana.ui.components.AddRow
 import dev.marzahn.gloriana.ui.components.EmptyAction
 import dev.marzahn.gloriana.ui.components.EmptyBlock
@@ -33,6 +32,7 @@ import dev.marzahn.gloriana.ui.components.RowLine
 import dev.marzahn.gloriana.ui.components.RowSelection
 import dev.marzahn.gloriana.ui.components.RowTile
 import dev.marzahn.gloriana.ui.components.Skeleton
+import dev.marzahn.gloriana.ui.components.listMotion
 import dev.marzahn.gloriana.ui.connections.ConnectionMoreMenu
 import dev.marzahn.gloriana.ui.connections.ConnectionRoute
 import dev.marzahn.gloriana.ui.connections.CreateConnectionSheet
@@ -40,6 +40,7 @@ import dev.marzahn.gloriana.ui.connections.DefaultMark
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
 import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
+import dev.marzahn.gloriana.ui.connections.hostOf
 import dev.marzahn.gloriana.ui.connections.label
 import dev.marzahn.gloriana.ui.connections.secretsLine
 import dev.marzahn.gloriana.ui.lists.RowFocus
@@ -243,16 +244,6 @@ private fun SettingsList(
     item(key = "header", contentType = "header") { header() }
     items(items, key = { it.key }) { item -> Item(scope, item) }
   }
-}
-
-@Composable
-private fun LazyItemScope.listMotion(): Modifier {
-  val motion = GlorianaTheme.motion
-  return Modifier.animateItem(
-    fadeInSpec = motion.enter.tween(),
-    placementSpec = motion.standard.tween(),
-    fadeOutSpec = motion.exit.tween(),
-  )
 }
 
 @Composable

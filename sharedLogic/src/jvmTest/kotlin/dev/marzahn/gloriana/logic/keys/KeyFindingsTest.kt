@@ -11,6 +11,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.jupiter.api.io.TempDir
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.test.Test
@@ -32,6 +33,17 @@ class KeyFindingsTest {
     ConnectionFields(name = "Work", format = ApiFormat.AnthropicMessages, baseUrl = "https://a.test", model = "m")
 
   private suspend fun KeyVault.missing(slot: SecretSlot) = findings.first().isMissing(slot)
+
+  @Test
+  fun aSealAfterTheStartSweepFailedStillLearnsWhichDataKeysAreFiled() = runTest {
+    vaults.start().sealed(apiKey(connection), "sk-1")
+    val restarted = vaults.start(stored = { throw IOException("the database is unreadable") })
+
+    restarted.sealed(apiKey(connection), "sk-2")
+
+    assertTrue(restarted.missing(apiKey(other)))
+    assertFalse(restarted.missing(apiKey(connection)))
+  }
 
   private suspend fun KeyVault.checked(saved: Connection) {
     secretChecks(flowOf(listOf(saved))).first()

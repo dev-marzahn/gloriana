@@ -1,7 +1,9 @@
 package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.ApiFormat
+import dev.marzahn.gloriana.logic.connection.MASK
 import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.stubhost.PLAIN_REPLY
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonObject
 import org.junit.jupiter.api.AfterEach
@@ -35,7 +37,7 @@ class StubHostReplyTest {
       val events = events(format, "normal", streams)
 
       val way = "$format streaming=$streams"
-      assertEquals(PLAIN, events.text(), way)
+      assertEquals(PLAIN_REPLY, events.text(), way)
       assertEquals(listOf(ModelEvent.Usage(10, 10), ModelEvent.Finish(FinishReason.Completed)), events.takeLast(2), way)
     }
   }
@@ -79,7 +81,7 @@ class StubHostReplyTest {
     ApiFormat.entries.forEach { format ->
       val events = events(format, "cut-off")
 
-      assertEquals(PLAIN, events.text(), "$format")
+      assertEquals(PLAIN_REPLY, events.text(), "$format")
       assertEquals(ModelEvent.Finish(FinishReason.Unfinished), events.last(), "$format")
     }
   }
@@ -89,7 +91,7 @@ class StubHostReplyTest {
     ApiFormat.entries.forEach { format ->
       val events = events(format, "stream-error")
 
-      assertEquals(PLAIN, events.text(), "$format")
+      assertEquals(PLAIN_REPLY, events.text(), "$format")
       val failure = assertIs<ModelApiError.HostError>(events.failure(), "$format")
       assertNull(failure.status)
       assertContains(failure.body, "The stub host broke off this reply.")
@@ -193,7 +195,7 @@ class StubHostReplyTest {
 
       val text = events.dropLast(1)
       assertTrue(text.isNotEmpty() && text.all { it is ModelEvent.TextDelta }, "$format: $events")
-      assertTrue(PLAIN.startsWith(events.text()), "$format")
+      assertTrue(PLAIN_REPLY.startsWith(events.text()), "$format")
       assertEquals(ModelEvent.Failed(ModelApiError.Timeout), events.last(), "$format")
     }
   }
@@ -205,7 +207,7 @@ class StubHostReplyTest {
 
       val events = stub.events(stub.connection(format, "linger", fields = { it.copy(timeoutSeconds = 10) }))
 
-      assertEquals(PLAIN, events.text(), "$format")
+      assertEquals(PLAIN_REPLY, events.text(), "$format")
       assertEquals(ModelEvent.Finish(FinishReason.Completed), events.last(), "$format")
       assertEquals(1, events.count { it is ModelEvent.Finish || it is ModelEvent.Failed }, "$format")
       assertTrue(started.elapsedNow() < 2.seconds, "$format took ${started.elapsedNow()}, the host lingers 3 s")
@@ -220,13 +222,13 @@ class StubHostReplyTest {
         val events = stub.events(stub.connection(format, "normal", key = key, fields = streaming(streams)))
 
         val way = "$format streaming=$streams key=$key"
-        assertEquals(PLAIN, events.text(), way)
+        assertEquals(PLAIN_REPLY, events.text(), way)
         assertEquals(ModelEvent.Finish(FinishReason.Completed), events.last(), way)
       }
     }
     val bearerE = listOf(header("Authorization", "Bearer e"))
     val bearer = stub.connection(ApiFormat.OpenAiChatCompletions, "normal", key = null, headers = bearerE)
-    assertEquals(PLAIN, stub.events(bearer).text())
+    assertEquals(PLAIN_REPLY, stub.events(bearer).text())
   }
 
   @Test
@@ -241,7 +243,7 @@ class StubHostReplyTest {
     val whole = stub.events(stub.connection(ApiFormat.OpenAiChatCompletions, "bad-type", fields = streaming(false)))
     val streamed = stub.events(stub.connection(ApiFormat.OpenAiChatCompletions, "bad-type"))
 
-    assertEquals(PLAIN, whole.text())
+    assertEquals(PLAIN_REPLY, whole.text())
     assertEquals(200, assertIs<ModelApiError.HostError>(streamed.failure()).status)
   }
 
@@ -251,7 +253,7 @@ class StubHostReplyTest {
 
     val events = stub.events(slow)
 
-    assertEquals(PLAIN, events.text())
+    assertEquals(PLAIN_REPLY, events.text())
     assertEquals(ModelEvent.Finish(FinishReason.Completed), events.last())
   }
 

@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.SecretsState
-import dev.marzahn.gloriana.logic.connection.holdsOpenableSecrets
+import dev.marzahn.gloriana.logic.connection.countHolding
 import dev.marzahn.gloriana.logic.connection.secretChecks
 import dev.marzahn.gloriana.logic.connection.secretsState
 import dev.marzahn.gloriana.logic.keys.KeyFindings
@@ -20,17 +20,16 @@ import dev.marzahn.gloriana.ui.connections.UnlockPrompt
 import dev.marzahn.gloriana.ui.connections.UnlockPromptSlot
 import dev.marzahn.gloriana.ui.connections.WriteFailure
 import dev.marzahn.gloriana.ui.connections.failure
-import dev.marzahn.gloriana.ui.connections.inListOrder
 import dev.marzahn.gloriana.ui.lists.Deleted
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_keys_erased
+import dev.marzahn.gloriana.ui.state.WhileCollected
 import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.collect
@@ -42,8 +41,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.getString
 import kotlin.uuid.Uuid
-
-private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 data class ConnectionRowState(val connection: Connection, val isDefault: Boolean, val secrets: SecretsState) {
   val id: Uuid get() = connection.id
@@ -60,7 +57,7 @@ sealed interface ConnectionsList {
 internal sealed interface StartOverStep {
   data object Idle : StartOverStep
 
-  data class Confirming(val holding: Int?) : StartOverStep
+  data object Confirming : StartOverStep
 
   data class Erasing(val holding: Int?) : StartOverStep
 
@@ -76,13 +73,6 @@ sealed interface KeysNote {
 
   data class StartOverFailed(val failure: WriteFailure, val holding: Int?) : KeysNote
 }
-
-private val KeysNote.holdingForTheSheet: Int?
-  get() = when (this) {
-    is KeysNote.Unreadable -> holding
-    is KeysNote.StartOverFailed -> holding
-    KeysNote.None, KeysNote.UnreadableWhileTheListCantLoad -> null
-  }
 
 data class StartOverSheet(val holding: Int?, val erasing: Boolean)
 
@@ -103,6 +93,7 @@ sealed interface RowActivity {
 data class SettingsState(
   val connections: ConnectionsList = ConnectionsList.Loading,
   val showsPassphrase: Boolean = false,
+  val holding: Int? = null,
   val keys: KeysNote = KeysNote.None,
   val locked: List<String> = emptyList(),
   val unlock: UnlockPrompt? = null,
@@ -172,7 +163,7 @@ class SettingsViewModel(
       val list = loaded.fold(
         onSuccess = { stored ->
           ConnectionsList.Loaded(
-            stored.connections.inListOrder().map { connection ->
+            stored.connections.map { connection ->
               val secrets = connection.secretsState(vaultState, findings)
               ConnectionRowState(connection, connection.id == stored.default, secrets)
             },
@@ -180,21 +171,23 @@ class SettingsViewModel(
         },
         onFailure = { ConnectionsList.CouldNotLoad },
       )
+      val holding = list.holding(findings)
       SettingsState(
         connections = list,
         showsPassphrase = vaultState.hasPassphrase,
-        keys = keysNote(list.holding(findings), vaultState, current.startOver),
+        holding = holding,
+        keys = keysNote(holding, vaultState, current.startOver),
         locked = list.lockedNames(),
         unlock = current.unlock,
-        startOver = current.startOver.sheet(),
+        startOver = current.startOver.sheet(holding),
         rowActivity = current.rows,
         focus = focus(list, deleted, current.focusFirstRow),
       )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SettingsState())
+    }.stateIn(viewModelScope, WhileCollected, SettingsState())
 
   private val unlocking = UnlockFlow(
     vault,
-    repository,
+    { state.value.holding },
     viewModelScope,
     object : UnlockPromptSlot {
       override val prompt: UnlockPrompt? get() = session.value.unlock
@@ -218,7 +211,7 @@ class SettingsViewModel(
       is SettingsIntent.AskToDelete -> rows(RowActivity.ConfirmingDelete(intent.row))
       SettingsIntent.CancelDelete -> rows(RowActivity.Idle)
       SettingsIntent.ConfirmDelete -> confirmDelete()
-      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming(state.value.keys.holdingForTheSheet))
+      SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming)
       SettingsIntent.CancelStartOver -> startOver(StartOverStep.Idle)
       SettingsIntent.ConfirmStartOver -> confirmStartOver()
       SettingsIntent.AskToUnlock -> unlocking.open { prompt ->
@@ -266,10 +259,13 @@ class SettingsViewModel(
   }
 
   private fun confirmStartOver() {
+    val holding = state.value.holding
     session.updateAndClaim { current ->
-      (current.startOver as? StartOverStep.Confirming)
-        ?.let { current.copy(startOver = StartOverStep.Erasing(it.holding)) to it }
-        ?: (current to null)
+      if (current.startOver == StartOverStep.Confirming) {
+        current.copy(startOver = StartOverStep.Erasing(holding)) to Unit
+      } else {
+        current to null
+      }
     } ?: return
     viewModelScope.launch {
       when (val failure = vault.replaceDeviceKeyset().failure()) {
@@ -288,7 +284,7 @@ class SettingsViewModel(
 }
 
 private fun ConnectionsList.holding(findings: KeyFindings): Int? = when (this) {
-  is ConnectionsList.Loaded -> rows.count { findings.holdsOpenableSecrets(it.connection) }
+  is ConnectionsList.Loaded -> findings.countHolding(rows.map { it.connection })
   ConnectionsList.Loading, ConnectionsList.CouldNotLoad -> null
 }
 
@@ -304,8 +300,8 @@ internal fun keysNote(holding: Int?, vault: VaultState, step: StartOverStep): Ke
   else -> KeysNote.Unreadable(holding)
 }
 
-private fun StartOverStep.sheet(): StartOverSheet? = when (this) {
-  is StartOverStep.Confirming -> StartOverSheet(holding, erasing = false)
+private fun StartOverStep.sheet(holdingNow: Int?): StartOverSheet? = when (this) {
+  StartOverStep.Confirming -> StartOverSheet(holdingNow, erasing = false)
   is StartOverStep.Erasing -> StartOverSheet(holding, erasing = true)
   StartOverStep.Idle, is StartOverStep.Failed -> null
 }

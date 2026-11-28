@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.ui.components.ButtonKind
@@ -74,7 +75,8 @@ private sealed interface KeyShown {
 private fun ConnectionForm.keyShown(secrets: SecretsState): KeyShown {
   val stored = secrets.stored { it.key }
   return when (key) {
-    is KeyEdit.Typed -> KeyShown.Typing(replacing = keyStored, missing = keyStored && stored == StoredSecret.Missing)
+    KeyEdit.Entering, is TypedSecret ->
+      KeyShown.Typing(replacing = keyStored, missing = keyStored && stored == StoredSecret.Missing)
     KeyEdit.Kept -> KeyShown.Stored(stored)
     KeyEdit.Removed -> KeyShown.Removed
   }
@@ -95,7 +97,7 @@ private fun KeyShown.hint(form: ConnectionForm): String? = when (this) {
     when {
       missing -> Res.string.key_missing_hint
       replacing -> Res.string.key_hint_replacing
-      (form.key as? KeyEdit.Typed)?.text?.isEmpty != false -> Res.string.key_hint_empty
+      form.key !is TypedSecret -> Res.string.key_hint_empty
       else -> Res.string.key_hint_typed
     },
   )
@@ -111,7 +113,7 @@ fun KeyRow(page: ConnectionPageState.Shown, editing: FormEditing, modifier: Modi
   LabelledField(
     stringResource(Res.string.field_key),
     modifier,
-    hint = shown.hint(editing.form),
+    hint = shown.hint(editing.form)?.let(::AnnotatedString),
     error = error,
     labelEnd = stringResource(Res.string.optional),
   ) {
@@ -129,8 +131,8 @@ private fun KeyControls(shown: KeyShown, editing: FormEditing, error: String?) {
   when (shown) {
     is KeyShown.Typing -> Row(verticalAlignment = Alignment.CenterVertically) {
       SecretField(
-        (editing.form.key as? KeyEdit.Typed)?.text ?: SecretText.Empty,
-        { setKey(KeyEdit.Typed(it)) },
+        editing.form.key.typedText,
+        { setKey(KeyEdit.typing(it)) },
         SecretLabels(stringResource(Res.string.show_key), stringResource(Res.string.hide_key)),
         Modifier.weight(1f).focusRequester(editing.focus(FormField.Key)),
         enabled = editing.enabled,
@@ -142,11 +144,11 @@ private fun KeyControls(shown: KeyShown, editing: FormEditing, error: String?) {
       SecretStatus(shown.secret, Res.string.key_missing, Modifier.weight(1f))
       when (shown.secret) {
         StoredSecret.Saved -> {
-          SmallGhost(Res.string.replace, editing.enabled) { setKey(KeyEdit.Typed(SecretText.Empty)) }
+          SmallGhost(Res.string.replace, editing.enabled) { setKey(KeyEdit.Entering) }
           SmallGhost(Res.string.remove, editing.enabled) { setKey(KeyEdit.Removed) }
         }
         StoredSecret.Missing ->
-          SmallGhost(Res.string.enter_key, editing.enabled) { setKey(KeyEdit.Typed(SecretText.Empty)) }
+          SmallGhost(Res.string.enter_key, editing.enabled) { setKey(KeyEdit.Entering) }
         StoredSecret.Locked -> SmallGhost(Res.string.unlock, editing.enabled, editing::unlock)
         StoredSecret.KeychainUnavailable, StoredSecret.Unreadable -> Unit
       }

@@ -1,7 +1,6 @@
 package dev.marzahn.gloriana.ui.connections
 
 import androidx.compose.runtime.Composable
-import dev.marzahn.gloriana.logic.connection.api.hostOf
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.passphrase
 import dev.marzahn.gloriana.ui.resources.set_passphrase_and_save
@@ -44,9 +43,7 @@ internal fun PageSheets(page: ConnectionPageState.Shown, onIntent: (PageIntent) 
       )
     }
     is PageActivity.Unlocking -> UnlockPromptSheet(activity.prompt, onPassphrase)
-    PageActivity.Idle, PageActivity.Saving, PageActivity.OpeningSaved, PageActivity.Testing,
-    PageActivity.MakingDefault,
-    -> Unit
+    PageActivity.Idle, PageActivity.OpeningSaved, PageActivity.Testing, PageActivity.MakingDefault -> Unit
   }
 }
 

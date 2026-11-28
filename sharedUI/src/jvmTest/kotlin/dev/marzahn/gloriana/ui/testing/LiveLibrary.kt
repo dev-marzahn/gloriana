@@ -1,4 +1,4 @@
-package dev.marzahn.gloriana.ui.connections
+package dev.marzahn.gloriana.ui.testing
 
 import androidx.compose.runtime.Composable
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
@@ -33,6 +33,8 @@ import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
 import dev.marzahn.gloriana.ui.di.uiModule
+import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.asCoroutineDispatcher
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.koin.compose.KoinIsolatedContext
@@ -43,6 +45,8 @@ import org.koin.dsl.module
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
+import java.util.concurrent.Executors
+import java.util.concurrent.TimeUnit
 import kotlin.io.path.ExperimentalPathApi
 import kotlin.io.path.createDirectories
 import kotlin.io.path.deleteIfExists
@@ -87,6 +91,22 @@ object NoKeychain : OsKeychain {
   override fun delete(account: String) = Unit
 }
 
+private class QueryThreads {
+  private val threads = Executors.newFixedThreadPool(QUERY_THREADS)
+
+  val dispatcher: CoroutineDispatcher = threads.asCoroutineDispatcher()
+
+  fun finishRunningQueries() {
+    threads.shutdown()
+    check(threads.awaitTermination(QUERY_FINISH_SECONDS, TimeUnit.SECONDS)) { "A query is still running" }
+  }
+
+  private companion object {
+    const val QUERY_THREADS = 4
+    const val QUERY_FINISH_SECONDS = 10L
+  }
+}
+
 class LiveLibrary private constructor(private val directory: Path, private val device: DeviceKeyStore) {
   var keysetWritesFail = false
 
@@ -95,6 +115,8 @@ class LiveLibrary private constructor(private val directory: Path, private val d
   private val deviceKeysetFile: Path get() = deviceKeysetFileIn(directory)
 
   val writes = WriteGate()
+
+  private lateinit var queries: QueryThreads
 
   private var application = startApplication()
 
@@ -125,7 +147,7 @@ class LiveLibrary private constructor(private val directory: Path, private val d
       key = key,
       headers = headers,
     )
-    val id = assertIs<ConnectionSaveResult.Saved>(repository.create(draft)).id
+    val id = assertIs<ConnectionSaveResult.Saved>(repository.create(draft)).connection.id
     checkNotNull(repository.connection(id).first())
   }
 
@@ -185,14 +207,16 @@ class LiveLibrary private constructor(private val directory: Path, private val d
   }
 
   private fun stopApplication() {
+    queries.finishRunningQueries()
     application.koin.get<GlorianaDatabase>().close()
     application.close()
   }
 
   private fun startApplication(): KoinApplication {
+    queries = QueryThreads()
     val platform = module {
       single<LibraryDirectory> { LibraryDirectory { directory } }
-      single { desktopGlorianaDatabase(directory) }
+      single { desktopGlorianaDatabase(directory, queries.dispatcher) }
       single<DebuggableBuild> { DebuggableBuild { false } }
       single<AvatarTranscoder> { AvatarTranscoder { _, _ -> null } }
       single<DeviceKeyStore> { device }

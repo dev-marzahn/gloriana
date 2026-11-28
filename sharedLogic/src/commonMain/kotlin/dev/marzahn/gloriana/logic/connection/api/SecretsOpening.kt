@@ -33,9 +33,7 @@ private suspend inline fun KeyVault.open(
   is SecretSource.Stored -> when (val result = open(source.slot, source.secret)) {
     is OpenResult.Opened -> result.value
     OpenResult.Missing -> refuse(ModelApiError.KeysMissing(sources.storedHeld()))
-    OpenResult.Locked -> refuse(ModelApiError.KeysLocked)
-    OpenResult.Unavailable -> refuse(ModelApiError.KeysUnavailable(sources.storedHeld()))
-    OpenResult.Unreadable -> refuse(ModelApiError.KeysUnreadable(sources.storedHeld()))
+    is OpenResult.Blocked -> refuse(ModelApiError.KeysNotOpened(result.why, sources.storedHeld()))
   }
 }
 

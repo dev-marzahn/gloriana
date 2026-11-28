@@ -6,16 +6,20 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marzahn.gloriana.logic.presets.PresetContent
+import dev.marzahn.gloriana.ui.components.BackButtonShown
+import dev.marzahn.gloriana.ui.components.DetailPage
 import dev.marzahn.gloriana.ui.components.FieldNote
 import dev.marzahn.gloriana.ui.components.GlorianaTextField
+import dev.marzahn.gloriana.ui.components.PageBack
+import dev.marzahn.gloriana.ui.components.PageTitle
 import dev.marzahn.gloriana.ui.components.Panel
 import dev.marzahn.gloriana.ui.components.Skeleton
 import dev.marzahn.gloriana.ui.components.SkeletonBlock
@@ -39,7 +43,7 @@ fun PresetWrapperScreen(route: PresetWrapperRoute, modifier: Modifier = Modifier
   val state by viewModel.state.collectAsStateWithLifecycle()
   val page = state as? PresetPageState.Shown
   val back = { navigator.pop(Destination.Library) }
-  PresetPageFrame(back, page?.name.orEmpty(), modifier, backOnEveryWidth = true) {
+  DetailPage(PageBack(page?.name.orEmpty(), back, BackButtonShown.OnEveryWidth), modifier) {
     if (page == null) {
       Skeleton { SkeletonBlock(Modifier.size(width = SkeletonLine, height = GlorianaTheme.spacing.s20)) }
     } else {
@@ -56,16 +60,11 @@ private fun WrapperPage(
   contentNow: () -> PresetContent?,
   modifier: Modifier = Modifier,
 ) {
-  val colors = GlorianaTheme.colors
-  val type = GlorianaTheme.type
   val spacing = GlorianaTheme.spacing
   val prompt = route.prompt
   Column(modifier) {
-    Column(Modifier.padding(top = spacing.s8), verticalArrangement = Arrangement.spacedBy(spacing.s6)) {
-      Text(stringResource(prompt.title), style = type.material.headlineLarge, color = colors.text)
-      Text(stringResource(prompt.purpose), style = type.material.bodyMedium, color = colors.textMuted)
-    }
-    Box(Modifier.padding(top = spacing.s16, bottom = spacing.s8)) { SaveButton(page, onIntent) }
+    PageTitle(stringResource(prompt.title), intro = stringResource(prompt.purpose))
+    Box(Modifier.padding(top = spacing.s16, bottom = spacing.s8)) { PresetSaveButton(page, onIntent) }
     SaveNote(page)
     WrapperText(page, route, onIntent, contentNow)
   }
@@ -101,7 +100,8 @@ private fun WrapperText(
             textStyle = type.reading,
           )
           val hint = stringResource(Res.string.wrapper_hint)
-          FieldNote(if (text.isEmpty()) stringResource(Res.string.wrapper_hint_empty, hint) else hint, null)
+          val shownHint = if (text.isEmpty()) stringResource(Res.string.wrapper_hint_empty, hint) else hint
+          FieldNote(AnnotatedString(shownHint), null)
         }
       },
     ),

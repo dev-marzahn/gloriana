@@ -1,9 +1,13 @@
 package dev.marzahn.gloriana.logic.connection
 
-import kotlinx.serialization.SerializationException
+import dev.marzahn.gloriana.logic.json.JsonParse
+import dev.marzahn.gloriana.logic.json.NoFields
+import dev.marzahn.gloriana.logic.json.parseJson
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+
+internal const val MASK = "•••"
 
 data class ConnectionDraft(
   val fields: ConnectionFields,
@@ -21,16 +25,16 @@ sealed interface KeyInput {
 
   data object Removed : KeyInput
 
-  class Entered(val value: String) : KeyInput {
-    override fun toString() = "Entered(•••)"
+  data class Entered(val value: String) : KeyInput {
+    override fun toString() = "Entered($MASK)"
   }
 }
 
 sealed interface HeaderValueInput {
   data class Kept(val storedName: String) : HeaderValueInput
 
-  class Entered(val value: String) : HeaderValueInput {
-    override fun toString() = "Entered(•••)"
+  data class Entered(val value: String) : HeaderValueInput {
+    override fun toString() = "Entered($MASK)"
   }
 }
 
@@ -42,17 +46,16 @@ sealed interface CustomBodyText {
   data object NotAnObject : CustomBodyText
 
   companion object {
-    val Empty = Object(JsonObject(emptyMap()))
+    val Empty = Object(NoFields)
 
     fun parse(text: String): CustomBodyText = if (text.isBlank()) {
       Empty
     } else {
-      try {
-        Json.parseToJsonElement(text).asBody()
-      } catch (error: SerializationException) {
-        NotJson(
-          KotlinxJsonFailure.offset(error)?.let { TextPosition.of(text, it) },
-          KotlinxJsonFailure.fault(error, text),
+      when (val parse = parseJson(text)) {
+        is JsonParse.Parsed -> parse.element.asBody()
+        is JsonParse.Failed -> NotJson(
+          KotlinxJsonFailure.offset(parse.error)?.let { TextPosition.of(text, it) },
+          KotlinxJsonFailure.fault(parse.error, text),
         )
       }
     }

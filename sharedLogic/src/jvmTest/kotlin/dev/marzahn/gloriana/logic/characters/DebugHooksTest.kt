@@ -1,5 +1,6 @@
 package dev.marzahn.gloriana.logic.characters
 
+import dev.marzahn.gloriana.logic.assets.AssetSwitch
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.debug.DebugHooks
 import kotlinx.coroutines.async
@@ -32,20 +33,19 @@ class DebugHooksTest {
   fun aReleaseBuildIgnoresTheHooksFile() = runTest {
     writeHooks("fault.characters.DeleteRowRemoved=fail", "assets.purge.now=on")
     val debugHooks = DebugHooks(LibraryDirectory { directory.resolve("library") }, { false })
-    val hooks = CharacterDebugHooks(debugHooks)
     CharacterLibrary(directory.resolve("library"), faults = debugHooks).use { library ->
       val tamsin = library.importedCharacter(ImporterCorpus.charx)
 
       assertEquals(DeleteResult.Deleted, library.repository.delete(tamsin.id))
-      assertFalse(hooks.purge.purgeNow())
+      assertFalse(debugHooks.isOn(AssetSwitch.PurgeNow))
     }
   }
 
   @Test
   fun aHeldFileShowsAsImportingUntilItIsReleased() = runTest {
     writeHooks("characters.import.hold=on")
-    val hooks = CharacterDebugHooks(DebugHooks(LibraryDirectory { directory.resolve("library") }, { true }))
-    CharacterLibrary(directory.resolve("library"), hold = hooks.importHold).use { library ->
+    val hold = DebugImportHold(DebugHooks(LibraryDirectory { directory.resolve("library") }, { true }))
+    CharacterLibrary(directory.resolve("library"), hold = hold).use { library ->
       val statuses = mutableListOf<FileImportStatus>()
       val pick = async {
         library.repository.import(listOf(ImporterCorpus.ccv1Json), { error("asked") }) { _, status ->

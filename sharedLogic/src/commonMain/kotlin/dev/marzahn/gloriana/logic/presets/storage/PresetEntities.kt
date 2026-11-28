@@ -6,6 +6,7 @@ import androidx.room.ForeignKey
 import androidx.room.Index
 import androidx.room.PrimaryKey
 import androidx.room.Relation
+import dev.marzahn.gloriana.logic.json.decodedOrNull
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.EntryRole
 import dev.marzahn.gloriana.logic.presets.Preset
@@ -18,7 +19,6 @@ import dev.marzahn.gloriana.logic.presets.WrapperPrompt
 import dev.marzahn.gloriana.logic.presets.WrapperPrompts
 import dev.marzahn.gloriana.logic.storage.EntityType
 import dev.marzahn.gloriana.logic.storage.StoredJson
-import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
 
@@ -50,7 +50,6 @@ internal data class PresetEntity(
 internal sealed interface PresetChildEntity {
   val id: Uuid
   val updatedAt: Long
-  val entityType: EntityType
 
   fun stamped(updatedAt: Long): PresetChildEntity
 }
@@ -73,8 +72,6 @@ internal data class PresetEntryEntity(
   val inChatDepth: Int?,
   override val updatedAt: Long,
 ) : PresetChildEntity {
-  override val entityType: EntityType get() = PresetEntriesEntityType
-
   override fun stamped(updatedAt: Long) = copy(updatedAt = updatedAt)
 }
 
@@ -90,8 +87,6 @@ internal data class PresetGroupEntity(
   val name: String,
   override val updatedAt: Long,
 ) : PresetChildEntity {
-  override val entityType: EntityType get() = PresetGroupsEntityType
-
   override fun stamped(updatedAt: Long) = copy(updatedAt = updatedAt)
 }
 
@@ -105,17 +100,19 @@ internal data class PresetRows(
   fun decoded(): DecodedPreset {
     val wrappers = decodedWrappers(preset.wrappers)
     val source = decodedSource(preset.sourceJson)
-    val entryRows = entries.map { entity -> entity.position to entity.toEntry() }
-    return if (wrappers == null || source == null || entryRows.any { (_, entry) -> entry == null }) {
+    val entryRows = decodedEntries()
+    return if (wrappers == null || source == null || entryRows == null) {
       DecodedPreset.Unreadable
     } else {
-      val rows = (entryRows.mapNotNull { (position, entry) -> entry?.let { position to it } } +
-        groups.map { it.position to PresetGroup(it.id, it.name) })
+      val rows = (entryRows + groups.map { it.position to PresetGroup(it.id, it.name) })
         .sortedBy { (position) -> position }
         .map { (_, row) -> row }
       DecodedPreset.Readable(Preset(preset.id, preset.name, PresetContent(rows, wrappers)), source)
     }
   }
+
+  private fun decodedEntries(): List<Pair<Int, PresetRow>>? =
+    entries.map { entity -> entity.position to (entity.toEntry() ?: return null) }
 }
 
 internal sealed interface DecodedPreset {
@@ -130,11 +127,7 @@ internal sealed interface DecodedPreset {
   }
 }
 
-private fun decodedSource(stored: String): JsonObject? = try {
-  StoredJson.decodeFromString<JsonObject>(stored)
-} catch (_: SerializationException) {
-  null
-}
+private fun decodedSource(stored: String): JsonObject? = StoredJson.decodedOrNull<JsonObject>(stored)
 
 internal data class PresetSummaryRow(val id: Uuid, val name: String, val entries: Int, val entriesOn: Int)
 
@@ -144,11 +137,7 @@ internal fun storedWrappers(wrappers: WrapperPrompts): String =
 private val wrappersByKey = WrapperPrompt.entries.associateBy { it.key }
 
 private fun decodedWrappers(stored: String): WrapperPrompts? {
-  val texts = try {
-    StoredJson.decodeFromString<Map<String, String>>(stored)
-  } catch (_: SerializationException) {
-    return null
-  }
+  val texts = StoredJson.decodedOrNull<Map<String, String>>(stored) ?: return null
   return if (wrappersByKey.keys.containsAll(texts.keys)) {
     WrapperPrompts.of(texts.mapKeys { (key) -> wrappersByKey.getValue(key) })
   } else {
@@ -181,7 +170,10 @@ internal fun PresetRow.toEntity(presetId: Uuid, position: Int, updatedAt: Long):
     filledByApp = filledByApp,
     enabled = enabled,
     role = role.storedValue,
-    inChatDepth = (placement as? EntryPlacement.InChat)?.depth,
+    inChatDepth = when (placement) {
+      EntryPlacement.Relative -> null
+      is EntryPlacement.InChat -> placement.depth
+    },
     updatedAt = updatedAt,
   )
   is PresetGroup -> PresetGroupEntity(id, presetId, position, name, updatedAt)

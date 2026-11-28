@@ -1,5 +1,7 @@
 package dev.marzahn.gloriana.stubhost
 
+const val PLAIN_REPLY = "Hello from the stub host. This reply arrives in parts."
+
 private val pieceBoundary = Regex("(?<=\\s)")
 
 internal sealed class Segment {
@@ -30,7 +32,7 @@ internal data class Reply(val segments: List<Segment>, val hitLimit: Boolean = f
   companion object {
     private const val PROMPT_TOKENS = 10
 
-    val plain = Reply(Segment.Text("Hello from the stub host. This reply arrives in parts."))
+    val plain = Reply(Segment.Text(PLAIN_REPLY))
     val withReasoning = Reply(
       Segment.Reasoning("The user greeted me, so I greet them back."),
       Segment.Text("Hello again from the stub host."),

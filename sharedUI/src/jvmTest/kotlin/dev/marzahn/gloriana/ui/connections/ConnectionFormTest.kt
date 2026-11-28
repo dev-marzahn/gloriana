@@ -19,7 +19,33 @@ import kotlin.test.assertTrue
 class ConnectionFormTest {
   private fun samplers(vararg texts: Pair<Sampler, String>) = SamplerTexts(texts.toMap())
 
-  private fun typed(text: String) = KeyEdit.Typed(SecretText(text))
+  private fun typed(text: String) = KeyEdit.typing(SecretText(text))
+
+  private fun header(id: Int, name: String) = HeaderRow(id, name, name, ValueEdit.Kept)
+
+  @Test
+  fun aStoredRowKeepsTheHeaderIdsTheOpenEditsTarget() {
+    val written = ConnectionForm.fromNothing.copy(headers = listOf(header(1, "X-B"), header(2, "X-C")))
+    val stored = ConnectionForm.fromNothing.copy(headers = listOf(header(0, "X-B"), header(1, "X-C")))
+
+    val followed = stored.withHeaderIdsOf(written)
+
+    assertEquals(listOf(1, 2), followed.headers.map { it.id })
+  }
+
+  @Test
+  fun aHeaderNewToTheStoredRowGetsAnIdNoEarlierRowUses() {
+    val earlier = ConnectionForm.fromNothing.copy(headers = listOf(header(3, "X-A")))
+    val stored = ConnectionForm.fromNothing.copy(headers = listOf(header(0, "x-a"), header(1, "X-New")))
+
+    assertEquals(listOf(3, 1), stored.withHeaderIdsOf(earlier).headers.map { it.id })
+  }
+
+  @Test
+  fun typingNothingIsEnteringAKeyNotTypingOne() {
+    assertEquals(KeyEdit.Entering, typed(""))
+    assertEquals(SecretText("s"), (typed("s") as TypedSecret).text)
+  }
 
   @Test
   fun aTemplateFillsTheNameFormatAndBaseUrl() {
@@ -76,7 +102,7 @@ class ConnectionFormTest {
   fun clearingAReplacementOfAStoredHeaderValueKeepsTheStoredValue() {
     val form = ConnectionForm.of(ConnectionTemplate.OpenAi).copy(
       model = "gpt",
-      headers = listOf(HeaderRow(0, "X-Org", "X-Org", ValueEdit.Typed(SecretText.Empty))),
+      headers = listOf(HeaderRow(0, "X-Org", "X-Org", ValueEdit.Entering)),
     )
     val saved = form.copy(headers = listOf(HeaderRow(0, "X-Org", "X-Org", ValueEdit.Kept)))
 
@@ -149,8 +175,8 @@ class ConnectionFormTest {
   fun aHeaderProblemPointsAtItsRowPastBlankRows() {
     val form = ConnectionForm.of(ConnectionTemplate.OpenAi).copy(
       headers = listOf(
-        HeaderRow(4, "", null, ValueEdit.Typed(SecretText.Empty)),
-        HeaderRow(9, "X Bad", null, ValueEdit.Typed(SecretText("v"))),
+        HeaderRow(4, "", null, ValueEdit.Entering),
+        HeaderRow(9, "X Bad", null, ValueEdit.typing(SecretText("v"))),
       ),
     )
 

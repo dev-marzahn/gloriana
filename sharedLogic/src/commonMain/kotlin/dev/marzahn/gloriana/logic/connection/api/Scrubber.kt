@@ -1,10 +1,9 @@
 package dev.marzahn.gloriana.logic.connection.api
 
+import dev.marzahn.gloriana.logic.connection.MASK
 import io.ktor.http.encodeURLParameter
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
-
-internal const val MASK = "•••"
 
 internal class Scrubber(secrets: Set<String>) {
   private val forms: List<String> = secrets

@@ -17,6 +17,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
@@ -135,7 +136,7 @@ fun NewPassphraseFields(
   val passphraseError = entry.problem?.takeIf { it == NewPassphraseProblem.TooShort }?.text()
   val againError = entry.problem?.takeIf { it == NewPassphraseProblem.Mismatch }?.text()
   Column(modifier, verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s16)) {
-    LabelledField(label, hint = stringResource(Res.string.passphrase_hint), error = passphraseError) {
+    LabelledField(label, hint = AnnotatedString(stringResource(Res.string.passphrase_hint)), error = passphraseError) {
       SecretField(
         entry.passphrase,
         actions.onPassphrase,

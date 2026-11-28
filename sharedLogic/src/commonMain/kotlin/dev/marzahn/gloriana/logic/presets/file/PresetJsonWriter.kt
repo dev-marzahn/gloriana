@@ -1,7 +1,8 @@
 package dev.marzahn.gloriana.logic.presets.file
 
 import dev.marzahn.gloriana.logic.json.arrayAt
-import dev.marzahn.gloriana.logic.json.boolean
+import dev.marzahn.gloriana.logic.json.orNone
+import dev.marzahn.gloriana.logic.json.quotedOrBareBoolean
 import dev.marzahn.gloriana.logic.json.string
 import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
@@ -27,7 +28,12 @@ private sealed interface KeyWrite {
 }
 
 private fun JsonObject.applying(writes: Map<String, KeyWrite>): JsonObject {
-  val puts = writes.mapNotNull { (key, write) -> (write as? KeyWrite.Put)?.let { key to it.value } }
+  val puts = writes.mapNotNull { (key, write) ->
+    when (write) {
+      is KeyWrite.Put -> key to write.value
+      KeyWrite.Remove -> null
+    }
+  }
   val removed = writes.filterValues { it == KeyWrite.Remove }.keys
   return JsonObject(this + puts - removed)
 }
@@ -49,15 +55,12 @@ internal object PresetJsonWriter {
 
   private fun prompts(entries: List<PresetEntry>, view: PresetFileView): JsonArray {
     val entriesByIdentifier = entries.associateBy { it.identifier }
-    val kept = view.prompts.mapIndexed { index, element ->
+    return JsonArray(view.prompts.mapIndexed { index, element ->
       val prompt = element as? JsonObject
       val identifier = prompt?.string(IDENTIFIER_KEY)
       val entry = identifier?.takeIf { view.firstPrompts[it]?.index == index }?.let(entriesByIdentifier::get)
       if (prompt == null || entry == null) element else PromptFields.of(entry).overlaidOn(prompt, entry.identifier)
-    }
-    val added = entries.filter { it.identifier !in view.firstPrompts }
-      .map { PromptFields.of(it).newPrompt(it.identifier) }
-    return JsonArray(kept + added)
+    })
   }
 
   private fun promptOrder(entries: List<PresetEntry>, view: PresetFileView): JsonArray? {
@@ -73,35 +76,29 @@ internal object PresetJsonWriter {
       )
       else -> {
         val known = view.entries.map { it.identifier }.toSet() + entries.map { it.identifier }
-        val rewritten = JsonObject(global.list + (ORDER_KEY to JsonArray(rewrittenOrder(global, view, items, known))))
+        val rewritten = global.rewritten(view.entrySlots.map { it.index }.toSet(), items, known)
         JsonArray(lists.mapIndexed { index, list -> if (index == global.index) rewritten else list })
       }
     }
   }
 
-  private fun rewrittenOrder(
-    global: GlobalOrder,
-    view: PresetFileView,
-    items: List<JsonObject>,
-    known: Set<String>,
-  ): List<JsonElement> {
-    val slots = view.entrySlots.map { it.index }.toSet()
-    val pending = items.iterator()
-    val inPlace = global.items.withIndex().mapNotNull { (index, item) ->
+  private fun GlobalOrder.rewritten(slots: Set<Int>, entryItems: List<JsonObject>, known: Set<String>): JsonObject {
+    val pending = entryItems.iterator()
+    val inPlace = items.withIndex().mapNotNull { (index, item) ->
       when {
         index in slots -> if (pending.hasNext()) pending.next() else null
         (item as? JsonObject)?.string(IDENTIFIER_KEY) in known -> null
         else -> item
       }
     }
-    return inPlace + pending.asSequence()
+    return JsonObject(list + (ORDER_KEY to JsonArray(inPlace + pending.asSequence())))
   }
 
   private fun orderItem(entry: PresetEntry, kept: JsonObject?): JsonObject = when {
     kept == null -> JsonObject(
       mapOf(IDENTIFIER_KEY to JsonPrimitive(entry.identifier), ENABLED_KEY to JsonPrimitive(entry.enabled)),
     )
-    (kept.boolean(ENABLED_KEY) ?: true) == entry.enabled -> kept
+    (kept.quotedOrBareBoolean(ENABLED_KEY) ?: true) == entry.enabled -> kept
     else -> JsonObject(kept + (ENABLED_KEY to JsonPrimitive(entry.enabled)))
   }
 
@@ -110,7 +107,7 @@ internal object PresetJsonWriter {
       .filter { it.home == home && content.wrappers[it] != view.wrappers[it] }
       .associate { prompt ->
         val text = content.wrappers[prompt]
-        val omitted = home == WrapperHome.GlorianaKey && text == prompt.pinnedDefault
+        val omitted = home.omitsDefault && text == prompt.pinnedDefault
         prompt.key to if (omitted) KeyWrite.Remove else KeyWrite.Put(JsonPrimitive(text))
       }
 
@@ -121,14 +118,19 @@ internal object PresetJsonWriter {
       writes[GROUPS_KEY] = if (groups.isEmpty()) KeyWrite.Remove else KeyWrite.Put(JsonArray(groups.map(::groupJson)))
     }
     if (writes.isEmpty()) return null
-    val written = (view.gloriana ?: JsonObject(emptyMap())).applying(writes)
+    val written = view.gloriana.orNone().applying(writes)
     return if (written.isEmpty()) KeyWrite.Remove else KeyWrite.Put(written)
   }
 
   private fun groups(content: PresetContent): List<FileGroup> {
     val entriesAbove = content.rows.runningFold(0) { count, row -> if (row is PresetEntry) count + 1 else count }
     return content.rows.zip(entriesAbove)
-      .mapNotNull { (row, above) -> (row as? PresetGroup)?.let { FileGroup(it.name, above) } }
+      .mapNotNull { (row, above) ->
+        when (row) {
+          is PresetGroup -> FileGroup(row.name, above)
+          is PresetEntry -> null
+        }
+      }
   }
 
   private fun groupJson(group: FileGroup) =

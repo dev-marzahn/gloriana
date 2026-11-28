@@ -47,7 +47,7 @@ fun GlorianaMoreMenu(contentDescription: String, items: List<MenuItem>, modifier
 }
 
 @Composable
-fun GlorianaMenu(expanded: Boolean, onDismiss: () -> Unit, items: List<MenuItem>) {
+private fun GlorianaMenu(expanded: Boolean, onDismiss: () -> Unit, items: List<MenuItem>) {
   val colors = GlorianaTheme.colors
   DropdownMenu(expanded, onDismiss, containerColor = colors.raised) {
     items.forEach { item ->

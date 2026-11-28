@@ -194,7 +194,7 @@ class TinkKeyVaultTest {
     vaults.keychain.unreachable = true
 
     val failing = vaults.start()
-    assertEquals(OpenResult.Unavailable, failing.open(apiKey(connection), key))
+    assertEquals(OpenResult.Blocked(KeysBlocked.Unavailable), failing.open(apiKey(connection), key))
     assertEquals(VaultState.Unavailable, failing.state.value)
     assertEquals(PassphraseResult.NotAvailable, failing.setPassphrase("anything".passphrase()))
     assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
@@ -241,7 +241,7 @@ class TinkKeyVaultTest {
 
     val restarted = vaults.start()
     assertEquals(VaultState.DeviceDamaged, restarted.prepare())
-    assertEquals(OpenResult.Unreadable, restarted.open(apiKey(connection), key))
+    assertEquals(OpenResult.Blocked(KeysBlocked.Unreadable), restarted.open(apiKey(connection), key))
     assertTrue(keyset.contentEquals(Files.readAllBytes(keysetFile)))
     assertEquals(ErasingResult.NothingChanged, restarted.reset("x".passphrase()))
 
@@ -394,6 +394,6 @@ class TinkKeyVaultTest {
 
     val vault = vaults.start()
     assertEquals(VaultState.Unavailable, vault.prepare())
-    assertEquals(SealResult.Unavailable, vault.seal(apiKey(connection), "sk-nowhere"))
+    assertEquals(SealResult.Blocked(KeysBlocked.Unavailable), vault.seal(apiKey(connection), "sk-nowhere"))
   }
 }

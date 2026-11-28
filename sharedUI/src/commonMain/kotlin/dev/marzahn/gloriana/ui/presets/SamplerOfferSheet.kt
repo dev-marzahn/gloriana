@@ -4,8 +4,6 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,14 +26,15 @@ import dev.marzahn.gloriana.logic.connection.api.SentValue
 import dev.marzahn.gloriana.logic.presets.NotCopied
 import dev.marzahn.gloriana.logic.presets.NotCopiedBecause
 import dev.marzahn.gloriana.logic.presets.PresetSampler
-import dev.marzahn.gloriana.logic.presets.PresetSamplers
 import dev.marzahn.gloriana.logic.presets.SamplerChange
 import dev.marzahn.gloriana.logic.presets.SamplerDifference
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaDropdownField
 import dev.marzahn.gloriana.ui.components.GlorianaSheet
+import dev.marzahn.gloriana.ui.components.InfoCard
 import dev.marzahn.gloriana.ui.components.SheetButtons
+import dev.marzahn.gloriana.ui.components.joinedInPairs
 import dev.marzahn.gloriana.ui.connections.label
 import dev.marzahn.gloriana.ui.connections.rangeText
 import dev.marzahn.gloriana.ui.connections.shown
@@ -71,7 +70,6 @@ import org.jetbrains.compose.resources.pluralStringResource
 import org.jetbrains.compose.resources.stringResource
 
 private val ArrowSize = 16.dp
-private val MatchIconSize = 20.dp
 private const val TABULAR_FIGURES = "tnum"
 
 private val PresetSampler.label: StringResource
@@ -100,7 +98,7 @@ fun SamplerOfferSheet(
   val colors = GlorianaTheme.colors
   val type = GlorianaTheme.type.material
   val motion = GlorianaTheme.motion
-  GlorianaSheet(onDismiss = { if (!offer.copying) onDecline() }, modifier, dismissible = !offer.copying) {
+  GlorianaSheet(onDismiss = onDecline, modifier, dismissible = !offer.copying) {
     Column(verticalArrangement = Arrangement.spacedBy(spacing.s12)) {
       Text(stringResource(Res.string.offer_title), style = type.headlineSmall, color = colors.text)
       Text(stringResource(Res.string.offer_text, offer.presetName), style = type.bodyMedium, color = colors.textMuted)
@@ -120,7 +118,7 @@ fun SamplerOfferSheet(
         transitionSpec = { fadeIn(motion.standard.tween()) togetherWith fadeOut(motion.standard.tween()) },
         contentKey = { it?.connectionId },
       ) { difference ->
-        if (difference != null) DifferenceList(difference, offer.samplers, offer.picked)
+        if (difference != null) DifferenceList(difference, offer.picked)
       }
       OfferButtons(offer, onCopy, onDecline)
     }
@@ -128,7 +126,7 @@ fun SamplerOfferSheet(
 }
 
 @Composable
-private fun DifferenceList(difference: SamplerDifference, values: PresetSamplers, picked: OfferChoice) {
+private fun DifferenceList(difference: SamplerDifference, picked: OfferChoice) {
   val spacing = GlorianaTheme.spacing
   Column(verticalArrangement = Arrangement.spacedBy(spacing.s8)) {
     if (difference.connectionMatches) {
@@ -137,7 +135,7 @@ private fun DifferenceList(difference: SamplerDifference, values: PresetSamplers
       GroupHeader(stringResource(Res.string.offer_changes_on, picked.name))
       difference.changes.forEach { ChangeRow(it) }
     }
-    NotCopiedLines(difference.notCopied, values, picked.format)
+    NotCopiedLines(difference.notCopied, picked.format)
   }
 }
 
@@ -185,22 +183,11 @@ private fun ChangeRow(change: SamplerChange) {
 
 @Composable
 private fun AlreadyMatching(connectionName: String) {
-  val colors = GlorianaTheme.colors
-  val shape = GlorianaTheme.shapes.control
-  val spacing = GlorianaTheme.spacing
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .background(colors.surface2, shape)
-      .border(1.dp, colors.borderSubtle, shape)
-      .padding(spacing.s12),
-    horizontalArrangement = Arrangement.spacedBy(spacing.s10),
-  ) {
-    Icon(painterResource(Res.drawable.ic_check_circle_20), null, Modifier.size(MatchIconSize), tint = colors.textMuted)
+  InfoCard(Res.drawable.ic_check_circle_20) {
     Text(
       stringResource(Res.string.offer_already_matching, connectionName),
       style = GlorianaTheme.type.material.bodyMedium,
-      color = colors.text,
+      color = GlorianaTheme.colors.text,
     )
   }
 }
@@ -208,7 +195,6 @@ private fun AlreadyMatching(connectionName: String) {
 @Composable
 private fun NotCopiedLines(
   notCopied: List<NotCopied>,
-  values: PresetSamplers,
   format: ApiFormat,
   modifier: Modifier = Modifier,
 ) {
@@ -222,25 +208,21 @@ private fun NotCopiedLines(
   Column(modifier, verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8)) {
     GroupHeader(stringResource(Res.string.offer_not_copied))
     if (takesNone.isNotEmpty()) {
-      val line = joined(takesNone.map { valueText(it, values, format = null) })
+      val line = joinedInPairs(takesNone.map { valueText(it, format = null) }, Res.string.joined_by_dot)
       Text(stringResource(Res.string.offer_format_takes_none, formatName, line), style = style, color = color)
     }
     if (outOfRange.isNotEmpty()) {
-      val line = joined(outOfRange.map { valueText(it, values, format) })
+      val line = joinedInPairs(outOfRange.map { valueText(it, format) }, Res.string.joined_by_dot)
       Text(stringResource(Res.string.offer_out_of_range, formatName, line), style = style, color = color)
     }
   }
 }
 
-@Composable
-private fun joined(parts: List<String>): String = parts.reduce { joined, part ->
-  stringResource(Res.string.joined_by_dot, joined, part)
-}
 
 @Composable
-private fun valueText(notCopied: NotCopied, values: PresetSamplers, format: ApiFormat?): String {
+private fun valueText(notCopied: NotCopied, format: ApiFormat?): String {
   val name = stringResource(notCopied.sampler.label)
-  val value = values.values[notCopied.sampler]?.shown().orEmpty()
+  val value = notCopied.presetValue.shown()
   val range = (notCopied.sampler as? PresetSampler.OnConnection)?.sampler?.let { format?.samplerRanges?.get(it) }
   return if (range == null) {
     stringResource(Res.string.offer_sampler_value, name, value)

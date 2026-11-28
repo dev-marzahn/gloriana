@@ -12,8 +12,6 @@ import java.nio.file.Path
 import kotlin.test.Test
 import kotlin.test.assertEquals
 
-private val stubModelIds = stubModels.map { it.id }
-
 class ModelListTest {
   @TempDir
   lateinit var folder: Path

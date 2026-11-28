@@ -21,10 +21,6 @@ internal val testPrompt = listOf(PromptSection(SectionRole.User, "Reply with one
 private val noListStatuses: Set<HttpStatusCode> =
   setOf(HttpStatusCode.NotFound, HttpStatusCode.MethodNotAllowed, HttpStatusCode.NotImplemented)
 
-private val testWaives: Set<ConnectionProblem> = setOf(ConnectionProblem.NameEmpty)
-
-private val modelListWaives: Set<ConnectionProblem> = testWaives + ConnectionProblem.ModelEmpty
-
 internal class VaultConnectionProbe(
   private val vault: KeyVault,
   private val settings: GlobalModelSettings,
@@ -32,10 +28,10 @@ internal class VaultConnectionProbe(
   private val host: HostCalls,
 ) : ConnectionProbe {
   override suspend fun test(draft: ConnectionDraft, stored: Connection?): ProbeResult<String> =
-    probing(draft, stored, testWaives, ::testReply)
+    probing(draft, stored, ProbeWaives.test, ::testReply)
 
   override suspend fun models(draft: ConnectionDraft, stored: Connection?): ProbeResult<List<String>> =
-    probing(draft, stored, modelListWaives, ::modelList)
+    probing(draft, stored, ProbeWaives.modelList, ::modelList)
 
   private suspend fun <T> probing(
     draft: ConnectionDraft,

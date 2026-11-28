@@ -4,18 +4,18 @@ import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.CharacterNote
 import dev.marzahn.gloriana.logic.characters.KeptCardFields
 import dev.marzahn.gloriana.logic.characters.Pronouns
+import dev.marzahn.gloriana.logic.json.NoFields
 import dev.marzahn.gloriana.logic.json.asString
 import dev.marzahn.gloriana.logic.json.objectAt
+import dev.marzahn.gloriana.logic.json.parsedElement
+import dev.marzahn.gloriana.logic.json.quotedOrBareInt
+import dev.marzahn.gloriana.logic.json.quotedOrBareLong
 import dev.marzahn.gloriana.logic.json.string
 import dev.marzahn.gloriana.logic.json.strings
-import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.longOrNull
 
 private const val ASSET_TYPE_KEY = "type"
 private const val ASSET_URI_KEY = "uri"
@@ -28,7 +28,7 @@ internal data class CardAssetEntry(
   val name: String,
   val uri: String?,
   val extension: String,
-  val otherKeys: JsonObject = JsonObject(emptyMap()),
+  val otherKeys: JsonObject = NoFields,
 ) {
   fun toJson() = JsonObject(
     otherKeys + listOfNotNull(
@@ -57,17 +57,10 @@ internal sealed interface CardJsonRead {
 }
 
 internal object CardJsonReader {
-  fun read(text: String): CardJsonRead {
-    val root = try {
-      Json.parseToJsonElement(text)
-    } catch (_: SerializationException) {
-      null
-    }
-    return when (root) {
-      null -> CardJsonRead.Damaged
-      is JsonObject -> read(root)
-      else -> CardJsonRead.NotACard
-    }
+  fun read(text: String): CardJsonRead = when (val root = parsedElement(text)) {
+    null -> CardJsonRead.Damaged
+    is JsonObject -> read(root)
+    else -> CardJsonRead.NotACard
   }
 
   private fun read(root: JsonObject): CardJsonRead = when (val shape = CardShape.of(root)) {
@@ -106,7 +99,7 @@ internal object CardJsonReader {
 
   private fun characterNote(depthPrompt: JsonObject) = CharacterNote(
     text = depthPrompt.string(DepthPromptKey.Prompt.key).orEmpty(),
-    depth = (depthPrompt[DepthPromptKey.Depth.key] as? JsonPrimitive)?.intOrNull ?: 0,
+    depth = depthPrompt.quotedOrBareInt(DepthPromptKey.Depth.key) ?: 0,
     role = depthPrompt.string(DepthPromptKey.Role.key) ?: DEFAULT_NOTE_ROLE,
   )
 
@@ -125,8 +118,8 @@ internal object CardJsonReader {
     return KeptCardFields(
       tags = fields.strings(TAGS_KEY),
       source = fields.strings("source"),
-      creationDate = (fields["creation_date"] as? JsonPrimitive)?.longOrNull,
-      modificationDate = (fields["modification_date"] as? JsonPrimitive)?.longOrNull,
+      creationDate = fields.quotedOrBareLong("creation_date"),
+      modificationDate = fields.quotedOrBareLong("modification_date"),
       creatorNotesInOtherLanguages = fields.objectAt("creator_notes_multilingual").orEmpty()
         .mapNotNull { (language, notes) -> notes.asString()?.let { language to it } }
         .toMap(),

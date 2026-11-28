@@ -5,39 +5,51 @@ import androidx.lifecycle.viewModelScope
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
+import dev.marzahn.gloriana.logic.connection.KeysUnlock
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.logic.connection.api.ConnectionProbe
 import dev.marzahn.gloriana.logic.connection.secretChecks
 import dev.marzahn.gloriana.logic.connection.secretsState
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.ui.state.DraftEdit
+import dev.marzahn.gloriana.ui.state.StoredReads
+import dev.marzahn.gloriana.ui.state.StoredRow
+import dev.marzahn.gloriana.ui.state.StoredValue
+import dev.marzahn.gloriana.ui.state.UnsavedCopy
+import dev.marzahn.gloriana.ui.state.WhileCollected
+import dev.marzahn.gloriana.ui.state.alongside
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
-import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.launch
-
-private const val STOP_TIMEOUT_MILLIS = 5_000L
+import kotlinx.coroutines.flow.update
 
 sealed interface PageIntent {
   sealed interface PageAction : PageIntent
 
   sealed interface FormIntent : PageAction
 
-  class Edit(val field: FormField, val change: FormChange) : FormIntent
+  sealed interface FormEdit : FormIntent, DraftEdit<ConnectionForm>
 
-  class Toggle(val change: FormChange) : FormIntent
+  class Edit(val field: FormField, val change: FormChange) : FormEdit {
+    override fun applied(to: ConnectionForm) = change(to)
+
+    override fun replaces(earlier: DraftEdit<ConnectionForm>) = earlier is Edit && earlier.field == field
+  }
+
+  class Toggle(val change: FormChange) : FormEdit {
+    override fun applied(to: ConnectionForm) = change(to)
+  }
 
   data object Discard : FormIntent
 
@@ -78,93 +90,106 @@ sealed interface PageEvent {
   data class Saved(val route: ConnectionRoute.Saved) : PageEvent
 }
 
-private data class PageInputs(val route: ConnectionRoute, val attempt: Int)
-
-private class StoredSide(val connection: Result<Connection?>, val default: Boolean)
+internal class ShownConnection(val connection: Connection?, val isDefault: Boolean)
 
 class ConnectionViewModel(
   private val repository: ConnectionRepository,
   probe: ConnectionProbe,
   private val vault: KeyVault,
-  private val globalSettings: GlobalModelSettings,
+  globalSettings: GlobalModelSettings,
+  keys: KeysUnlock,
   commands: ConnectionCommands,
 ) : ViewModel() {
-  private val inputs = MutableStateFlow<PageInputs?>(null)
+  private val route = MutableStateFlow<ConnectionRoute?>(null)
   private val session = MutableStateFlow(PageSession())
+  private val reads = StoredReads.rows<ShownConnection>()
   private val eventChannel = Channel<PageEvent>(Channel.BUFFERED)
-  private var checks: Job? = null
   val events: Flow<PageEvent> = eventChannel.receiveAsFlow()
 
   @OptIn(ExperimentalCoroutinesApi::class)
-  val state: StateFlow<ConnectionPageState> = inputs.filterNotNull()
-    .flatMapLatest { (route) ->
-      combine(storedSide(route), vault.state, vault.findings, globalSettings.samplers(), session) {
-          stored, vaultState, findings, global, current ->
-        val connection = stored.connection.getOrElse { return@combine ConnectionPageState.CouldNotLoad }
-        val startingForm = when (route) {
-          is ConnectionRoute.Saved -> connection?.let(ConnectionForm::of) ?: return@combine ConnectionPageState.Gone
-          is ConnectionRoute.New -> route.start.form()
-        }
-        ConnectionPageState.Shown(
-          saved = connection,
-          isDefault = stored.default,
-          copy = current.form.over(startingForm),
-          errors = current.errors,
-          secrets = connection?.secretsState(vaultState, findings) ?: SecretsState.Usable,
-          globalSamplers = global,
-          activity = current.activity,
-          test = current.test,
-          note = current.note,
-          modelListNote = current.modelListNote,
-        )
-      }
+  private val following: Flow<Unit> = route.filterNotNull().flatMapLatest { route ->
+    when (route) {
+      is ConnectionRoute.Saved -> vault.secretChecks(followed(route).map { listOfNotNull(it.connectionOrNull()) })
+      is ConnectionRoute.New -> emptyFlow()
     }
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), ConnectionPageState.Loading)
+  }
+
+  val state: StateFlow<ConnectionPageState> =
+    combine(session, vault.state, vault.findings, globalSettings.samplers()) { current, vaultState, findings, global ->
+      val found = when (val stored = current.stored) {
+        StoredValue.Loading -> return@combine ConnectionPageState.Loading
+        StoredValue.CouldNotLoad -> return@combine ConnectionPageState.CouldNotLoad
+        StoredRow.Gone -> return@combine ConnectionPageState.Gone
+        is StoredValue.Found -> stored.value
+      }
+      ConnectionPageState.Shown(
+        saved = found.connection,
+        isDefault = found.isDefault,
+        unsaved = current.unsaved ?: return@combine ConnectionPageState.Loading,
+        errors = current.errors,
+        secrets = found.connection?.secretsState(vaultState, findings) ?: SecretsState.Usable,
+        globalSamplers = global,
+        activity = current.activity,
+        test = current.test,
+        note = current.note,
+        modelListNote = current.modelListNote,
+        isIdle = current.isIdle,
+      )
+    }.alongside(following).stateIn(viewModelScope, WhileCollected, ConnectionPageState.Loading)
 
   private val work = PageWork(
     PageContext(session, viewModelScope, eventChannel, state),
     repository,
     probe,
     vault,
+    keys,
     commands,
   )
 
   fun show(route: ConnectionRoute) {
-    if (inputs.value?.route == route) return
-    inputs.value = PageInputs(route, attempt = 0)
-    session.value = PageSession(form = startingForm(route))
-    checks?.cancel()
-    checks = when (route) {
-      is ConnectionRoute.Saved -> viewModelScope.launch {
-        vault.secretChecks(repository.connection(route.uuid).map(::listOfNotNull).catch { emit(emptyList()) }).collect()
-      }
-      is ConnectionRoute.New -> null
+    if (this.route.value == route) return
+    session.value = when (route) {
+      is ConnectionRoute.Saved -> PageSession()
+      is ConnectionRoute.New -> PageSession(
+        stored = StoredValue.Found(ShownConnection(null, isDefault = false)),
+        unsaved = unsavedForm(route.start.form()),
+      )
     }
+    this.route.value = route
   }
 
   fun on(intent: PageIntent) {
-    val current = inputs.value ?: return
+    val current = route.value ?: return
     when (intent) {
-      PageIntent.Retry -> inputs.value = current.copy(attempt = current.attempt + 1)
-      is PageIntent.PageAction -> work.on(intent, current.route)
+      PageIntent.Retry -> reads.retry()
+      is PageIntent.PageAction -> work.on(intent, current)
     }
   }
 
-  private fun startingForm(route: ConnectionRoute): PageForm = when (route) {
-    is ConnectionRoute.Saved -> PageForm.followingTheStoredRow(route.editsDuringItsFirstSave)
-    is ConnectionRoute.New -> PageForm.Untouched
-  }
-
-  private fun storedSide(route: ConnectionRoute): Flow<StoredSide> {
-    val id = when (route) {
-      is ConnectionRoute.Saved -> route.uuid
-      is ConnectionRoute.New -> return flowOf(StoredSide(Result.success(null), default = false))
+  private fun followed(route: ConnectionRoute.Saved): Flow<StoredRow<ShownConnection>> = reads.follow(route.uuid) {
+    combine(repository.connection(route.uuid), repository.defaultConnection().catch { emit(null) }) { saved, default ->
+      saved?.let { ShownConnection(it, default == it.id) }
     }
-    return combine(
-      repository.connection(id).map { Result.success(it) }.catch { emit(Result.failure(it)) },
-      repository.defaultConnection().catch { emit(null) },
-    ) { saved, default -> StoredSide(saved, default == id) }
+  }.onEach { side ->
+    session.update { current ->
+      if (this.route.value == route) current.withStored(side, route.editsDuringItsFirstSave) else current
+    }
   }
+}
+
+private fun StoredRow<ShownConnection>.connectionOrNull(): Connection? = (this as? StoredValue.Found)?.value?.connection
+
+internal fun unsavedForm(stored: ConnectionForm): UnsavedCopy<ConnectionForm> =
+  UnsavedCopy.of(stored, ConnectionForm::sameAs)
+
+private fun PageSession.withStored(
+  side: StoredRow<ShownConnection>,
+  firstEdits: List<DraftEdit<ConnectionForm>>,
+): PageSession {
+  val connection = side.connectionOrNull() ?: return copy(stored = side)
+  val form = ConnectionForm.of(connection).withHeaderIdsOf(unsaved?.beingSaved, unsaved?.draft, unsaved?.baseline)
+  val following = unsaved ?: unsavedForm(form).withEdits(firstEdits)
+  return copy(stored = side, unsaved = following.storedNow(form))
 }
 
 private fun NewConnectionStart.form(): ConnectionForm = when (this) {

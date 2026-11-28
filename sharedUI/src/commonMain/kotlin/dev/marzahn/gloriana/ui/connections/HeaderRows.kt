@@ -12,6 +12,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import dev.marzahn.gloriana.logic.keys.HeaderName
 import dev.marzahn.gloriana.ui.components.AddRow
 import dev.marzahn.gloriana.ui.components.FieldNote
@@ -55,7 +56,7 @@ fun HeaderRows(page: ConnectionPageState.Shown, editing: FormEditing, modifier: 
     )
     editing.form.headers.forEach { row -> HeaderLine(page, editing, row) }
     AddRow(stringResource(Res.string.add_header), { editing.toggle { it.withHeader() } }, density = ListDensity.Pane)
-    FieldNote(stringResource(Res.string.headers_hint), null)
+    FieldNote(AnnotatedString(stringResource(Res.string.headers_hint)), null)
   }
 }
 
@@ -81,29 +82,30 @@ private fun HeaderLine(page: ConnectionPageState.Shown, editing: FormEditing, ro
     Row(horizontalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8), verticalAlignment = Alignment.Top) {
       HeaderNameField(editing, row, nameError)
       when (val value = row.value) {
-        is ValueEdit.Typed -> Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
-          SecretField(
-            value.text,
-            { setValue(ValueEdit.Typed(it)) },
-            SecretLabels(stringResource(Res.string.show_value), stringResource(Res.string.hide_value)),
-            Modifier.weight(1f).focusRequester(editing.focus(valueField)),
-            enabled = editing.enabled,
-            error = valueError,
-            placeholder = stringResource(Res.string.header_value),
-          )
-          if (stored != null) {
-            GlorianaIconButton(
-              Res.drawable.ic_undo_20,
-              stringResource(Res.string.cancel_replace_value),
-              { setValue(ValueEdit.Kept) },
+        ValueEdit.Entering, is TypedSecret ->
+          Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            SecretField(
+              value.typedText,
+              { setValue(ValueEdit.typing(it)) },
+              SecretLabels(stringResource(Res.string.show_value), stringResource(Res.string.hide_value)),
+              Modifier.weight(1f).focusRequester(editing.focus(valueField)),
               enabled = editing.enabled,
+              error = valueError,
+              placeholder = stringResource(Res.string.header_value),
             )
+            if (stored != null) {
+              GlorianaIconButton(
+                Res.drawable.ic_undo_20,
+                stringResource(Res.string.cancel_replace_value),
+                { setValue(ValueEdit.Kept) },
+                enabled = editing.enabled,
+              )
+            }
           }
-        }
         ValueEdit.Kept -> KeptHeaderValue(
           stored ?: StoredSecret.Saved,
           enabled = editing.enabled,
-          onEnter = { setValue(ValueEdit.Typed(SecretText.Empty)) },
+          onEnter = { setValue(ValueEdit.Entering) },
           enterFocus = editing.focus(valueField),
         )
       }
@@ -114,7 +116,7 @@ private fun HeaderLine(page: ConnectionPageState.Shown, editing: FormEditing, ro
         enabled = editing.enabled,
       )
     }
-    FieldNote(stored?.headerHint?.let { stringResource(it) }, nameError ?: valueError)
+    FieldNote(stored?.headerHint?.let { AnnotatedString(stringResource(it)) }, nameError ?: valueError)
   }
 }
 

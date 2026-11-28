@@ -1,6 +1,7 @@
 package dev.marzahn.gloriana.logic.connection.api
 
 import dev.marzahn.gloriana.logic.connection.ApiFormat
+import dev.marzahn.gloriana.logic.connection.MASK
 import io.ktor.http.HttpMethod
 import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking

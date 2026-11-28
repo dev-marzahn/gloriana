@@ -1,6 +1,6 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.connection.Sampler
+import dev.marzahn.gloriana.logic.connection.Samplers
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.jsonArray
@@ -73,30 +73,26 @@ class PresetRoundTripTest {
   fun theFilesSamplersAreReadForTheOffer() = runTest {
     PresetLibrary(directory).use { library ->
       assertEquals(
-        mapOf<PresetSampler, Double>(
-          PresetSampler.OnConnection(Sampler.Temperature) to 0.85,
-          PresetSampler.OnConnection(Sampler.TopP) to 0.92,
-          PresetSampler.OnConnection(Sampler.TopK) to 40.0,
-          PresetSampler.OnConnection(Sampler.FrequencyPenalty) to 0.3,
-          PresetSampler.OnConnection(Sampler.PresencePenalty) to 0.1,
-          PresetSampler.OnConnection(Sampler.Seed) to 7.0,
-          PresetSampler.WithoutConnectionField.TopA to 0.2,
-          PresetSampler.WithoutConnectionField.MinP to 0.05,
-          PresetSampler.WithoutConnectionField.RepetitionPenalty to 1.1,
+        PresetSamplers.of(
+          Samplers(temperature = 0.85, topP = 0.92, topK = 40, frequencyPenalty = 0.3, presencePenalty = 0.1, seed = 7),
+          mapOf(
+            PresetSampler.WithoutConnectionField.TopA to 0.2,
+            PresetSampler.WithoutConnectionField.MinP to 0.05,
+            PresetSampler.WithoutConnectionField.RepetitionPenalty to 1.1,
+          ),
         ),
-        library.imported("sillytavern-full.json").samplers.values,
+        library.imported("sillytavern-full.json").samplers,
       )
       assertEquals(
-        mapOf<PresetSampler, Double>(
-          PresetSampler.OnConnection(Sampler.Temperature) to 0.9,
-          PresetSampler.OnConnection(Sampler.FrequencyPenalty) to 0.2,
-          PresetSampler.OnConnection(Sampler.PresencePenalty) to 0.0,
-          PresetSampler.OnConnection(Sampler.TopP) to 0.95,
-          PresetSampler.WithoutConnectionField.TopA to 0.0,
-          PresetSampler.WithoutConnectionField.MinP to 0.0,
-          PresetSampler.WithoutConnectionField.RepetitionPenalty to 1.0,
+        PresetSamplers.of(
+          Samplers(temperature = 0.9, topP = 0.95, frequencyPenalty = 0.2, presencePenalty = 0.0),
+          mapOf(
+            PresetSampler.WithoutConnectionField.TopA to 0.0,
+            PresetSampler.WithoutConnectionField.MinP to 0.0,
+            PresetSampler.WithoutConnectionField.RepetitionPenalty to 1.0,
+          ),
         ),
-        library.imported("sillytavern-1.19.1.json").samplers.values,
+        library.imported("sillytavern-1.19.1.json").samplers,
       )
       assertTrue(library.imported("only-prompts.json").samplers.isEmpty)
     }

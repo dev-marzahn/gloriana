@@ -7,9 +7,7 @@ import dev.marzahn.gloriana.logic.characters.files.JvmCardReader
 import dev.marzahn.gloriana.logic.characters.files.JvmCardWriter
 import dev.marzahn.gloriana.logic.characters.storage.CharacterWrites
 import dev.marzahn.gloriana.logic.debug.Faults
-import dev.marzahn.gloriana.logic.files.ByteSink
-import dev.marzahn.gloriana.logic.files.ExportDestination
-import dev.marzahn.gloriana.logic.files.ExportWrite
+import dev.marzahn.gloriana.logic.files.MemoryDestination
 import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.TestClock
@@ -18,7 +16,6 @@ import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
 import dev.marzahn.gloriana.logic.storage.UuidV7IdFactory
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
 import kotlinx.coroutines.flow.first
-import java.io.ByteArrayOutputStream
 import java.nio.file.Path
 import kotlin.uuid.Uuid
 
@@ -69,16 +66,4 @@ class CharacterLibrary(
     directory.resolve("assets").resolve("staging").toFile().listFiles().orEmpty().map { it.name }
 
   override fun close() = database.close()
-}
-
-class MemoryDestination : ExportDestination {
-  var bytes = ByteArray(0)
-    private set
-
-  override fun write(content: (ByteSink) -> Unit): ExportWrite {
-    val out = ByteArrayOutputStream()
-    content { bytes, offset, length -> out.write(bytes, offset, length) }
-    bytes = out.toByteArray()
-    return ExportWrite.Written
-  }
 }

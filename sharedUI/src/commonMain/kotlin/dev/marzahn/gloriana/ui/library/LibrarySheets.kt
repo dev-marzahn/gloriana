@@ -22,7 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.characters.AlreadyInLibrary
@@ -54,7 +53,7 @@ import dev.marzahn.gloriana.ui.resources.ic_edit
 import dev.marzahn.gloriana.ui.resources.ic_file_open
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.SheetStyle
-import dev.marzahn.gloriana.ui.theme.disabled
+import dev.marzahn.gloriana.ui.theme.disabledUnless
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
@@ -93,7 +92,6 @@ private fun CreateRow(
 ) {
   val colors = GlorianaTheme.colors
   val shape = GlorianaTheme.shapes.control
-  val tint: (Color) -> Color = { if (enabled) it else it.disabled() }
   Row(
     Modifier
       .fillMaxWidth()
@@ -103,11 +101,12 @@ private fun CreateRow(
     horizontalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s12),
   ) {
     Box(Modifier.size(RowTileSize).background(colors.surface2, shape), contentAlignment = Alignment.Center) {
-      Icon(painterResource(icon), null, tint = tint(colors.textMuted))
+      Icon(painterResource(icon), null, tint = colors.textMuted.disabledUnless(enabled))
     }
     Column(Modifier.weight(1f)) {
-      Text(stringResource(title), style = GlorianaTheme.type.material.titleMedium, color = tint(colors.text))
-      Text(stringResource(line), style = GlorianaTheme.type.material.bodyMedium, color = tint(colors.textMuted))
+      val type = GlorianaTheme.type.material
+      Text(stringResource(title), style = type.titleMedium, color = colors.text.disabledUnless(enabled))
+      Text(stringResource(line), style = type.bodyMedium, color = colors.textMuted.disabledUnless(enabled))
     }
   }
 }

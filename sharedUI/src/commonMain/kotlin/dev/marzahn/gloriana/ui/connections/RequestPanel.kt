@@ -9,15 +9,18 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.marzahn.gloriana.logic.connection.api.reportsUsageOnRequest
 import dev.marzahn.gloriana.ui.components.GlorianaSwitch
 import dev.marzahn.gloriana.ui.components.GlorianaTextField
 import dev.marzahn.gloriana.ui.components.LabelledField
 import dev.marzahn.gloriana.ui.components.PanelRow
 import dev.marzahn.gloriana.ui.components.SettingRow
+import dev.marzahn.gloriana.ui.components.textWithCode
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.custom_body_hint
 import dev.marzahn.gloriana.ui.resources.field_custom_body
@@ -34,6 +37,8 @@ import org.jetbrains.compose.resources.stringResource
 private val TimeoutFieldWidth = 140.dp
 private val CodeFontSize = 14.sp
 private const val CUSTOM_BODY_LINES = 4
+private const val INCLUDE_USAGE_KEY = "stream_options.include_usage"
+private const val CUSTOM_BODY_REMOVES = "null"
 
 internal fun requestRows(page: ConnectionPageState.Shown, editing: FormEditing): List<PanelRow> = listOf(
   { StreamingRows(editing) },
@@ -49,11 +54,16 @@ private fun StreamingRows(editing: FormEditing) {
     Modifier.animateContentSize(GlorianaTheme.motion.standard.tween()),
     verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s14),
   ) {
-    SettingRow(stringResource(Res.string.field_streaming), stringResource(Res.string.streaming_hint), null) {
+    val streamingHint = AnnotatedString(stringResource(Res.string.streaming_hint))
+    SettingRow(stringResource(Res.string.field_streaming), streamingHint, null) {
       GlorianaSwitch(form.streaming, { on -> editing.toggle { it.copy(streaming = on) } }, enabled = editing.enabled)
     }
     if (form.streaming && form.format?.reportsUsageOnRequest == true) {
-      SettingRow(stringResource(Res.string.field_include_usage), stringResource(Res.string.include_usage_hint), null) {
+      SettingRow(
+        stringResource(Res.string.field_include_usage),
+        textWithCode(Res.string.include_usage_hint, INCLUDE_USAGE_KEY),
+        null,
+      ) {
         GlorianaSwitch(
           form.includeUsage,
           { on -> editing.toggle { it.copy(includeUsage = on) } },
@@ -69,7 +79,7 @@ private fun TimeoutRow(editing: FormEditing) {
   val error = editing.error(FormField.Timeout)?.text()
   LabelledField(
     stringResource(Res.string.field_timeout),
-    hint = stringResource(Res.string.timeout_hint),
+    hint = AnnotatedString(stringResource(Res.string.timeout_hint)),
     error = error,
   ) {
     GlorianaTextField(
@@ -89,7 +99,7 @@ private fun CustomBodyRow(editing: FormEditing) {
   val error = editing.error(FormField.CustomBody)?.text()
   LabelledField(
     stringResource(Res.string.field_custom_body),
-    hint = stringResource(Res.string.custom_body_hint),
+    hint = textWithCode(Res.string.custom_body_hint, CUSTOM_BODY_REMOVES),
     error = error,
   ) {
     GlorianaTextField(

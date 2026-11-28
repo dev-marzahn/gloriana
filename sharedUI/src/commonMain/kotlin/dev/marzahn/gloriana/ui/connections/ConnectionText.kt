@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.ui.connections
 
 import androidx.compose.runtime.Composable
 import dev.marzahn.gloriana.logic.connection.ApiFormat
+import dev.marzahn.gloriana.logic.connection.BaseUrl
 import dev.marzahn.gloriana.logic.connection.HeldSecrets
 import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.ui.components.LineTone
@@ -39,6 +40,9 @@ val ApiFormat.label: StringResource
     ApiFormat.OpenAiChatCompletions -> Res.string.format_openai_chat_completions
     ApiFormat.OpenAiResponses -> Res.string.format_openai_responses
   }
+
+internal fun hostOf(baseUrl: String): String =
+  BaseUrl(baseUrl.trim()).hostAndPort ?: baseUrl.trim().substringBefore('/')
 
 val HeldSecrets.what: StringResource
   get() = when (this) {

@@ -67,7 +67,7 @@ val SamplerEntry.error: SamplerError?
     SamplerEntry.Unset, is SamplerEntry.Set -> null
   }
 
-data class SamplerTexts(val texts: Map<Sampler, String>) : ComparesByValue<SamplerTexts> {
+data class SamplerTexts(val texts: Map<Sampler, String>) {
   operator fun get(sampler: Sampler): String = texts[sampler].orEmpty()
 
   fun with(sampler: Sampler, text: String) = SamplerTexts(texts + (sampler to text))
@@ -84,7 +84,7 @@ data class SamplerTexts(val texts: Map<Sampler, String>) : ComparesByValue<Sampl
 
   fun holdsValue(sampler: Sampler): Boolean = sampler.entry(this[sampler]) is SamplerEntry.Set
 
-  override fun sameAs(other: SamplerTexts): Boolean = byValue() == other.byValue()
+  fun sameAs(other: SamplerTexts): Boolean = byValue() == other.byValue()
 
   private fun byValue(): Map<Sampler, String> = Sampler.entries.associateWith { sampler ->
     (sampler.entry(this[sampler]) as? SamplerEntry.Set)?.value?.shown() ?: this[sampler].trim()

@@ -9,10 +9,10 @@ import dev.marzahn.gloriana.logic.characters.CharacterSummary
 import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.ui.characters.CharacterImports
 import dev.marzahn.gloriana.ui.characters.ImportState
+import dev.marzahn.gloriana.ui.state.WhileCollected
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
@@ -21,8 +21,6 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlin.uuid.Uuid
-
-private const val STOP_TIMEOUT_MILLIS = 5_000L
 
 data class CharacterTile(val id: Uuid, val name: String, val avatarPath: String?)
 
@@ -60,7 +58,7 @@ class LibraryViewModel(
   }
 
   val state: StateFlow<LibraryState> = combine(listing, imports.state, ::libraryState)
-    .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), LibraryState.Loading)
+    .stateIn(viewModelScope, WhileCollected, LibraryState.Loading)
 
   suspend fun openPagesWhileShown(open: (Uuid) -> Unit): Nothing = imports.openPagesWhileShown(open)
 

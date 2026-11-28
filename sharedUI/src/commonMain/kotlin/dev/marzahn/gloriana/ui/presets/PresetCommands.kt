@@ -10,8 +10,9 @@ import dev.marzahn.gloriana.ui.lists.LastDeleted
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
-import dev.marzahn.gloriana.ui.resources.preset_deleted
-import dev.marzahn.gloriana.ui.resources.preset_saved
+import dev.marzahn.gloriana.ui.resources.snack_deleted
+import dev.marzahn.gloriana.ui.resources.snack_saved
+import dev.marzahn.gloriana.ui.state.SaveFailure
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -26,42 +27,31 @@ class PresetCommands(
   val deletions = LastDeleted()
 
   fun save(stored: Preset) {
-    val draft = sessions.claim(stored.id) { session ->
-      session.draft?.takeIf { session.activity == PresetActivity.Idle }?.let { draft ->
-        session.copy(activity = PresetActivity.Saving, note = null) to draft
-      }
-    } ?: return
+    val saves = sessions.saves(stored.id)
+    val draft = saves.start(
+      ready = { session, _ -> session.canSave },
+      started = { it.copy(notSaved = null) },
+    ) ?: return
     scope.launch {
-      val note = when (repository.save(stored.copy(content = draft))) {
-        PresetSaveResult.Saved -> null
-        PresetSaveResult.StorageFull -> PresetNote.NotSavedStorage
-        PresetSaveResult.Gone, PresetSaveResult.Failed, is PresetSaveResult.Refused -> PresetNote.NotSaved
-      }
-      sessions.update(stored.id) { session ->
-        if (note != null) {
-          session.copy(activity = PresetActivity.Idle, note = note)
-        } else {
-          session.copy(
-            activity = PresetActivity.Idle,
-            draft = session.draft.takeUnless { it == draft },
-            savedAhead = draft,
-          )
+      when (repository.save(stored.copy(content = draft))) {
+        PresetSaveResult.Saved -> {
+          saves.saved(draft)
+          messages.show(AppMessage(getString(Res.string.snack_saved, stored.name)))
         }
+        PresetSaveResult.StorageFull -> saves.notSaved { it.copy(notSaved = SaveFailure.Storage) }
+        PresetSaveResult.Gone, PresetSaveResult.Failed, is PresetSaveResult.Refused ->
+          saves.notSaved { it.copy(notSaved = SaveFailure.Other) }
       }
-      if (note == null) messages.show(AppMessage(getString(Res.string.preset_saved, stored.name)))
     }
   }
 
   fun askToDelete(stored: Preset) {
-    if (sessions.current(stored.id).activity != PresetActivity.Idle) return
+    if (!sessions.current(stored.id).isIdle) return
     scope.launch {
       val chats = repository.chatsUsing(stored.id)
       sessions.update(stored.id) { session ->
-        if (session.activity != PresetActivity.Idle) {
-          session
-        } else {
-          session.copy(activity = PresetActivity.ConfirmingDelete(chats), note = null)
-        }
+        if (!session.isIdle) return@update session
+        session.copy(activity = PresetActivity.ConfirmingDelete(chats), notDeleted = false)
       }
     }
   }
@@ -71,7 +61,7 @@ class PresetCommands(
   }
 
   fun confirmDelete(stored: Preset) {
-    sessions.claim(stored.id) { session ->
+    sessions.cell(stored.id).claim { session ->
       (session.activity as? PresetActivity.ConfirmingDelete)?.let { confirming ->
         session.copy(activity = PresetActivity.Deleting(confirming.chatsUsing)) to confirming
       }
@@ -82,10 +72,10 @@ class PresetCommands(
         PresetDeleteResult.Deleted, PresetDeleteResult.Gone -> {
           sessions.forget(stored.id)
           deletions.record(Deleted(stored.id, index.coerceAtLeast(0)))
-          messages.show(AppMessage(getString(Res.string.preset_deleted, stored.name)))
+          messages.show(AppMessage(getString(Res.string.snack_deleted, stored.name)))
         }
         PresetDeleteResult.Failed -> sessions.update(stored.id) {
-          it.copy(activity = PresetActivity.Idle, note = PresetNote.NotDeleted)
+          it.copy(activity = PresetActivity.Idle, notDeleted = true)
         }
       }
     }

@@ -25,9 +25,13 @@ import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.InteractionState
 import dev.marzahn.gloriana.ui.theme.LookShadow
+import dev.marzahn.gloriana.ui.theme.animateLookColor
 import dev.marzahn.gloriana.ui.theme.disabled
+import dev.marzahn.gloriana.ui.theme.disabledUnless
 import dev.marzahn.gloriana.ui.theme.fillFor
+import dev.marzahn.gloriana.ui.theme.interactionState
 import dev.marzahn.gloriana.ui.theme.lookShadow
+import dev.marzahn.gloriana.ui.theme.pick
 import org.jetbrains.compose.resources.DrawableResource
 import org.jetbrains.compose.resources.painterResource
 
@@ -53,14 +57,14 @@ private fun buttonLook(kind: ButtonKind, state: InteractionState): ButtonLook {
   val shadows = GlorianaTheme.shadows
   return when (kind) {
     ButtonKind.Primary -> ButtonLook(
-      container = if (state == InteractionState.Rest) colors.accent else colors.accentHover,
+      container = state.pick(colors.accent, colors.accentHover),
       content = colors.accentFg,
       shape = shapes.pill,
       shadow = null,
       border = null,
     )
     ButtonKind.Secondary -> ButtonLook(
-      container = if (state == InteractionState.Rest) colors.raised else colors.fillFor(state),
+      container = state.pick(colors.raised, colors.fillFor(state)),
       content = colors.text,
       shape = shapes.control,
       shadow = shadows.soft,
@@ -69,7 +73,7 @@ private fun buttonLook(kind: ButtonKind, state: InteractionState): ButtonLook {
     ButtonKind.Ghost ->
       ButtonLook(colors.fillFor(state), colors.textMuted, shapes.control, shadow = null, border = null)
     ButtonKind.Danger -> ButtonLook(
-      container = if (state == InteractionState.Rest) colors.danger else colors.dangerText,
+      container = state.pick(colors.danger, colors.dangerText),
       content = colors.onDanger,
       shape = shapes.control,
       shadow = null,
@@ -95,7 +99,7 @@ fun GlorianaButton(
   val container by animateLookColor(look.container)
   val spacing = GlorianaTheme.spacing
   val shadow = if (enabled) look.shadow else null
-  val border = look.border?.let { BorderStroke(1.dp, if (enabled) it else it.disabled()) }
+  val border = look.border?.let { BorderStroke(1.dp, it.disabledUnless(enabled)) }
   val padding = if (kind == ButtonKind.Primary && icon != null) {
     PaddingValues(start = spacing.s20, end = spacing.s6)
   } else {
@@ -135,8 +139,12 @@ fun GlorianaButton(
 
 @Composable
 private fun ButtonIcon(icon: DrawableResource, chip: Boolean, enabled: Boolean) {
-  val chipColor = GlorianaTheme.colors.accentChip.let { if (enabled) it else it.disabled() }
-  val chipModifier = if (chip) Modifier.size(ChipSize).background(chipColor, GlorianaTheme.shapes.pill) else Modifier
+  val chipModifier = if (chip) {
+    val chipColor = GlorianaTheme.colors.accentChip.disabledUnless(enabled)
+    Modifier.size(ChipSize).background(chipColor, GlorianaTheme.shapes.pill)
+  } else {
+    Modifier
+  }
   Box(chipModifier, contentAlignment = Alignment.Center) {
     Icon(painterResource(icon), contentDescription = null, modifier = Modifier.size(IconSize))
   }

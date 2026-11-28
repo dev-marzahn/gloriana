@@ -1,17 +1,16 @@
 package dev.marzahn.gloriana.logic.connection.api
 
+import dev.marzahn.gloriana.logic.files.withoutByteOrderMark
 import io.ktor.utils.io.ByteReadChannel
 import io.ktor.utils.io.LineEnding
 import io.ktor.utils.io.readLine
 
 private const val DATA_FIELD = "data"
 private const val COLON = ':'
-private const val BYTE_ORDER_MARK_CODE = 0xFEFF
-private val byteOrderMark = Char(BYTE_ORDER_MARK_CODE).toString()
 
 internal suspend fun ByteReadChannel.readEventData(onData: suspend (String) -> Unit) {
   val data = mutableListOf<String>()
-  var line = nextLine()?.removePrefix(byteOrderMark) ?: return
+  var line = nextLine()?.withoutByteOrderMark() ?: return
   while (true) {
     when {
       line.isEmpty() -> {

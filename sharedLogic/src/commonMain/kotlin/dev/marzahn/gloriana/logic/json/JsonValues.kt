@@ -10,14 +10,20 @@ import kotlinx.serialization.json.longOrNull
 
 internal fun JsonElement?.asString(): String? = (this as? JsonPrimitive)?.takeIf { it.isString }?.contentOrNull
 
+internal fun JsonElement?.asLiteral(): JsonPrimitive? = (this as? JsonPrimitive)?.takeUnless { it.isString }
+
+internal fun JsonElement?.asBoolean(): Boolean? = asLiteral()?.booleanOrNull
+
 internal fun JsonObject.string(key: String): String? = this[key].asString()
 
 internal fun JsonObject.strings(key: String): List<String> = arrayAt(key).mapNotNull { it.asString() }
 
-internal fun JsonObject.long(key: String): Long? = number(key)?.longOrNull
+internal fun JsonObject.long(key: String): Long? = this[key].asLiteral()?.longOrNull
 
-internal fun JsonObject.int(key: String): Int? = number(key)?.intOrNull
+internal fun JsonObject.int(key: String): Int? = this[key].asLiteral()?.intOrNull
 
-internal fun JsonObject.boolean(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull
+internal fun JsonObject.quotedOrBareLong(key: String): Long? = (this[key] as? JsonPrimitive)?.longOrNull
 
-private fun JsonObject.number(key: String): JsonPrimitive? = (this[key] as? JsonPrimitive)?.takeUnless { it.isString }
+internal fun JsonObject.quotedOrBareInt(key: String): Int? = (this[key] as? JsonPrimitive)?.intOrNull
+
+internal fun JsonObject.quotedOrBareBoolean(key: String): Boolean? = (this[key] as? JsonPrimitive)?.booleanOrNull

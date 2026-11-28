@@ -38,7 +38,14 @@ class ConnectionLibrary(
   private val default = DefaultConnection(settings, database.connectionDao())
   val repository = ConnectionRepository(
     dao = database.connectionDao(),
-    writes = ConnectionWrites(database, default, Tombstones(database, updatedAt), updatedAt, faults),
+    writes = ConnectionWrites(
+      database,
+      database.connectionDao(),
+      default,
+      Tombstones(database, updatedAt),
+      updatedAt,
+      faults,
+    ),
     default = default,
     vault = vaultAround(vault),
     ids = ids,
@@ -46,7 +53,7 @@ class ConnectionLibrary(
   )
 
   suspend fun created(draft: ConnectionDraft): Connection =
-    stored(assertIs<ConnectionSaveResult.Saved>(repository.create(draft)).id)
+    stored(assertIs<ConnectionSaveResult.Saved>(repository.create(draft)).connection.id)
 
   suspend fun stored(id: Uuid): Connection = checkNotNull(repository.connection(id).first())
 

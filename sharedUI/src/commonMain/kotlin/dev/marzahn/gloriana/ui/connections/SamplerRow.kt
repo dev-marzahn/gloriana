@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.connection.Sampler
@@ -18,14 +19,13 @@ fun SamplerRow(
   sampler: Sampler,
   text: String,
   hint: String,
-  error: SamplerError?,
+  errorText: String?,
   onChange: (String) -> Unit,
   modifier: Modifier = Modifier,
   fieldModifier: Modifier = Modifier,
   enabled: Boolean = true,
 ) {
-  val errorText = error?.text()
-  SettingRow(stringResource(sampler.label), hint, errorText, modifier) {
+  SettingRow(stringResource(sampler.label), AnnotatedString(hint), errorText, modifier) {
     GlorianaTextField(
       value = text,
       onValueChange = onChange,

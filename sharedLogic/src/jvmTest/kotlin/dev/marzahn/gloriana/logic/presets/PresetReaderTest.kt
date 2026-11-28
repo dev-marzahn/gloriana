@@ -1,7 +1,7 @@
 package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.characters.CorpusFile
-import dev.marzahn.gloriana.logic.connection.Sampler
+import dev.marzahn.gloriana.logic.connection.Samplers
+import dev.marzahn.gloriana.logic.files.CorpusFile
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.io.TempDir
 import java.nio.file.Path
@@ -94,15 +94,42 @@ class PresetReaderTest {
   }
 
   @Test
+  fun aQuotedEnabledOrMarkerReadsAsItsBoolean() = runTest {
+    val file = """
+      {"prompts": [{"identifier": "main", "marker": "true"}, {"identifier": "aside"}],
+       "prompt_order": [{"character_id": 100001, "order": [
+         {"identifier": "main", "enabled": "true"}, {"identifier": "aside", "enabled": "false"}]}]}
+    """
+
+    PresetLibrary(directory).use { library ->
+      val result = library.import.import(CorpusFile("quoted.json", file.encodeToByteArray()))
+      val entries = library.stored(assertIs<PresetImportResult.Imported>(result).id).content.entries
+
+      assertEquals(listOf(true, false), entries.map { it.enabled })
+      assertEquals(listOf(true, false), entries.map { it.filledByApp })
+    }
+  }
+
+  @Test
   fun samplersThatArentFiniteNumbersAreNotRead() = runTest {
     val file = """{"prompts": [], "temperature": 1e999, "top_p": "0.5", "seed": 3}"""
 
     PresetLibrary(directory).use { library ->
       val result = library.import.import(CorpusFile("odd.json", file.encodeToByteArray()))
       val imported = assertIs<PresetImportResult.Imported>(result)
+      assertEquals(PresetSamplers.of(Samplers(seed = 3)), imported.samplers)
+    }
+  }
+
+  @Test
+  fun aSeedBeyondTheDoublesWholeNumbersKeepsItsExactValue() = runTest {
+    val file = """{"prompts": [], "seed": 9007199254740993, "top_k": 4.0}"""
+
+    PresetLibrary(directory).use { library ->
+      val result = library.import.import(CorpusFile("seed.json", file.encodeToByteArray()))
       assertEquals(
-        mapOf<PresetSampler, Double>(PresetSampler.OnConnection(Sampler.Seed) to 3.0),
-        imported.samplers.values,
+        PresetSamplers.of(Samplers(topK = 4, seed = 9_007_199_254_740_993)),
+        assertIs<PresetImportResult.Imported>(result).samplers,
       )
     }
   }
@@ -113,6 +140,8 @@ class PresetReaderTest {
       """{"prompts": [], "top_k": -3, "seed": -1}""",
       """{"prompts": [], "top_k": 0, "seed": 1e20}""",
       """{"prompts": [], "top_k": 1e20, "seed": -9223372036854775809}""",
+      """{"prompts": [], "top_k": 4.5, "seed": 1.5}""",
+      """{"prompts": [], "seed": 9223372036854775808}""",
     )
 
     PresetLibrary(directory).use { library ->
@@ -124,12 +153,20 @@ class PresetReaderTest {
   }
 
   @Test
-  fun anImportedPresetWithANegativeDepthCanBeSaved() = runTest {
+  fun aNegativeDepthInAFileReadsAsZeroAndSavesButANegativeEditIsRefused() = runTest {
     PresetLibrary(directory).use { library ->
       val preset = library.stored(library.imported("only-prompts.json").id)
+      val deep = preset.content.entries[2]
 
+      assertEquals(EntryPlacement.InChat(0), deep.placement)
       assertEquals(PresetSaveResult.Saved, library.repository.save(preset))
-      assertEquals(EntryPlacement.InChat(0), library.stored(preset.id).content.entries[2].placement)
+      assertEquals(preset, library.stored(preset.id))
+      val negative = deep.copy(placement = EntryPlacement.InChat(-3))
+      val rows = preset.content.rows.map { if (it == deep) negative else it }
+      assertEquals(
+        PresetSaveResult.Refused(setOf(PresetProblem.NegativeDepth(deep.id))),
+        library.repository.save(preset.copy(content = preset.content.copy(rows = rows))),
+      )
     }
   }
 

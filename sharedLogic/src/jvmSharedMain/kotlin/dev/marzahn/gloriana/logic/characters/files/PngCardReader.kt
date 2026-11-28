@@ -13,6 +13,7 @@ import dev.marzahn.gloriana.logic.characters.card.CardAssetEntry
 import dev.marzahn.gloriana.logic.characters.card.CardJsonRead
 import dev.marzahn.gloriana.logic.characters.card.ParsedCard
 import dev.marzahn.gloriana.logic.files.JSON_FILE_LIMIT_BYTES
+import dev.marzahn.gloriana.logic.text.parsedOrNull
 import java.io.IOException
 import java.io.InputStream
 import java.util.Base64
@@ -87,11 +88,7 @@ internal class PngCardReader(private val staging: Staging) {
     return found.firstOrNull { it is CardJsonRead.Card } ?: unreadable
   }
 
-  private fun decodeCardText(base64: ByteArray): ByteArray? = try {
-    Base64.getMimeDecoder().decode(base64)
-  } catch (_: IllegalArgumentException) {
-    null
-  }
+  private fun decodeCardText(base64: ByteArray): ByteArray? = parsedOrNull { Base64.getMimeDecoder().decode(base64) }
 
   private fun imported(card: ParsedCard, avatar: StagedAsset): ImportedCard {
     val assets = card.assets.mapNotNull(::resolve)
