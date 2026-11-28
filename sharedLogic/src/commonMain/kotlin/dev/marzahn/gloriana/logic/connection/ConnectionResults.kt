@@ -50,9 +50,3 @@ sealed interface SamplersUpdateResult {
 
   data object Failed : SamplersUpdateResult
 }
-
-enum class MakeDefaultResult {
-  Made,
-  Gone,
-  Failed,
-}

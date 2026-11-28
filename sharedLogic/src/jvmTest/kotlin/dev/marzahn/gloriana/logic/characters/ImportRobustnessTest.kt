@@ -79,7 +79,7 @@ class ImportRobustnessTest {
     library.importedCharacter(ImporterCorpus.charx)
 
     val result = library.repository.import(listOf(ImporterCorpus.charxUpdated), { question ->
-      library.repository.delete(question.existing.id)
+      library.repository.delete(question.existing.id, ChatsOfDeletedCharacter.Keep)
       AlreadyInLibraryAnswer(AlreadyInLibraryChoice.Update)
     }).single()
 

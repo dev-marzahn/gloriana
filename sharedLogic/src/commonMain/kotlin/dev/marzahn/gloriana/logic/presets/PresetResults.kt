@@ -27,6 +27,8 @@ sealed interface PresetSaveResult {
 
 enum class PresetDeleteResult {
   Deleted,
+  IsDefault,
+  ChatsHaveNoDefault,
   Gone,
   Failed,
 }

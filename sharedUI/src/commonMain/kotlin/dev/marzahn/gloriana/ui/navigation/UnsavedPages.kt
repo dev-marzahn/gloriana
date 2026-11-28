@@ -9,7 +9,12 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.navigation3.runtime.NavKey
 
-class UnsavedPage(val leavingMessage: String, val quittingName: String, val discard: () -> Unit)
+class UnsavedPage(
+  val leavingTitle: String,
+  val leavingMessage: String,
+  val quittingName: String,
+  val discard: () -> Unit,
+)
 
 class PendingLeave(val page: UnsavedPage, val discardAndLeave: () -> Unit, val keepEditing: () -> Unit)
 

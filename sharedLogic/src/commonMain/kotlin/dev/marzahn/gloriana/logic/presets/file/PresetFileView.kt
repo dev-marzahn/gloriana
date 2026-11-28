@@ -65,7 +65,7 @@ internal class PresetFileView(val source: JsonObject) {
     .sortedBy { it.at }
 
   val wrappers: Map<WrapperPrompt, String> = WrapperPrompt.entries.associateWith { prompt ->
-    holder(prompt.home)?.string(prompt.key) ?: prompt.pinnedDefault
+    holder(prompt.home)?.string(prompt.key) ?: prompt.shippedDefault
   }
 
   private fun holder(home: WrapperHome): JsonObject? = when (home) {

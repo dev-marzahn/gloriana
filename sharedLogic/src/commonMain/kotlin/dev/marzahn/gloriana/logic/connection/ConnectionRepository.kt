@@ -10,9 +10,11 @@ import dev.marzahn.gloriana.logic.connection.storage.StoredConnection
 import dev.marzahn.gloriana.logic.connection.storage.decoded
 import dev.marzahn.gloriana.logic.connection.storage.readableOrNull
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.settings.MakeDefaultResult
 import dev.marzahn.gloriana.logic.storage.ChatSetting
 import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.IdFactory
+import dev.marzahn.gloriana.logic.storage.Reordering
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.sync.Mutex
@@ -84,7 +86,9 @@ class ConnectionRepository internal constructor(
       }
     }
 
-  suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { writes.makeDefault(id) }
+  val order: Reordering get() = writes.order
+
+  suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { default.make(id) }
 
   suspend fun delete(id: Uuid): ConnectionDeleteResult = rowAndDataKeyWrites.withLock {
     failingAs(ConnectionDeleteResult.Failed) {

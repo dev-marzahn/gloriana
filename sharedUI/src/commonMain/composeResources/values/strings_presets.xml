@@ -64,9 +64,13 @@
     <string name="preset_error">This Preset couldn't be loaded.</string>
     <string name="preset_error_detail">Nothing was changed. Retry, or go back to your Presets.</string>
     <plurals name="delete_preset_chats">
-        <item quantity="one">%1$d chat uses it and moves to the default Preset.</item>
-        <item quantity="other">%1$d chats use it and move to the default Preset.</item>
+        <item quantity="one">%1$d chat uses it and moves to the default Preset, %2$s.</item>
+        <item quantity="other">%1$d chats use it and move to the default Preset, %2$s.</item>
     </plurals>
+    <string name="snack_made_default_preset">%1$s is the default Preset.</string>
+    <string name="preset_default_cant_delete">The default Preset can't be deleted</string>
+    <string name="preset_refused_default">%1$s wasn't deleted: it's the default Preset now.</string>
+    <string name="preset_refused_default_detail">Make another Preset the default first.</string>
 
     <string name="entries_panel">Entries</string>
     <string name="entries_panel_hint">Sent top to bottom. Groups only organise the list; they send nothing.</string>

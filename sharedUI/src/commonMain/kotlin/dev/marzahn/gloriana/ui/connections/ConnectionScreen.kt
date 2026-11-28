@@ -18,6 +18,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.marzahn.gloriana.ui.components.DefaultMark
 import dev.marzahn.gloriana.ui.components.DetailHeader
 import dev.marzahn.gloriana.ui.components.DetailPage
 import dev.marzahn.gloriana.ui.components.DetailSkeleton
@@ -43,6 +44,7 @@ import dev.marzahn.gloriana.ui.resources.changes_not_saved
 import dev.marzahn.gloriana.ui.resources.connection_error
 import dev.marzahn.gloriana.ui.resources.connection_error_detail
 import dev.marzahn.gloriana.ui.resources.discard_new_connection
+import dev.marzahn.gloriana.ui.resources.discard_title
 import dev.marzahn.gloriana.ui.resources.followed_by_dot
 import dev.marzahn.gloriana.ui.resources.ic_check_circle_20
 import dev.marzahn.gloriana.ui.resources.ic_hub
@@ -106,6 +108,7 @@ fun ConnectionScreen(route: ConnectionRoute, modifier: Modifier = Modifier) {
 private fun unsavedPage(page: ConnectionPageState.Shown, discard: () -> Unit): UnsavedPage {
   val name = page.form.name.trim().ifEmpty { page.saved?.fields?.name.orEmpty() }
   return UnsavedPage(
+    leavingTitle = stringResource(Res.string.discard_title),
     leavingMessage = if (name.isEmpty()) {
       stringResource(Res.string.discard_new_connection)
     } else {

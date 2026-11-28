@@ -13,7 +13,9 @@ import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.SealedSecret
 import dev.marzahn.gloriana.logic.keys.SecretSlot
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
+import dev.marzahn.gloriana.logic.storage.UuidV7IdFactory
 import dev.marzahn.gloriana.ui.messages.AppMessages
+import dev.marzahn.gloriana.ui.navigation.Opening
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_saved
 import dev.marzahn.gloriana.ui.testing.LiveLibrary
@@ -321,7 +323,7 @@ class ConnectionViewModelTest {
     runBlocking {
       val creating = library.koin.get<ConnectionViewModel>()
       launch(Dispatchers.Main) { creating.state.collect {} }
-      creating.show(ConnectionRoute.New(NewConnectionStart.FromNothing, Opening.fresh()))
+      creating.show(ConnectionRoute.New(NewConnectionStart.FromNothing, Opening.fresh(UuidV7IdFactory)))
       withTimeout(WAIT_MILLIS) { creating.state.first { it is ConnectionPageState.Shown } }
       creating.on(
         PageIntent.Edit(FormField.Name) {

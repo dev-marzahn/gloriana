@@ -4,6 +4,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -36,8 +37,16 @@ class ShellNavigator(
 
   val canLeaveToHome: Boolean get() = atRoot && current != Destination.Home
 
+  var reselections by mutableIntStateOf(0)
+    private set
+
   fun select(destination: Destination) {
-    if (destination == current) returnToRoot(current) else current = destination
+    if (destination == current) {
+      reselections++
+      returnToRoot(current)
+    } else {
+      current = destination
+    }
   }
 
   fun showLibraryKind(kind: LibraryKind, then: () -> Unit = {}) {

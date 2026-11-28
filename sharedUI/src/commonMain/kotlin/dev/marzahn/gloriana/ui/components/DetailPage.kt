@@ -88,16 +88,35 @@ fun DetailHeader(
   modifier: Modifier = Modifier,
   actions: @Composable RowScope.() -> Unit = {},
 ) {
+  DetailHeader(
+    tile = {
+      Box(
+        Modifier.size(HeaderTile).background(GlorianaTheme.colors.surface2, GlorianaTheme.shapes.panel),
+        contentAlignment = Alignment.Center,
+      ) {
+        Icon(painterResource(icon), null, Modifier.size(HeaderIcon), tint = GlorianaTheme.colors.textMuted)
+      }
+    },
+    name = name,
+    meta = meta,
+    modifier = modifier,
+    actions = actions,
+  )
+}
+
+@Composable
+fun DetailHeader(
+  tile: @Composable () -> Unit,
+  name: PageName,
+  meta: @Composable FlowRowScope.() -> Unit,
+  modifier: Modifier = Modifier,
+  actions: @Composable RowScope.() -> Unit = {},
+) {
   val colors = GlorianaTheme.colors
   val type = GlorianaTheme.type.material
   val spacing = GlorianaTheme.spacing
   Row(modifier, horizontalArrangement = Arrangement.spacedBy(spacing.s14)) {
-    Box(
-      Modifier.size(HeaderTile).background(colors.surface2, GlorianaTheme.shapes.panel),
-      contentAlignment = Alignment.Center,
-    ) {
-      Icon(painterResource(icon), null, Modifier.size(HeaderIcon), tint = colors.textMuted)
-    }
+    tile()
     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(spacing.s6)) {
       when (name) {
         is PageName.Named -> Text(name.name, style = type.headlineLarge, color = colors.text)

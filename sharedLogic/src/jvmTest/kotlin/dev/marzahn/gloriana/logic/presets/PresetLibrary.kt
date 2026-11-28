@@ -1,12 +1,14 @@
 package dev.marzahn.gloriana.logic.presets
 
+import dev.marzahn.gloriana.logic.chat.storage.ChatReferences
 import dev.marzahn.gloriana.logic.connection.ConnectionLibrary
 import dev.marzahn.gloriana.logic.connection.GlobalModelSettings
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.files.CorpusFile
 import dev.marzahn.gloriana.logic.files.MemoryDestination
+import dev.marzahn.gloriana.logic.presets.file.PresetJsonReader
+import dev.marzahn.gloriana.logic.presets.storage.DefaultPreset
 import dev.marzahn.gloriana.logic.presets.storage.PresetWrites
-import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.Tombstones
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
@@ -25,14 +27,23 @@ class PresetLibrary(
   directory: Path,
   database: GlorianaDatabase = desktopGlorianaDatabase(directory),
   faults: Faults = Faults.None,
-  chats: ChatsUsing = ChatsUsing.NoneYet,
 ) : AutoCloseable {
-  val connections = ConnectionLibrary(directory, database = database)
+  val connections = ConnectionLibrary(directory, database = database, faults = faults)
   private val updatedAt = UpdatedAtClock(connections.clock)
-  private val writes =
-    PresetWrites(database, database.presetDao(), UuidV7IdFactory, updatedAt, Tombstones(database, updatedAt), faults)
-  val repository = PresetRepository(database.presetDao(), writes, UuidV7IdFactory, chats)
-  val import = PresetImport(writes, UuidV7IdFactory)
+  private val chats = ChatReferences(database.chatReferenceDao(), updatedAt)
+  internal val writes = PresetWrites(
+    database,
+    database.presetDao(),
+    UuidV7IdFactory,
+    updatedAt,
+    Tombstones(database, updatedAt),
+    chats,
+    faults,
+  )
+  private val reader = PresetJsonReader(UuidV7IdFactory)
+  internal val default = DefaultPreset(database, connections.settings, database.presetDao(), writes, reader)
+  val repository = PresetRepository(database.presetDao(), writes, UuidV7IdFactory, chats, default)
+  val import = PresetImport(writes, reader)
   val global = GlobalModelSettings(connections.settings)
   val offer = SamplerOffer(connections.repository, global)
 

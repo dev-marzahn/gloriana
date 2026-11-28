@@ -21,16 +21,17 @@ import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.dp
 import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import dev.marzahn.gloriana.ui.components.ButtonSize
 import dev.marzahn.gloriana.ui.components.EmptyBlock
 import dev.marzahn.gloriana.ui.components.EmptyState
-import dev.marzahn.gloriana.ui.components.GlorianaButton
-import dev.marzahn.gloriana.ui.resources.Res
-import dev.marzahn.gloriana.ui.resources.create
-import dev.marzahn.gloriana.ui.resources.ic_add_20
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.stringResource
 
@@ -42,17 +43,27 @@ private val DetailMaxWidth = 700.dp
 sealed interface TopLevelContent {
   val idle: EmptyBlock
   val onCreate: (() -> Unit)?
+  val reorder: ReorderControl?
 
   data class Empty(override val idle: EmptyBlock) : TopLevelContent {
     override val onCreate: (() -> Unit)? get() = null
+    override val reorder: ReorderControl? get() = null
   }
 
   class Items(
     override val idle: EmptyBlock,
     override val onCreate: (() -> Unit)? = null,
+    override val reorder: ReorderControl? = null,
     val list: @Composable (header: @Composable () -> Unit) -> Unit,
   ) : TopLevelContent
 }
+
+private val TopLevelContent.reordering: Boolean get() = reorder?.active == true
+
+private fun Modifier.endsReorderOnEscape(reorder: ReorderControl?): Modifier =
+  onKeyEvent { event ->
+    event.type == KeyEventType.KeyDown && event.key == Key.Escape && reorder?.endsOnEscape() == true
+  }
 
 @Composable
 fun TopLevelScreen(
@@ -62,20 +73,22 @@ fun TopLevelScreen(
   kindPicker: (@Composable () -> Unit)? = null,
 ) {
   val panes = LocalWorkbenchPanes.current
+  val screen = modifier.endsReorderOnEscape(content.reorder)
   if (panes != null) {
-    Workbench(destination, content, panes, modifier, kindPicker)
+    Workbench(destination, content, panes, screen, kindPicker)
   } else {
     when (content) {
-      is TopLevelContent.Empty -> Column(modifier.fillMaxSize()) {
-        TitleRow(destination, onCreate = null)
+      is TopLevelContent.Empty -> Column(screen.fillMaxSize()) {
+        TitleRow(destination, content)
         kindPicker?.let { KindPickerRow(it) }
         EmptyState(content.idle, Modifier.weight(1f).fillMaxWidth().padding(GlorianaTheme.spacing.s16))
       }
-      is TopLevelContent.Items -> Box(modifier.fillMaxSize()) {
+      is TopLevelContent.Items -> Box(screen.fillMaxSize()) {
         content.list {
           Column {
-            TitleRow(destination, content.onCreate)
+            TitleRow(destination, content)
             kindPicker?.let { KindPickerRow(it) }
+            if (content.reordering) ReorderHint(withKeys = false)
           }
         }
       }
@@ -98,10 +111,11 @@ private fun Workbench(
 ) {
   val colors = GlorianaTheme.colors
   Column(modifier.fillMaxSize()) {
-    TopBar(destination, content.onCreate)
+    TopBar(destination, content)
     Row(Modifier.weight(1f).fillMaxWidth()) {
       Column(Modifier.width(ListPaneWidth).fillMaxHeight().background(colors.pane)) {
         kindPicker?.let { Box(Modifier.fillMaxWidth().padding(GlorianaTheme.spacing.s8)) { it() } }
+        if (content.reordering) ReorderHint(withKeys = true)
         if (content is TopLevelContent.Items) Box(Modifier.weight(1f)) { content.list {} }
       }
       VerticalDivider(color = colors.border)
@@ -133,7 +147,7 @@ private fun DetailPane(detail: NavEntry<NavKey>?, idle: EmptyBlock, modifier: Mo
 }
 
 @Composable
-private fun TopBar(destination: Destination, onCreate: (() -> Unit)?) {
+private fun TopBar(destination: Destination, content: TopLevelContent) {
   val colors = GlorianaTheme.colors
   val spacing = GlorianaTheme.spacing
   Column(Modifier.fillMaxWidth().background(colors.canvas)) {
@@ -147,14 +161,14 @@ private fun TopBar(destination: Destination, onCreate: (() -> Unit)?) {
         style = GlorianaTheme.type.material.titleLarge,
         color = colors.text,
       )
-      if (onCreate != null) CreateButton(onCreate, ButtonSize.Small)
+      TitleActions(content.onCreate, content.reorder, ButtonSize.Small)
     }
     HorizontalDivider(color = colors.border)
   }
 }
 
 @Composable
-private fun TitleRow(destination: Destination, onCreate: (() -> Unit)?) {
+private fun TitleRow(destination: Destination, content: TopLevelContent) {
   val spacing = GlorianaTheme.spacing
   Row(
     Modifier.fillMaxWidth().heightIn(min = TitleRowHeight).padding(horizontal = spacing.s16),
@@ -166,16 +180,6 @@ private fun TitleRow(destination: Destination, onCreate: (() -> Unit)?) {
       style = GlorianaTheme.type.material.headlineLarge,
       color = GlorianaTheme.colors.text,
     )
-    if (onCreate != null) CreateButton(onCreate, ButtonSize.Regular)
+    TitleActions(content.onCreate, content.reorder, ButtonSize.Regular)
   }
-}
-
-@Composable
-private fun CreateButton(onCreate: () -> Unit, size: ButtonSize) {
-  GlorianaButton(
-    stringResource(Res.string.create),
-    onCreate,
-    icon = Res.drawable.ic_add_20,
-    size = size,
-  )
 }

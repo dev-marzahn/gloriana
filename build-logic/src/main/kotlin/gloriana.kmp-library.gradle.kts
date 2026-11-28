@@ -1,3 +1,6 @@
+import org.jetbrains.kotlin.gradle.ExperimentalKotlinGradlePluginApi
+import org.jetbrains.kotlin.gradle.plugin.KotlinPlatformType
+
 plugins {
   id("org.jetbrains.kotlin.multiplatform")
   id("com.android.kotlin.multiplatform.library")
@@ -11,6 +14,16 @@ lint {
 }
 
 kotlin {
+  @OptIn(ExperimentalKotlinGradlePluginApi::class)
+  applyDefaultHierarchyTemplate {
+    common {
+      group("jvmShared") {
+        withJvm()
+        withCompilations { it.target.platformType == KotlinPlatformType.androidJvm }
+      }
+    }
+  }
+
   jvm {
     compilerOptions {
       compileAgainstJvmLevel()

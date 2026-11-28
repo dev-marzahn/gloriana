@@ -50,7 +50,7 @@ class AssetPurgeTest {
   fun runningNowRemovesOnlyFilesNoCharacterUses() = runTest {
     val tamsin = library.importedCharacter(ImporterCorpus.charx)
     val kept = library.importedCharacter(ImporterCorpus.ccv3PngFile)
-    library.repository.delete(tamsin.id)
+    library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep)
 
     val removed = purge.run(PurgeRule.Now)
 
@@ -80,7 +80,7 @@ class AssetPurgeTest {
   @Test
   fun theScheduledPurgeKeepsFilesYoungerThanADay() = runTest {
     val tamsin = library.importedCharacter(ImporterCorpus.charx)
-    library.repository.delete(tamsin.id)
+    library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep)
     library.clock.epochMillis = System.currentTimeMillis()
 
     assertEquals(0, purge.run(PurgeRule.Scheduled))
@@ -106,7 +106,7 @@ class AssetPurgeTest {
   @Test
   fun aKeptPreMigrationCopyStopsThePurge() = runTest {
     val tamsin = library.importedCharacter(ImporterCorpus.charx)
-    library.repository.delete(tamsin.id)
+    library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep)
     Files.createDirectories(directory.resolve("pre-migration"))
 
     assertEquals(0, purge.run(PurgeRule.Now))

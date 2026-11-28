@@ -12,6 +12,7 @@ import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_model_settings_saved
 import dev.marzahn.gloriana.ui.state.DraftEdit
 import dev.marzahn.gloriana.ui.state.SaveFailure
+import dev.marzahn.gloriana.ui.state.SaveStart
 import dev.marzahn.gloriana.ui.state.StateCell
 import dev.marzahn.gloriana.ui.state.StoredReads
 import dev.marzahn.gloriana.ui.state.StoredValue
@@ -83,6 +84,13 @@ internal data class ModelSettingsSession(
 internal fun modelSettingsSaves(cell: StateCell<ModelSettingsSession>) =
   UnsavedSaves(cell, { it.page?.unsaved }) { current, unsaved -> current.withPage { it.copy(unsaved = unsaved) } }
 
+internal fun UnsavedSaves<ModelSettingsSession, SamplerTexts>.startSave() = startUnless(
+  ready = { current, _ -> current.read == SettingsRead.Read && current.page?.canSave == true },
+  refusal = { texts -> texts.entryErrors().takeIf { it.isNotEmpty() } },
+  refused = { current, errors -> current.withPage { it.copy(errors = errors) } },
+  started = { it.withNote(null) },
+)
+
 class ModelSettingsViewModel(
   private val settings: GlobalModelSettings,
   private val messages: AppMessages,
@@ -90,7 +98,8 @@ class ModelSettingsViewModel(
   private val session = MutableStateFlow(ModelSettingsSession())
   private val reads = StoredReads.values<Samplers>()
   private val focusChannel = Channel<Sampler>(Channel.BUFFERED)
-  private val saves = modelSettingsSaves(session.asCell())
+  private val cell = session.asCell()
+  private val saves = modelSettingsSaves(cell)
 
   private val following = reads.follow(key = Unit) { settings.samplers() }
     .onEach { read -> session.update { it.withStored(read) } }
@@ -110,12 +119,10 @@ class ModelSettingsViewModel(
   fun discard() = update { it.copy(unsaved = it.unsaved.discarded(), errors = emptyMap(), note = null) }
 
   fun save() {
-    val texts = (session.value.state as? ModelSettingsState.Shown)?.takeIf { it.canSave }?.unsaved?.draft ?: return
-    val errors = texts.entryErrors()
-    when {
-      errors.isNotEmpty() -> refuse(errors)
-      saves.start(ready = { _, unsaved -> unsaved.draft === texts }, started = { it.withNote(null) }) != null ->
-        viewModelScope.launch { write(texts) }
+    when (val start = saves.startSave()) {
+      is SaveStart.Started -> viewModelScope.launch { write(start.draft) }
+      is SaveStart.Refused -> focusFirst(start.reason)
+      null -> Unit
     }
   }
 
@@ -142,6 +149,10 @@ class ModelSettingsViewModel(
 
   private fun refuse(errors: Map<Sampler, SamplerError>) {
     update { it.copy(errors = errors) }
+    focusFirst(errors)
+  }
+
+  private fun focusFirst(errors: Map<Sampler, SamplerError>) {
     Sampler.entries.firstOrNull { it in errors }?.let { focusChannel.trySend(it) }
   }
 }

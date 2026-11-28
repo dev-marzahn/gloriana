@@ -8,13 +8,18 @@ import dev.marzahn.gloriana.logic.presets.PresetGroup
 import dev.marzahn.gloriana.logic.presets.PresetProblem
 import dev.marzahn.gloriana.logic.presets.PresetSaveResult
 import dev.marzahn.gloriana.logic.presets.PresetWritePoint
+import dev.marzahn.gloriana.logic.storage.ChatSetting
+import dev.marzahn.gloriana.logic.storage.ChatsMoved
+import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.IdFactory
+import dev.marzahn.gloriana.logic.storage.moveAll
+import dev.marzahn.gloriana.logic.storage.OrderColumn
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.StoredJson
 import dev.marzahn.gloriana.logic.storage.Tombstones
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
-import dev.marzahn.gloriana.logic.storage.nameKey
+import dev.marzahn.gloriana.logic.storage.UserOrder
 import dev.marzahn.gloriana.logic.storage.writeTransaction
 import kotlinx.serialization.json.JsonObject
 import kotlin.uuid.Uuid
@@ -25,8 +30,12 @@ internal class PresetWrites(
   private val ids: IdFactory,
   private val clock: UpdatedAtClock,
   private val tombstones: Tombstones,
+  private val chats: ChatsUsing,
   private val faults: Faults,
 ) {
+  val order =
+    UserOrder(database, clock, faults, OrderColumn(dao::placedRows, dao::place, PresetWritePoint.MoveRowsWritten))
+
   suspend fun insert(name: String, content: PresetContent, source: JsonObject): Uuid = database.writeTransaction {
     val id = ids.newId()
     val now = clock.now()
@@ -34,9 +43,9 @@ internal class PresetWrites(
       PresetEntity(
         id = id,
         name = name,
-        nameKey = nameKey(name),
         wrappers = storedWrappers(content.wrappers),
         sourceJson = StoredJson.encodeToString(source),
+        position = dao.nextPosition(),
         updatedAt = now,
       ),
     )
@@ -54,7 +63,6 @@ internal class PresetWrites(
     dao.update(
       previous.preset.copy(
         name = preset.name,
-        nameKey = nameKey(preset.name),
         wrappers = storedWrappers(preset.content.wrappers),
         updatedAt = clock.updatedAt(previous.preset.updatedAt, now),
       ),
@@ -64,8 +72,11 @@ internal class PresetWrites(
     PresetSaveResult.Saved
   }
 
-  suspend fun delete(id: Uuid): PresetDeleteResult = database.writeTransaction {
+  suspend fun delete(id: Uuid, chatsMoveTo: Uuid?): PresetDeleteResult = database.writeTransaction {
     val previous = dao.rows(id) ?: return@writeTransaction PresetDeleteResult.Gone
+    if (chats.moveAll(ChatSetting.Preset, id, toDefault = chatsMoveTo) == ChatsMoved.NoDefaultToMoveTo) {
+      return@writeTransaction PresetDeleteResult.ChatsHaveNoDefault
+    }
     remove(previous.children)
     faults.reached(PresetWritePoint.DeleteChildrenRemoved)
     dao.delete(id)

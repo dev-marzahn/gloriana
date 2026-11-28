@@ -6,10 +6,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyItemScope
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,7 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation3.runtime.NavKey
+import dev.marzahn.gloriana.logic.storage.IdFactory
 import dev.marzahn.gloriana.ui.components.AddRow
+import dev.marzahn.gloriana.ui.components.DefaultMark
 import dev.marzahn.gloriana.ui.components.EmptyAction
 import dev.marzahn.gloriana.ui.components.EmptyBlock
 import dev.marzahn.gloriana.ui.components.EmptyState
@@ -36,18 +36,22 @@ import dev.marzahn.gloriana.ui.components.listMotion
 import dev.marzahn.gloriana.ui.connections.ConnectionMoreMenu
 import dev.marzahn.gloriana.ui.connections.ConnectionRoute
 import dev.marzahn.gloriana.ui.connections.CreateConnectionSheet
-import dev.marzahn.gloriana.ui.connections.DefaultMark
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
-import dev.marzahn.gloriana.ui.connections.Opening
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
 import dev.marzahn.gloriana.ui.connections.hostOf
 import dev.marzahn.gloriana.ui.connections.label
 import dev.marzahn.gloriana.ui.connections.secretsLine
-import dev.marzahn.gloriana.ui.lists.RowFocus
+import dev.marzahn.gloriana.ui.lists.ReorderRow
+import dev.marzahn.gloriana.ui.lists.ReorderableColumn
+import dev.marzahn.gloriana.ui.lists.ReorderableList
+import dev.marzahn.gloriana.ui.lists.RowIdentity
 import dev.marzahn.gloriana.ui.lists.RowSkeletons
+import dev.marzahn.gloriana.ui.lists.UserOrderMoves
+import dev.marzahn.gloriana.ui.lists.rememberReorderableList
 import dev.marzahn.gloriana.ui.lists.rememberRowFocus
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
+import dev.marzahn.gloriana.ui.navigation.Opening
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
 import dev.marzahn.gloriana.ui.navigation.replaceTop
@@ -73,16 +77,14 @@ import dev.marzahn.gloriana.ui.resources.passphrase
 import dev.marzahn.gloriana.ui.resources.passphrase_row
 import dev.marzahn.gloriana.ui.resources.passphrase_row_short
 import dev.marzahn.gloriana.ui.resources.settings_group_connections
-import dev.marzahn.gloriana.ui.resources.settings_group_every_connection
-import dev.marzahn.gloriana.ui.resources.settings_group_keys
 import dev.marzahn.gloriana.ui.resources.settings_nothing_picked
 import dev.marzahn.gloriana.ui.resources.settings_nothing_picked_text
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Navigation
 import org.jetbrains.compose.resources.DrawableResource
-import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 
 private val ChevronSize = 24.dp
@@ -93,70 +95,14 @@ class SettingsActions(
   val onIntent: (SettingsIntent) -> Unit,
 )
 
-private sealed interface SettingsItem {
-  val key: String
-
-  data class Group(val title: StringResource) : SettingsItem {
-    override val key = "group-$title"
-  }
-
-  data object Notes : SettingsItem {
-    override val key = "notes"
-  }
-
-  data object Loading : SettingsItem {
-    override val key = "loading"
-  }
-
-  data object LoadFailed : SettingsItem {
-    override val key = "load-failed"
-  }
-
-  data class Connection(val row: ConnectionRowState) : SettingsItem {
-    override val key = "connection-${row.id}"
-  }
-
-  data object Add : SettingsItem {
-    override val key = "add"
-  }
-
-  data object Empty : SettingsItem {
-    override val key = "empty"
-  }
-
-  data object ModelSettings : SettingsItem {
-    override val key = "model-settings"
-  }
-
-  data object Passphrase : SettingsItem {
-    override val key = "passphrase"
-  }
-}
-
-private fun SettingsState.items(inPane: Boolean): List<SettingsItem> = buildList {
-  add(SettingsItem.Group(Res.string.settings_group_connections))
-  add(SettingsItem.Notes)
-  when (val list = connections) {
-    ConnectionsList.Loading -> add(SettingsItem.Loading)
-    ConnectionsList.CouldNotLoad -> add(SettingsItem.LoadFailed)
-    is ConnectionsList.Loaded -> {
-      list.rows.forEach { add(SettingsItem.Connection(it)) }
-      add(if (list.rows.isNotEmpty() || inPane) SettingsItem.Add else SettingsItem.Empty)
-    }
-  }
-  add(SettingsItem.Group(Res.string.settings_group_every_connection))
-  add(SettingsItem.ModelSettings)
-  if (showsPassphrase) {
-    add(SettingsItem.Group(Res.string.settings_group_keys))
-    add(SettingsItem.Passphrase)
-  }
-}
+private val ConnectionIdentity = RowIdentity<ConnectionRowState>(ConnectionRowState::id) { it.connection.fields.name }
 
 @Composable
 fun SettingsScreen(modifier: Modifier = Modifier) {
   val viewModel: SettingsViewModel = koinViewModel()
   val state by viewModel.state.collectAsStateWithLifecycle()
   val navigator = LocalShellNavigator.current
+  val ids: IdFactory = koinInject()
   var creating by rememberSaveable { mutableStateOf(false) }
   val actions = SettingsActions(
     onOpen = { navigator.replaceTop(Destination.Settings, it) },
@@ -165,12 +111,12 @@ fun SettingsScreen(modifier: Modifier = Modifier) {
   )
   val onWorkbench = GlorianaTheme.widthClass.navigation == Navigation.Workbench
   val selected = navigator.stack(Destination.Settings).drop(1).firstOrNull()?.takeIf { onWorkbench }
-  SettingsContent(state, actions, selected, modifier)
+  SettingsContent(state, actions, selected, viewModel.moves, modifier)
   if (creating) {
     CreateConnectionSheet(
       onPick = { start ->
         creating = false
-        navigator.replaceTop(Destination.Settings, ConnectionRoute.New(start, Opening.fresh()))
+        navigator.replaceTop(Destination.Settings, ConnectionRoute.New(start, Opening.fresh(ids)))
       },
       onDismiss = { creating = false },
     )
@@ -183,9 +129,11 @@ internal fun SettingsContent(
   state: SettingsState,
   actions: SettingsActions,
   selected: NavKey?,
+  moves: UserOrderMoves<*>,
   modifier: Modifier = Modifier,
 ) {
-  val empty = (state.connections as? ConnectionsList.Loaded)?.rows?.isEmpty() == true
+  val connections = (state.connections as? ConnectionsList.Loaded)?.rows
+  val empty = connections?.isEmpty() == true
   val nothingPicked = if (empty) {
     connectionsEmptyBlock(actions.onCreate)
   } else {
@@ -195,8 +143,14 @@ internal fun SettingsContent(
       stringResource(Res.string.settings_nothing_picked_text),
     )
   }
-  val content = TopLevelContent.Items(nothingPicked, onCreate = actions.onCreate.takeUnless { empty }) { header ->
-    SettingsList(state, actions, selected, header)
+  val list = rememberReorderableList(moves, ::connectionKey)
+  val reorder = list.control(stringResource(Res.string.settings_group_connections), connections.orEmpty().size)
+  val content = TopLevelContent.Items(
+    nothingPicked,
+    onCreate = actions.onCreate.takeUnless { empty },
+    reorder = reorder,
+  ) { header ->
+    SettingsList(state, actions, selected, header, list)
   }
   TopLevelScreen(Destination.Settings, content, modifier)
 }
@@ -223,26 +177,36 @@ private fun SettingsList(
   actions: SettingsActions,
   selected: NavKey?,
   header: @Composable () -> Unit,
+  list: ReorderableList,
 ) {
   val inPane = GlorianaTheme.widthClass.navigation == Navigation.Workbench
   val spacing = GlorianaTheme.spacing
-  val items = state.items(inPane)
-  val listState = rememberLazyListState()
-  val focusedKey = (state.focus as? ListFocus.Row)?.let { focus ->
-    val rows = items.filterIsInstance<SettingsItem.Connection>()
-    (rows.getOrNull(focus.index) ?: items.firstOrNull { it == SettingsItem.Add || it == SettingsItem.Empty })?.key
-  }
-  val focusTarget = focusedKey?.let { key -> RowFocus(key, items.indexOfFirst { it.key == key } + 1) }
-  val focus = rememberRowFocus(listState, focusTarget) { actions.onIntent(SettingsIntent.Focused) }
+  val rows = SettingsRows(state, inPane, list.active)
+  val focus = rememberRowFocus(list, rows.focusAfterDelete) { actions.onIntent(SettingsIntent.Focused) }
   val density = if (inPane) ListDensity.Pane else ListDensity.Screen
   val scope = ListScope(state, actions, selected, density, focus)
-  LazyColumn(
+  ReorderableColumn(
+    list,
+    rows.connections,
+    ConnectionIdentity,
+    PaddingValues(spacing.s8, if (inPane) spacing.s8 else 0.dp, spacing.s8, spacing.s16),
     Modifier.fillMaxSize(),
-    state = listState,
-    contentPadding = PaddingValues(spacing.s8, if (inPane) spacing.s8 else 0.dp, spacing.s8, spacing.s16),
   ) {
     item(key = "header", contentType = "header") { header() }
-    items(items, key = { it.key }) { item -> Item(scope, item) }
+    items(rows.before, key = { it.key }) { item -> Item(scope, item) }
+    reorderableRows { connection, row ->
+      val route = ConnectionRoute.Saved(connection.id)
+      ConnectionRow(
+        connection,
+        selected == route,
+        density,
+        actions,
+        row,
+        { actions.onOpen(route) },
+        row.modifier.then(focus(connectionKey(connection.id))),
+      )
+    }
+    items(rows.after, key = { it.key }) { item -> Item(scope, item) }
   }
 }
 
@@ -265,17 +229,6 @@ private fun LazyItemScope.Item(scope: ListScope, item: SettingsItem) = with(scop
       stringResource(Res.string.connections_error),
       Res.string.connections_error_detail,
     ) { actions.onIntent(SettingsIntent.Retry) }
-    is SettingsItem.Connection -> {
-      val route = ConnectionRoute.Saved(item.row.id)
-      ConnectionRow(
-        item.row,
-        selected == route,
-        density,
-        actions,
-        { actions.onOpen(route) },
-        listMotion().then(focusModifier(item)),
-      )
-    }
     SettingsItem.Add -> AddRow(
       stringResource(Res.string.create_connection),
       actions.onCreate,
@@ -308,34 +261,35 @@ private fun LazyItemScope.Item(scope: ListScope, item: SettingsItem) = with(scop
 
 @Composable
 private fun ConnectionRow(
-  row: ConnectionRowState,
+  connection: ConnectionRowState,
   selected: Boolean,
   density: ListDensity,
   actions: SettingsActions,
-  onClick: () -> Unit,
+  row: ReorderRow,
+  onOpen: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val fields = row.connection.fields
-  val line = secretsLine(row.secrets, short = density == ListDensity.Pane)
+  val fields = connection.connection.fields
+  val line = secretsLine(connection.secrets, short = density == ListDensity.Pane)
     ?: RowLine.Plain(stringResource(Res.string.joined_by_dot, fields.model, hostOf(fields.baseUrl)))
   ListRow(
     name = fields.name,
     line = line,
-    onClick = onClick,
+    onClick = row.onClick(onOpen),
     modifier = modifier,
     selection = if (selected) RowSelection.Selected else RowSelection.Unselected,
     density = density,
-    nameMark = { DefaultMark(row.isDefault) },
+    nameMark = { DefaultMark(connection.isDefault) },
     thirdLine = stringResource(fields.format.label),
-    trailing = {
+    trailing = row.trailing {
       ConnectionMoreMenu(
         fields.name,
-        row.isDefault,
-        onMakeDefault = { actions.onIntent(SettingsIntent.MakeDefault(row)) },
-        onDelete = { actions.onIntent(SettingsIntent.AskToDelete(row)) },
+        connection.isDefault,
+        onMakeDefault = { actions.onIntent(SettingsIntent.MakeDefault(connection)) },
+        onDelete = { actions.onIntent(SettingsIntent.AskToDelete(connection)) },
       )
     },
-    avatar = { RowTile(Res.drawable.ic_hub_20, density) },
+    avatar = row.avatar { RowTile(Res.drawable.ic_hub_20, density) },
   )
 }
 

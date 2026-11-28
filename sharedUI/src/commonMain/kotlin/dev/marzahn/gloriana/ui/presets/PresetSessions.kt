@@ -1,27 +1,15 @@
 package dev.marzahn.gloriana.ui.presets
 
 import dev.marzahn.gloriana.logic.presets.PresetContent
+import dev.marzahn.gloriana.ui.lists.ItemWork
+import dev.marzahn.gloriana.ui.lists.ItemWorkSessions
 import dev.marzahn.gloriana.ui.state.DraftEdit
+import dev.marzahn.gloriana.ui.state.KeyedSessions
 import dev.marzahn.gloriana.ui.state.SaveFailure
-import dev.marzahn.gloriana.ui.state.StateCell
 import dev.marzahn.gloriana.ui.state.UnsavedCopy
 import dev.marzahn.gloriana.ui.state.UnsavedSaves
-import dev.marzahn.gloriana.ui.state.update
-import dev.marzahn.gloriana.ui.state.updateAndClaim
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlin.uuid.Uuid
-
-sealed interface PresetActivity {
-  data object Idle : PresetActivity
-
-  data class ConfirmingDelete(val chatsUsing: Int) : PresetActivity
-
-  data class Deleting(val chatsUsing: Int) : PresetActivity
-}
 
 enum class CopyFailure { Storage, ConnectionDeleted, Other }
 
@@ -46,57 +34,51 @@ data class ImportNotes(
 
 data class PresetSession(
   val unsaved: UnsavedCopy<PresetContent>? = null,
-  val activity: PresetActivity = PresetActivity.Idle,
+  val work: ItemWork = ItemWork(),
   val notSaved: SaveFailure? = null,
-  val notDeleted: Boolean = false,
   val importNotes: ImportNotes? = null,
 ) {
-  val isIdle: Boolean get() = activity == PresetActivity.Idle && unsaved?.isSaving != true
+  val isIdle: Boolean get() = work.isIdle && unsaved?.isSaving != true
 
-  val canSave: Boolean get() = activity == PresetActivity.Idle && unsaved?.canSave == true
+  val canSave: Boolean get() = isIdle && unsaved?.hasChanges == true
 
   val holdsNothing: Boolean
-    get() = unsaved?.holdsNothingBeyondTheStoredValue != false && activity == PresetActivity.Idle &&
-      notSaved == null && !notDeleted && importNotes == null
+    get() = unsaved?.holdsNothingBeyondTheStoredValue != false && work.holdsNothing &&
+      notSaved == null && importNotes == null
 }
 
-class PresetSessions {
-  private val sessions = MutableStateFlow<Map<Uuid, PresetSession>>(emptyMap())
-
-  fun session(id: Uuid): Flow<PresetSession> =
-    sessions.map { it[id] ?: PresetSession() }.distinctUntilChanged()
-
-  fun current(id: Uuid): PresetSession = sessions.value[id] ?: PresetSession()
-
-  fun update(id: Uuid, change: (PresetSession) -> PresetSession) = cell(id).update(change)
-
-  fun cell(id: Uuid): StateCell<PresetSession> = object : StateCell<PresetSession> {
-    override fun <R : Any> claim(change: (PresetSession) -> Pair<PresetSession, R>?): R? =
-      sessions.updateAndClaim { all ->
-        val result = change(all[id] ?: PresetSession())
-        if (result == null) all to null else all.with(id, result.first) to result.second
-      }
+class PresetSessions : ItemWorkSessions {
+  private val sessions = KeyedSessions<Uuid, PresetSession>({ PresetSession() }) { _, session ->
+    session.holdsNothing
   }
 
+  fun session(id: Uuid): Flow<PresetSession> = sessions.session(id)
+
+  fun current(id: Uuid): PresetSession = sessions.current(id)
+
+  override fun <R : Any> claimWork(
+    id: Uuid,
+    change: (work: ItemWork, canAct: Boolean) -> Pair<ItemWork, R>?,
+  ): R? = sessions.cell(id).claim { session ->
+    change(session.work, session.isIdle)?.let { (work, result) -> session.copy(work = work) to result }
+  }
+
+  override fun deleted(id: Uuid) = sessions.forget(id)
+
   fun saves(id: Uuid): UnsavedSaves<PresetSession, PresetContent> =
-    UnsavedSaves(cell(id), PresetSession::unsaved) { session, unsaved -> session.copy(unsaved = unsaved) }
+    UnsavedSaves(sessions.cell(id), PresetSession::unsaved) { session, unsaved -> session.copy(unsaved = unsaved) }
 
-  fun forget(id: Uuid) = sessions.update { it - id }
-
-  fun storedNow(id: Uuid, stored: PresetContent) = update(id) { session ->
+  fun storedNow(id: Uuid, stored: PresetContent) = sessions.update(id) { session ->
     session.copy(unsaved = session.unsaved?.storedNow(stored))
   }
 
-  fun edit(id: Uuid, latestStored: PresetContent, edit: DraftEdit<PresetContent>) = update(id) { session ->
+  fun edit(id: Uuid, latestStored: PresetContent, edit: DraftEdit<PresetContent>) = sessions.update(id) { session ->
     session.copy(unsaved = (session.unsaved ?: UnsavedCopy.of(latestStored)).edited(edit), notSaved = null)
   }
 
-  fun discard(id: Uuid) = update(id) { it.copy(unsaved = it.unsaved?.discarded(), notSaved = null) }
+  fun discard(id: Uuid) = sessions.update(id) { it.copy(unsaved = it.unsaved?.discarded(), notSaved = null) }
 
-  fun importNotes(id: Uuid, notes: ImportNotes?) = update(id) {
+  fun importNotes(id: Uuid, notes: ImportNotes?) = sessions.update(id) {
     it.copy(importNotes = notes?.takeUnless(ImportNotes::isEmpty))
   }
 }
-
-private fun Map<Uuid, PresetSession>.with(id: Uuid, session: PresetSession) =
-  if (session.holdsNothing) this - id else this + (id to session)

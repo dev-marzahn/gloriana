@@ -6,6 +6,7 @@ enum class ConnectionWritePoint : FaultPoint {
   InsertRowWritten,
   UpdateRowWritten,
   DeleteRowRemoved,
+  MoveRowsWritten,
   ;
 
   override val key: String

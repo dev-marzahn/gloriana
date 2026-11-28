@@ -10,6 +10,7 @@ import androidx.room.TypeConverter
 import androidx.room.TypeConverters
 import dev.marzahn.gloriana.logic.characters.CharacterNote
 import dev.marzahn.gloriana.logic.characters.KeptCardFields
+import dev.marzahn.gloriana.logic.characters.NoteRole
 import dev.marzahn.gloriana.logic.characters.Pronouns
 import dev.marzahn.gloriana.logic.storage.EntityType
 import kotlinx.serialization.json.Json
@@ -116,4 +117,10 @@ internal object CharacterConverters {
 
   @TypeConverter
   fun textToJsonObject(text: String): JsonObject = Json.parseToJsonElement(text).jsonObject
+
+  @TypeConverter
+  fun noteRoleToText(role: NoteRole): String = role.cardValue
+
+  @TypeConverter
+  fun textToNoteRole(text: String): NoteRole = NoteRole.fromCard(text)
 }

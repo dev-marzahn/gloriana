@@ -37,6 +37,7 @@ import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.all_formats
 import dev.marzahn.gloriana.ui.resources.back_to_settings
 import dev.marzahn.gloriana.ui.resources.discard_model_settings
+import dev.marzahn.gloriana.ui.resources.discard_title
 import dev.marzahn.gloriana.ui.resources.formats_two
 import dev.marzahn.gloriana.ui.resources.ic_tune_20
 import dev.marzahn.gloriana.ui.resources.joined_by_dot
@@ -64,6 +65,7 @@ fun ModelSettingsScreen(modifier: Modifier = Modifier) {
   LaunchedEffect(viewModel) { viewModel.focusRequests.collect { focus.getValue(it).requestFocus() } }
   val unsaved = (state as? ModelSettingsState.Shown)?.takeIf { it.unsaved.hasChanges }?.let {
     UnsavedPage(
+      stringResource(Res.string.discard_title),
       stringResource(Res.string.discard_model_settings),
       stringResource(Res.string.model_settings),
       viewModel::discard,

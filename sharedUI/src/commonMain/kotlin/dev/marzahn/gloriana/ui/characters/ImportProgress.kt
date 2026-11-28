@@ -12,11 +12,31 @@ data class RunningFile(val key: Long, val name: String, val status: RunningStatu
 data class FailedFile(val name: String, val reason: ImportFailure)
 
 sealed interface ImportNote {
-  data class Failed(val picked: Int, val failures: List<FailedFile>) : ImportNote
+  val picked: Int
+  val failures: List<FailedFile>
 
-  data class TimedOut(val picked: Int, val cutOff: List<String>, val failures: List<FailedFile>) : ImportNote {
+  data class Failed(override val picked: Int, override val failures: List<FailedFile>) : ImportNote
+
+  data class TimedOut(
+    override val picked: Int,
+    val cutOff: List<String>,
+    override val failures: List<FailedFile>,
+  ) : ImportNote {
     val notImported: Int get() = cutOff.size + failures.size
   }
+}
+
+fun ImportNote?.joinedBy(next: ImportNote): ImportNote {
+  if (this == null) return next
+  val picked = picked + next.picked
+  val failures = failures + next.failures
+  val cutOff = filesCutOff() + next.filesCutOff()
+  return if (cutOff.isEmpty()) ImportNote.Failed(picked, failures) else ImportNote.TimedOut(picked, cutOff, failures)
+}
+
+private fun ImportNote.filesCutOff(): List<String> = when (this) {
+  is ImportNote.Failed -> emptyList()
+  is ImportNote.TimedOut -> cutOff
 }
 
 data class PendingQuestion(val question: AlreadyInLibrary, val showing: Boolean)

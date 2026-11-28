@@ -122,17 +122,17 @@ fun PresetEntryScreen(route: PresetEntryRoute, modifier: Modifier = Modifier) {
   val navigator = LocalShellNavigator.current
   val state by viewModel.state.collectAsStateWithLifecycle()
   val page = state as? PresetPageState.Shown
-  val entry = page?.entry(route.entryUuid)
+  val entry = page?.entry(route.entryId)
   LaunchedEffect(page != null, entry == null) {
     if (page != null && entry == null) navigator.closeWithoutAsking(Destination.Library, route)
   }
-  val lastInChatDepth = page?.content?.inChatDepth(route.entryUuid)
-    ?: page?.unsaved?.baseline?.inChatDepth(route.entryUuid)
+  val lastInChatDepth = page?.content?.inChatDepth(route.entryId)
+    ?: page?.unsaved?.baseline?.inChatDepth(route.entryId)
     ?: 0
   val depthText = rememberDraftText(
     route,
     shown = lastInChatDepth.toString(),
-    draftNow = { viewModel.contentNow()?.inChatDepth(route.entryUuid)?.toString() },
+    draftNow = { viewModel.contentNow()?.inChatDepth(route.entryId)?.toString() },
     sameValue = { typed, draft -> depthOf(typed) == depthOf(draft) },
   )
   val depth = remember(depthText) { DepthEntry(depthText) }

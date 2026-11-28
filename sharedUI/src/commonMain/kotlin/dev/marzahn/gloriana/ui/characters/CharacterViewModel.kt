@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.assets.AssetFiles
 import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.characters.CharacterRepository
+import dev.marzahn.gloriana.logic.characters.ChatsOfDeletedCharacter
 import dev.marzahn.gloriana.logic.characters.DeleteResult
 import dev.marzahn.gloriana.ui.files.ExportState
 import dev.marzahn.gloriana.ui.files.SaveTarget
@@ -100,7 +101,7 @@ class CharacterViewModel(
     val shown = state.value as? CharacterPageState.Shown ?: return
     delete.value = DeleteProgress.Deleting
     viewModelScope.launch {
-      when (repository.delete(shown.character.id)) {
+      when (repository.delete(shown.character.id, ChatsOfDeletedCharacter.Keep)) {
         DeleteResult.Deleted, DeleteResult.Gone -> {
           messages.show(AppMessage(getString(Res.string.snack_deleted, shown.character.fields.name)))
           delete.value = DeleteProgress.Idle

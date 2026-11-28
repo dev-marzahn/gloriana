@@ -30,7 +30,7 @@ class FaultPointTest {
             CharacterWritePoint.UpdateChildrenRemoved, CharacterWritePoint.UpdateRowWritten ->
               library.importOne(ImporterCorpus.charxUpdated, AlreadyInLibraryChoice.Update)
             CharacterWritePoint.DeleteChildrenRemoved, CharacterWritePoint.DeleteRowRemoved ->
-              library.repository.delete(tamsin.id)
+              library.repository.delete(tamsin.id, ChatsOfDeletedCharacter.Keep)
           }
 
           val expected: Any = if (point.name.startsWith("Delete")) {

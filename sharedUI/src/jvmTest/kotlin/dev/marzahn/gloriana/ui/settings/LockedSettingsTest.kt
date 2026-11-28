@@ -70,7 +70,7 @@ class LockedSettingsTest {
       library.needKeys()
       val settings = library.koin.get<SettingsViewModel>()
       launch(Dispatchers.Main) { settings.state.collect {} }
-      withTimeout(WAIT_MILLIS) { settings.state.first { it.locked == listOf("Home", "Work") } }
+      withTimeout(WAIT_MILLIS) { settings.state.first { it.locked == listOf("Work", "Home") } }
 
       settings.on(SettingsIntent.AskToUnlock)
       assertEquals(UnlockPrompt.Unlocking(), settings.state.first { it.unlock != null }.unlock)

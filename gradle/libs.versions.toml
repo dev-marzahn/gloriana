@@ -14,6 +14,7 @@ compose-multiplatform = "1.12.2"
 compose-rules = "0.6.8"
 detekt = "2.0.0-alpha.6"
 java-keyring = "1.0.4"
+jna = "5.13.0"
 jetbrains-lifecycle = "2.11.0"
 jetbrains-markdown = "0.7.18"
 jetbrains-navigation3 = "1.2.0"
@@ -51,6 +52,7 @@ ktor-serialization-kotlinx-json = { module = "io.ktor:ktor-serialization-kotlinx
 tink = { module = "com.google.crypto.tink:tink", version.ref = "tink" }
 tink-android = { module = "com.google.crypto.tink:tink-android", version.ref = "tink" }
 java-keyring = { module = "com.github.javakeyring:java-keyring", version.ref = "java-keyring" }
+jna = { module = "net.java.dev.jna:jna", version.ref = "jna" }
 bouncycastle-prov = { module = "org.bouncycastle:bcprov-jdk18on", version.ref = "bouncycastle" }
 
 compose-runtime = { module = "org.jetbrains.compose.runtime:runtime", version.ref = "compose-multiplatform" }

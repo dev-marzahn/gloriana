@@ -5,6 +5,7 @@ import dev.marzahn.gloriana.logic.characters.CharacterNote
 import dev.marzahn.gloriana.logic.characters.DamagedAs
 import dev.marzahn.gloriana.logic.characters.FileImportResult
 import dev.marzahn.gloriana.logic.characters.ImportFailure
+import dev.marzahn.gloriana.logic.characters.NoteRole
 import dev.marzahn.gloriana.logic.characters.Pronouns
 import dev.marzahn.gloriana.ui.files.SavedFileType
 import dev.marzahn.gloriana.ui.files.proposedFileName
@@ -69,7 +70,7 @@ class CharacterRulesTest {
       exampleMessages = "<START>",
       systemPrompt = "Be brief.",
       postHistoryInstructions = "Stay in character.",
-      characterNote = CharacterNote("Remember the sea.", 4, "assistant"),
+      characterNote = CharacterNote("Remember the sea.", 4, NoteRole.Assistant),
       creatorNotes = "Made for fun.",
     )
     val labels = sentToTheModel(character(fields)).map { it.label }

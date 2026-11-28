@@ -30,6 +30,11 @@ enum class FilledWith(internal val identifiers: Set<String>) {
   ExampleMessages(setOf("dialogueExamples")),
 }
 
+enum class OverriddenByCharacter(internal val identifier: String) {
+  MainPrompt("main"),
+  PostHistoryInstructions("jailbreak"),
+}
+
 sealed interface PresetRow {
   val id: Uuid
 }
@@ -46,6 +51,9 @@ data class PresetEntry(
 ) : PresetRow {
   val filledWith: FilledWith?
     get() = FilledWith.entries.firstOrNull { identifier in it.identifiers }?.takeIf { filledByApp }
+
+  val overriddenByCharacter: OverriddenByCharacter?
+    get() = OverriddenByCharacter.entries.firstOrNull { it.identifier == identifier }
 }
 
 data class PresetGroup(override val id: Uuid, val name: String) : PresetRow

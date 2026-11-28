@@ -8,10 +8,11 @@ import androidx.compose.ui.test.ExperimentalTestApi
 import androidx.compose.ui.test.v2.runComposeUiTest
 import kotlin.test.Test
 import kotlin.test.assertEquals
+import kotlin.uuid.Uuid
 
 @OptIn(ExperimentalTestApi::class)
 class DraftSyncTest {
-  private val route = PresetEntryRoute("00000000-0000-0000-0000-000000000001", "00000000-0000-0000-0000-000000000002")
+  private val route = PresetEntryRoute(Uuid.random(), Uuid.random())
 
   private fun fieldAfter(steps: List<Pair<String, String?>>): String {
     var text = ""

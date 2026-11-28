@@ -6,6 +6,9 @@ import dev.marzahn.gloriana.logic.characters.AlreadyInLibraryAnswer
 import dev.marzahn.gloriana.logic.characters.FileImportResult
 import dev.marzahn.gloriana.logic.characters.FileImportStatus
 import dev.marzahn.gloriana.logic.files.PickedFile
+import dev.marzahn.gloriana.logic.tasks.TaskNotice
+import dev.marzahn.gloriana.logic.tasks.TaskProgress
+import dev.marzahn.gloriana.logic.tasks.TaskRunner
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.messages.MessageAction
@@ -14,35 +17,96 @@ import dev.marzahn.gloriana.ui.navigation.ShellNavigator
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.import_failed_all
 import dev.marzahn.gloriana.ui.resources.import_failed_some
+import dev.marzahn.gloriana.ui.resources.import_notice_detail
+import dev.marzahn.gloriana.ui.resources.import_notice_title
 import dev.marzahn.gloriana.ui.resources.open
 import dev.marzahn.gloriana.ui.resources.snack_failed_one
 import dev.marzahn.gloriana.ui.resources.snack_imported
 import dev.marzahn.gloriana.ui.resources.snack_imported_one
 import dev.marzahn.gloriana.ui.resources.snack_needs_answer
 import dev.marzahn.gloriana.ui.resources.snack_timed_out
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
-import kotlinx.coroutines.Deferred
-import kotlinx.coroutines.async
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.getAndUpdate
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.updateAndGet
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import org.jetbrains.compose.resources.getPluralString
 import org.jetbrains.compose.resources.getString
 import kotlin.concurrent.Volatile
 import kotlin.uuid.Uuid
 
-private class ActiveImport(val work: Deferred<List<FileImportResult>>) {
+private data class PickProgress(val importing: Int, val done: Int)
+
+private class Pick(val files: List<PickedFile>, val keys: List<Long>) {
+  val results = arrayOfNulls<FileImportResult>(files.size)
+  val progress = MutableStateFlow(PickProgress(importing = 1, done = 0))
+
+  val names: List<String> get() = files.map { it.name }
+
+  val notice: Flow<TaskNotice> = progress.map { (importing, done) ->
+    TaskNotice(
+      title = getString(Res.string.import_notice_title),
+      detail = getString(Res.string.import_notice_detail, importing, files.size),
+      progress = TaskProgress(done, files.size),
+    )
+  }
+}
+
+private class ImportQueue(first: Pick) {
+  private val picks = MutableStateFlow<List<Pick>?>(listOf(first))
+
   @Volatile
-  var timedOut = false
+  var task: Job? = null
+
+  @OptIn(ExperimentalCoroutinesApi::class)
+  val notice: Flow<TaskNotice> =
+    picks.mapNotNull { it?.firstOrNull() }.distinctUntilChanged().flatMapLatest { it.notice }
+
+  val head: Pick? get() = picks.value?.firstOrNull()
+
+  fun offer(pick: Pick): Boolean {
+    if (task?.isCancelled == true) return false
+    return picks.getAndUpdate { it?.plus(pick) } != null
+  }
+
+  fun finishHead(): Pick? = picks.updateAndGet { it?.drop(1)?.ifEmpty { null } }?.first()
+
+  fun close(): List<Pick> = picks.getAndUpdate { null }.orEmpty()
+}
+
+private class ImportQueues(private val launch: (ImportQueue) -> Job) {
+  private val current = MutableStateFlow<ImportQueue?>(null)
+
+  fun enqueue(pick: Pick) {
+    do {
+      val queue = current.value
+      if (queue?.offer(pick) == true) return
+    } while (!launchReplacing(queue, pick))
+  }
+
+  private fun launchReplacing(ended: ImportQueue?, pick: Pick): Boolean {
+    val fresh = ImportQueue(pick)
+    if (!current.compareAndSet(ended, fresh)) return false
+    fresh.task = launch(fresh)
+    return true
+  }
 }
 
 class CharacterImports(
   private val importer: CardImporter,
+  private val runner: TaskRunner,
   private val scope: ApplicationScope,
   messages: AppMessages,
 ) {
@@ -50,8 +114,9 @@ class CharacterImports(
   private val announcer = ImportAnnouncer(messages, importer)
   private val pages = PageOpener<Uuid> { id -> scope.launch { announcer.announceImported(id) } }
   private val pendingAnswer = MutableStateFlow<CompletableDeferred<AlreadyInLibraryAnswer>?>(null)
-  private val active = MutableStateFlow<ActiveImport?>(null)
-  private val oneAtATime = Mutex()
+  private val queues = ImportQueues { queue ->
+    runner.launch(queue.notice, onBackgroundTimeOut = { reportCutOff(queue) }) { importAll(queue) }
+  }
   private var nextKey = 0L
 
   val state: StateFlow<ImportState> = mutableState.asStateFlow()
@@ -67,7 +132,7 @@ class CharacterImports(
       RunningFile(keys[index], file.name, RunningStatus.Waiting, position = index + 1, of = files.size)
     }
     mutableState.update { it.copy(running = it.running + tiles, note = null) }
-    scope.launch { oneAtATime.withLock { run(files, keys) } }
+    queues.enqueue(Pick(files, keys))
   }
 
   fun answer(answer: AlreadyInLibraryAnswer) {
@@ -82,40 +147,43 @@ class CharacterImports(
     mutableState.update { it.copy(note = null) }
   }
 
-  fun backgroundTimeRanOut() {
-    active.value?.let { import ->
-      import.timedOut = true
-      import.work.cancel()
+  private suspend fun importAll(queue: ImportQueue) {
+    var pick = queue.head ?: return
+    while (true) {
+      val importing = pick
+      importer.import(importing.files, { question -> ask(question, importing.keys) }) { index, status ->
+        onStatus(importing, index, status)
+      }
+      pick = withContext(NonCancellable) {
+        report(importing.keys, importOutcome(importing.names, importing.results.toList(), timedOut = false))
+        queue.finishHead()
+      } ?: return
     }
   }
 
-  private suspend fun run(files: List<PickedFile>, keys: List<Long>) {
-    val results = arrayOfNulls<FileImportResult>(files.size)
-    val work = scope.async {
-      importer.import(files, { question -> ask(question, keys) }) { index, status ->
-        onStatus(keys[index], status) { results[index] = it }
-      }
-    }
-    val import = ActiveImport(work).also { active.value = it }
-    try {
-      work.await()
-    } catch (cancelled: CancellationException) {
-      if (!import.timedOut) throw cancelled
-    } finally {
-      active.value = null
-      mutableState.update { state -> state.copy(running = state.running.filterNot { it.key in keys }) }
-    }
-    val outcome = importOutcome(files.map { it.name }, results.toList(), import.timedOut)
-    outcome.note?.let { note -> mutableState.update { it.copy(note = note) } }
+  private suspend fun reportCutOff(queue: ImportQueue) {
+    val cutOff = queue.close()
+    val outcome = importOutcome(cutOff.flatMap { it.names }, cutOff.flatMap { it.results.toList() }, timedOut = true)
+    report(cutOff.flatMap { it.keys }, outcome)
+  }
+
+  private suspend fun report(keys: List<Long>, outcome: ImportOutcome) {
+    mutableState.update { state -> state.copy(running = state.running.filterNot { it.key in keys }) }
+    outcome.note?.let { note -> mutableState.update { it.copy(note = it.note.joinedBy(note)) } }
     announcer.announce(outcome, pages)
   }
 
-  private fun onStatus(key: Long, status: FileImportStatus, record: (FileImportResult) -> Unit) {
+  private fun onStatus(pick: Pick, index: Int, status: FileImportStatus) {
+    val key = pick.keys[index]
     when (status) {
       FileImportStatus.Waiting -> setStatus(key, RunningStatus.Waiting)
-      FileImportStatus.Importing -> setStatus(key, RunningStatus.Importing)
+      FileImportStatus.Importing -> {
+        pick.progress.update { it.copy(importing = index + 1) }
+        setStatus(key, RunningStatus.Importing)
+      }
       is FileImportStatus.Done -> {
-        record(status.result)
+        pick.results[index] = status.result
+        pick.progress.update { it.copy(done = it.done + 1) }
         mutableState.update { state -> state.copy(running = state.running.filterNot { it.key == key }) }
       }
     }

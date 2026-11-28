@@ -34,6 +34,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.ic_add
+import dev.marzahn.gloriana.ui.resources.ic_chevron_right
 import dev.marzahn.gloriana.ui.theme.GlorianaIndication
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Spacing
@@ -54,6 +55,22 @@ sealed interface RowLine {
 }
 
 enum class LineTone { Muted, Danger }
+
+private val RowChevronSize = 20.dp
+
+fun ListDensity.chevron(): (@Composable () -> Unit)? = when (this) {
+  ListDensity.Screen -> {
+    {
+      Icon(
+        painterResource(Res.drawable.ic_chevron_right),
+        null,
+        Modifier.size(RowChevronSize),
+        tint = GlorianaTheme.colors.textMuted,
+      )
+    }
+  }
+  ListDensity.Pane -> null
+}
 
 private val FlagIconSize = 16.dp
 
@@ -78,9 +95,11 @@ private val DotSlot = 14.dp
 private val Dot = 8.dp
 private val DotHalo = 3.dp
 
-private fun Modifier.rowClick(selection: RowSelection, shape: Shape, onClick: () -> Unit): Modifier {
+private fun Modifier.rowClick(selection: RowSelection, shape: Shape, onClick: (() -> Unit)?): Modifier {
   val indication = GlorianaIndication(shape)
-  return if (selection == RowSelection.NotSelectable) {
+  return if (onClick == null) {
+    this
+  } else if (selection == RowSelection.NotSelectable) {
     clickable(interactionSource = null, indication = indication, role = Role.Button, onClick = onClick)
   } else {
     selectable(
@@ -95,8 +114,8 @@ private fun Modifier.rowClick(selection: RowSelection, shape: Shape, onClick: ()
 @Composable
 fun ListRow(
   name: String,
-  line: RowLine,
-  onClick: () -> Unit,
+  line: RowLine?,
+  onClick: (() -> Unit)?,
   avatar: @Composable () -> Unit,
   modifier: Modifier = Modifier,
   selection: RowSelection = RowSelection.NotSelectable,
@@ -137,7 +156,7 @@ fun ListRow(
         )
         nameMark?.invoke()
       }
-      RowLineText(line)
+      line?.let { RowLineText(it) }
       if (thirdLine != null) {
         Text(
           thirdLine,

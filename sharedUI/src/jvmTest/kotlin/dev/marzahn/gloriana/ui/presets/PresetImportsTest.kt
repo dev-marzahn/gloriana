@@ -9,7 +9,6 @@ import dev.marzahn.gloriana.logic.files.ExportFailure
 import dev.marzahn.gloriana.logic.files.OpenedFile
 import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.logic.presets.PresetImportFailure
-import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.ui.files.ExportState
 import dev.marzahn.gloriana.ui.files.SaveTarget
@@ -77,7 +76,7 @@ class PresetImportsTest {
     }
 
     fun presetId(): Uuid = runBlocking {
-      withTimeout(WAIT_MILLIS) { library.koin.get<PresetRepository>().presets().first { it.isNotEmpty() } }.single().id
+      withTimeout(WAIT_MILLIS) { library.addedPresetsChanges().first { it.isNotEmpty() } }.single().id
     }
 
     fun notes(): ImportNotes? = runBlocking {
@@ -214,9 +213,7 @@ class PresetImportsTest {
   @Test
   fun anExportOfAPresetThisVersionCantReadShowsTheExportFailedNote() = withImports {
     imports.start(file("Plain.json"))
-    val id = runBlocking {
-      withTimeout(WAIT_MILLIS) { library.koin.get<PresetRepository>().presets().first { it.isNotEmpty() } }.single().id
-    }
+    val id = presetId()
     sql("UPDATE preset_entries SET role = 'narrator'")
     val exports: PresetExports = library.koin.get()
 

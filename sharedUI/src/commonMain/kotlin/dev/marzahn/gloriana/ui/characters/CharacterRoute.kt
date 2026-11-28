@@ -9,11 +9,7 @@ import kotlinx.serialization.Serializable
 import kotlin.uuid.Uuid
 
 @Serializable
-data class CharacterRoute(val id: String) : NavKey {
-  constructor(id: Uuid) : this(id.toString())
-
-  val uuid: Uuid get() = Uuid.parse(id)
-}
+data class CharacterRoute(val id: Uuid) : NavKey
 
 fun ShellNavigator.showLibrary() = showLibraryKind(LibraryKind.Characters)
 

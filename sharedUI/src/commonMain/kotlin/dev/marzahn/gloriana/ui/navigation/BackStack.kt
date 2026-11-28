@@ -8,6 +8,7 @@ import dev.marzahn.gloriana.ui.connections.ConnectionRoute
 import dev.marzahn.gloriana.ui.connections.ModelSettingsRoute
 import dev.marzahn.gloriana.ui.connections.PassphraseRoute
 import dev.marzahn.gloriana.ui.library.LibraryRoute
+import dev.marzahn.gloriana.ui.personas.PersonaRoute
 import dev.marzahn.gloriana.ui.presets.PresetEntryRoute
 import dev.marzahn.gloriana.ui.presets.PresetRoute
 import dev.marzahn.gloriana.ui.presets.PresetWrapperRoute
@@ -30,6 +31,8 @@ internal val backStackConfiguration = SavedStateConfiguration {
       subclass(PresetRoute::class)
       subclass(PresetEntryRoute::class)
       subclass(PresetWrapperRoute::class)
+      subclass(PersonaRoute.Saved::class)
+      subclass(PersonaRoute.New::class)
     }
   }
 }

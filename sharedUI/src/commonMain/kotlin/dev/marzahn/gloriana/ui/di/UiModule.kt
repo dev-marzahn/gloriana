@@ -25,6 +25,7 @@ import dev.marzahn.gloriana.ui.library.LibraryScreen
 import dev.marzahn.gloriana.ui.library.LibraryViewModel
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.navigation.QuitRequests
+import dev.marzahn.gloriana.ui.personas.personasUiModule
 import dev.marzahn.gloriana.ui.presets.presetsUiModule
 import dev.marzahn.gloriana.ui.settings.SettingsRoute
 import dev.marzahn.gloriana.ui.settings.SettingsScreen
@@ -38,7 +39,7 @@ import org.koin.plugin.module.dsl.viewModel
 
 @OptIn(KoinExperimentalAPI::class)
 val uiModule = module {
-  includes(presetsUiModule)
+  includes(presetsUiModule, personasUiModule)
   single<AppMessages>()
   single<QuitRequests>()
   single<ConnectionCommands>()
@@ -54,7 +55,7 @@ val uiModule = module {
   viewModel<KeysGateViewModel>()
   navigation<ChatsRoute> { ChatsScreen() }
   navigation<LibraryRoute> { LibraryScreen() }
-  navigation<CharacterRoute> { route -> CharacterScreen(route.uuid) }
+  navigation<CharacterRoute> { route -> CharacterScreen(route.id) }
   navigation<SettingsRoute> { SettingsScreen() }
   navigation<ConnectionRoute.Saved> { route -> ConnectionScreen(route) }
   navigation<ConnectionRoute.New> { route -> ConnectionScreen(route) }

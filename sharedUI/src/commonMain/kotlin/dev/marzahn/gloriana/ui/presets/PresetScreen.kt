@@ -12,14 +12,15 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.marzahn.gloriana.ui.components.DefaultMark
 import dev.marzahn.gloriana.ui.components.DetailHeader
 import dev.marzahn.gloriana.ui.components.DetailPage
 import dev.marzahn.gloriana.ui.components.DetailSkeleton
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaMoreMenu
 import dev.marzahn.gloriana.ui.components.MenuItem
-import dev.marzahn.gloriana.ui.components.NotDeletedNote
 import dev.marzahn.gloriana.ui.components.NotSavedNote
+import dev.marzahn.gloriana.ui.components.RefusedAsDefaultCopy
 import dev.marzahn.gloriana.ui.components.NoteCard
 import dev.marzahn.gloriana.ui.components.NoteLine
 import dev.marzahn.gloriana.ui.components.PageBack
@@ -31,6 +32,10 @@ import dev.marzahn.gloriana.ui.components.NotSavedCopy
 import dev.marzahn.gloriana.ui.components.SkeletonHeader
 import dev.marzahn.gloriana.ui.components.boldThenPlain
 import dev.marzahn.gloriana.ui.files.ExportState
+import dev.marzahn.gloriana.ui.lists.DeleteItemCopy
+import dev.marzahn.gloriana.ui.lists.ItemWorkNotes
+import dev.marzahn.gloriana.ui.lists.deleteMenuItem
+import dev.marzahn.gloriana.ui.lists.makeDefaultMenuItem
 import dev.marzahn.gloriana.ui.files.SavedFileType
 import dev.marzahn.gloriana.ui.files.exportNote
 import dev.marzahn.gloriana.ui.files.proposedFileName
@@ -43,20 +48,20 @@ import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.back_to_presets
 import dev.marzahn.gloriana.ui.resources.changes_not_saved
 import dev.marzahn.gloriana.ui.resources.delete_preset
+import dev.marzahn.gloriana.ui.resources.discard_title
 import dev.marzahn.gloriana.ui.resources.export
 import dev.marzahn.gloriana.ui.resources.export_again
 import dev.marzahn.gloriana.ui.resources.exporting
-import dev.marzahn.gloriana.ui.resources.ic_delete
 import dev.marzahn.gloriana.ui.resources.ic_file_save_20
-import dev.marzahn.gloriana.ui.resources.ic_star
 import dev.marzahn.gloriana.ui.resources.ic_view_list
-import dev.marzahn.gloriana.ui.resources.make_default
 import dev.marzahn.gloriana.ui.resources.more_for
-import dev.marzahn.gloriana.ui.resources.not_available_yet
+import dev.marzahn.gloriana.ui.resources.preset_default_cant_delete
 import dev.marzahn.gloriana.ui.resources.preset_error
 import dev.marzahn.gloriana.ui.resources.preset_error_detail
 import dev.marzahn.gloriana.ui.resources.preset_not_saved_detail
 import dev.marzahn.gloriana.ui.resources.preset_not_saved_storage_detail
+import dev.marzahn.gloriana.ui.resources.preset_refused_default
+import dev.marzahn.gloriana.ui.resources.preset_refused_default_detail
 import dev.marzahn.gloriana.ui.resources.save_changes_first
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.stringResource
@@ -68,23 +73,24 @@ internal fun rememberPresetPage(part: PresetPart): PresetViewModel {
   val viewModel: PresetViewModel = koinViewModel()
   val navigator = LocalShellNavigator.current
   val sessions: PresetSessions = koinInject()
-  LaunchedEffect(viewModel, part.presetUuid) { viewModel.show(part.presetUuid) }
+  LaunchedEffect(viewModel, part.presetId) { viewModel.show(part.presetId) }
   val state by viewModel.state.collectAsStateWithLifecycle()
   LaunchedEffect(state) { if (state == PresetPageState.Gone) navigator.closeWithoutAsking(Destination.Library, part) }
   if (part is PresetRoute) {
     val name = (state as? PresetPageState.Shown)?.name
+    val leavingTitle = stringResource(Res.string.discard_title)
     val leavingMessage = name?.let { stringResource(Res.string.changes_not_saved, it) }
     GuardUnsavedChanges(part) {
-      val id = part.presetUuid
+      val id = part.presetId
       if (leavingMessage != null && (viewModel.state.value as? PresetPageState.Shown)?.hasChanges == true) {
-        UnsavedPage(leavingMessage, quittingName = name, discard = { sessions.discard(id) })
+        UnsavedPage(leavingTitle, leavingMessage, quittingName = name, discard = { sessions.discard(id) })
       } else {
         null
       }
     }
     DisposableEffect(part) {
       onDispose {
-        if (part !in navigator.stack(Destination.Library)) sessions.importNotes(part.presetUuid, null)
+        if (part !in navigator.stack(Destination.Library)) sessions.importNotes(part.presetId, null)
       }
     }
   }
@@ -99,8 +105,8 @@ fun PresetScreen(route: PresetRoute, modifier: Modifier = Modifier) {
   var asking by rememberGroupPrompt()
   val exports: PresetExports = koinInject()
   DisposableEffect(exports, route) {
-    exports.runs.pageShown(route.presetUuid)
-    onDispose { exports.runs.pageHidden(route.presetUuid) }
+    exports.runs.pageShown(route.presetId)
+    onDispose { exports.runs.pageHidden(route.presetId) }
   }
   val saver = rememberFileSaver { target -> viewModel.on(PresetIntent.Export(target)) }
   val shown = state as? PresetPageState.Shown
@@ -183,6 +189,7 @@ private fun Header(page: PresetPageState.Shown, actions: PresetPageActions) {
         style = GlorianaTheme.type.material.bodyMedium,
         color = GlorianaTheme.colors.textMuted,
       )
+      DefaultMark(page.isDefault)
     },
     actions = { PresetMoreMenu(page, actions) },
   )
@@ -191,14 +198,8 @@ private fun Header(page: PresetPageState.Shown, actions: PresetPageActions) {
 @Composable
 private fun PresetMoreMenu(page: PresetPageState.Shown, actions: PresetPageActions) {
   val exporting = page.export is ExportState.Running
-  val items = listOf(
-    MenuItem(
-      stringResource(Res.string.make_default),
-      Res.drawable.ic_star,
-      onClick = {},
-      enabled = false,
-      detail = stringResource(Res.string.not_available_yet),
-    ),
+  val items = listOfNotNull(
+    makeDefaultMenuItem(page.isDefault) { actions.onIntent(PresetIntent.MakeDefault) },
     MenuItem(
       stringResource(Res.string.export),
       Res.drawable.ic_file_save_20,
@@ -206,9 +207,7 @@ private fun PresetMoreMenu(page: PresetPageState.Shown, actions: PresetPageActio
       enabled = !page.hasChanges && !exporting,
       detail = if (page.hasChanges) stringResource(Res.string.save_changes_first) else null,
     ),
-    MenuItem(stringResource(Res.string.delete_preset), Res.drawable.ic_delete, {
-      actions.onIntent(PresetIntent.AskToDelete)
-    }),
+    deleteMenuItem(DeletePresetCopy, page.isDefault) { actions.onIntent(PresetIntent.AskToDelete) },
   )
   GlorianaMoreMenu(stringResource(Res.string.more_for, page.name), items)
 }
@@ -228,6 +227,11 @@ internal fun SaveNote(page: PresetPageState.Shown, modifier: Modifier = Modifier
   NotSavedNote(failure, PresetSaveFailures, page.name, modifier.padding(bottom = GlorianaTheme.spacing.s8))
 }
 
+private val DeletePresetCopy = DeleteItemCopy(Res.string.delete_preset, Res.string.preset_default_cant_delete)
+
+private val PresetRefusedAsDefault =
+  RefusedAsDefaultCopy(Res.string.preset_refused_default, Res.string.preset_refused_default_detail)
+
 private val PresetSaveFailures =
   NotSavedCopy.forANamedItem(Res.string.preset_not_saved_storage_detail, Res.string.preset_not_saved_detail)
 
@@ -236,13 +240,14 @@ private fun Outcome(page: PresetPageState.Shown, actions: PresetPageActions) {
   val spacing = GlorianaTheme.spacing
   Column(Modifier.fillMaxWidth()) {
     SaveNote(page)
-    if (page.session.notDeleted) {
-      NotDeletedNote(
-        page.name,
-        onRetry = { actions.onIntent(PresetIntent.AskToDelete) },
-        Modifier.padding(bottom = spacing.s8),
-      )
-    }
+    ItemWorkNotes(
+      page.session.work,
+      page.name,
+      PresetRefusedAsDefault,
+      onMakeDefault = { actions.onIntent(PresetIntent.MakeDefault) },
+      onAskToDelete = { actions.onIntent(PresetIntent.AskToDelete) },
+      modifier = Modifier.padding(bottom = spacing.s8),
+    )
     when (val export = page.export) {
       is ExportState.Running ->
         RunningLine(stringResource(Res.string.exporting, export.fileName), Modifier.padding(bottom = spacing.s8))

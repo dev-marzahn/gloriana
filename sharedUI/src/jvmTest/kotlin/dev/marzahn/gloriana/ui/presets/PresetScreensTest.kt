@@ -37,6 +37,7 @@ import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.add_group
 import dev.marzahn.gloriana.ui.resources.add_group_confirm
 import dev.marzahn.gloriana.ui.resources.changes_not_saved
+import dev.marzahn.gloriana.ui.resources.delete_preset
 import dev.marzahn.gloriana.ui.resources.depth_error
 import dev.marzahn.gloriana.ui.resources.destination_library
 import dev.marzahn.gloriana.ui.resources.discard
@@ -44,11 +45,12 @@ import dev.marzahn.gloriana.ui.resources.export
 import dev.marzahn.gloriana.ui.resources.import_waiting
 import dev.marzahn.gloriana.ui.resources.keep_editing
 import dev.marzahn.gloriana.ui.resources.library_kind_presets
+import dev.marzahn.gloriana.ui.resources.make_default
 import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.move_down
 import dev.marzahn.gloriana.ui.resources.offer_copy
 import dev.marzahn.gloriana.ui.resources.offer_dont_copy
-import dev.marzahn.gloriana.ui.resources.presets_empty
+import dev.marzahn.gloriana.ui.resources.preset_default_cant_delete
 import dev.marzahn.gloriana.ui.resources.save
 import dev.marzahn.gloriana.ui.resources.save_changes_first
 import dev.marzahn.gloriana.ui.testing.LiveLibrary
@@ -104,7 +106,7 @@ class PresetScreensTest {
     setContent { library.Show { App() } }
     tap(hasContentDescription(getString(Res.string.destination_library)) and hasClickAction())
     tap(hasText(getString(Res.string.library_kind_presets)) and hasClickAction())
-    waitFor(hasText(getString(Res.string.presets_empty)))
+    waitFor(hasText(library.shippedPreset().name))
     waitForIdle()
   }
 
@@ -121,8 +123,6 @@ class PresetScreensTest {
 
   private fun LiveLibrary.imported(file: PickedFile) = koin.get<PresetImports>().start(file)
 
-  private fun LiveLibrary.presets() = runBlocking { koin.get<PresetRepository>().presets().first() }
-
   private fun LiveLibrary.entries(id: Uuid): List<PresetEntry> = runBlocking {
     val stored = koin.get<PresetRepository>().preset(id).first() as StoredPreset.Readable
     stored.preset.content.entries
@@ -132,8 +132,8 @@ class PresetScreensTest {
     library.koin.get<PresetSessions>().current(id).unsaved?.draft?.entries.orEmpty().map { it.name }
 
   private fun ComposeUiTest.waitForPreset(library: LiveLibrary): Uuid {
-    waitUntil(timeoutMillis = WAIT_MILLIS) { library.presets().isNotEmpty() }
-    return library.presets().single().id
+    waitUntil(timeoutMillis = WAIT_MILLIS) { library.addedPresets().isNotEmpty() }
+    return library.addedPresets().single().id
   }
 
   @Test
@@ -163,7 +163,7 @@ class PresetScreensTest {
 
       waitFor(hasContentDescription(getString(Res.string.more_for, "Tuned")))
       assertNull(library.connections().single().fields.samplers.temperature)
-      assertEquals(listOf("Tuned"), library.presets().map { it.name })
+      assertEquals(listOf("Tuned"), library.addedPresets().map { it.name })
     }
   }
 
@@ -187,6 +187,20 @@ class PresetScreensTest {
       val saved = library.entries(id)
       assertEquals(listOf("Chat History", "Main Prompt", "Auxiliary Prompt"), saved.map { it.name })
       assertEquals(listOf(false, true, true), saved.map { it.enabled })
+    }
+  }
+
+  @Test
+  fun theDefaultPresetHidesMakeDefaultAndCantBeDeleted() = runComposeUiTest {
+    LiveLibrary.use { library ->
+      openPresets(library)
+      val name = library.shippedPreset().name
+      tap(hasText(name) and hasClickAction())
+      tap(hasContentDescription(getString(Res.string.more_for, name)))
+
+      waitFor(hasText(getString(Res.string.preset_default_cant_delete)))
+      assertTrue(onAllNodes(hasText(getString(Res.string.make_default))).fetchSemanticsNodes().isEmpty())
+      onAllNodes(hasText(getString(Res.string.delete_preset)) and hasClickAction()).onFirst().assertIsNotEnabled()
     }
   }
 

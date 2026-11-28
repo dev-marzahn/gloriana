@@ -11,7 +11,11 @@ import dev.marzahn.gloriana.logic.presets.PresetImportResult
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.StoredPreset
 import dev.marzahn.gloriana.logic.presets.WrapperPrompt
+import dev.marzahn.gloriana.logic.storage.ChatSetting
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
+import dev.marzahn.gloriana.ui.components.NotDeleted
+import dev.marzahn.gloriana.ui.lists.DeleteImpact
+import dev.marzahn.gloriana.ui.lists.ItemActivity
 import dev.marzahn.gloriana.ui.state.SaveFailure
 import dev.marzahn.gloriana.ui.testing.LiveLibrary
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +29,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlin.uuid.Uuid
 
@@ -45,7 +50,7 @@ class PresetCommandsTest {
   private class Fixture(val library: LiveLibrary) {
     val sessions: PresetSessions = library.koin.get()
     val commands: PresetCommands = library.koin.get()
-    private val repository: PresetRepository = library.koin.get()
+    val repository: PresetRepository = library.koin.get()
 
     val stored: Preset = runBlocking {
       val file = Files.createTempFile("gloriana-preset", ".json").apply { writeText(PRESET) }
@@ -56,9 +61,19 @@ class PresetCommandsTest {
 
     val id: Uuid get() = stored.id
 
-
     fun read(id: Uuid = stored.id): Preset = runBlocking {
       assertIs<StoredPreset.Readable>(repository.preset(id).first()).preset
+    }
+
+    fun defaultId(): Uuid = runBlocking {
+      withTimeout(WAIT_MILLIS) { checkNotNull(repository.defaultPreset().first { it != null }) }
+    }
+
+    fun awaitConfirming(): ItemActivity.ConfirmingDelete = runBlocking {
+      withTimeout(WAIT_MILLIS) {
+        sessions.session(id).first { it.work.activity is ItemActivity.ConfirmingDelete }.work.activity
+          as ItemActivity.ConfirmingDelete
+      }
     }
 
     fun draft(): PresetContent? = sessions.current(id).unsaved?.draft
@@ -86,16 +101,62 @@ class PresetCommandsTest {
         it.execSQL("CREATE TRIGGER refuse_delete BEFORE DELETE ON presets BEGIN SELECT RAISE(ABORT, 'refused'); END")
       }
     }
-    commands.askToDelete(stored)
-    runBlocking {
-      withTimeout(WAIT_MILLIS) { sessions.session(id).first { it.activity is PresetActivity.ConfirmingDelete } }
-    }
+    commands.onStored.askToDelete(id)
+    awaitConfirming()
 
-    commands.confirmDelete(stored)
+    commands.onStored.confirmDelete(id, stored.name)
     awaitIdle()
 
-    assertTrue(sessions.current(id).notDeleted)
+    assertEquals(NotDeleted.Failed, sessions.current(id).work.notDeleted)
     assertEquals(stored, read())
+  }
+
+  @Test
+  fun theDeleteQuestionNamesTheDefaultTheChatsMoveTo() = withPreset {
+    library.chatsUsing[ChatSetting.Preset to id] = 3
+    commands.onStored.askToDelete(id)
+
+    val confirming = awaitConfirming()
+
+    assertEquals(DeleteImpact.MovesChats(chats = 3, defaultName = read(defaultId()).name), confirming.impact)
+  }
+
+  @Test
+  fun aPresetNoChatUsesIsAskedAboutWithoutNamingTheDefault() = withPreset {
+    commands.onStored.askToDelete(id)
+
+    assertEquals(DeleteImpact.NoChats, awaitConfirming().impact)
+  }
+
+  @Test
+  fun aDefaultNameThatCannotBeReadAsksWithoutTheCountAndSaysNothingFailed() = withPreset {
+    library.chatsUsing[ChatSetting.Preset to id] = 3
+    library.makeUnreadable("library_settings")
+    commands.onStored.askToDelete(id)
+
+    assertEquals(DeleteImpact.Unknown, awaitConfirming().impact)
+    assertNull(sessions.current(id).work.notDeleted)
+  }
+
+  @Test
+  fun aPresetMadeTheDefaultBeforeItsDeleteIsRefusedAsTheDefaultWithoutRetry() = withPreset {
+    commands.onStored.askToDelete(id)
+    awaitConfirming()
+    runBlocking { repository.makeDefault(id) }
+
+    commands.onStored.confirmDelete(id, stored.name)
+    awaitIdle()
+
+    assertEquals(NotDeleted.IsDefault, sessions.current(id).work.notDeleted)
+    assertEquals(stored, read())
+  }
+
+  @Test
+  fun makeDefaultMovesTheDefaultToThePreset() = withPreset {
+    commands.onStored.makeDefault(id, stored.name)
+
+    runBlocking { withTimeout(WAIT_MILLIS) { repository.defaultPreset().first { it == id } } }
+    assertFalse(sessions.current(id).work.notMadeDefault)
   }
 
   @Test
@@ -139,7 +200,8 @@ class PresetCommandsTest {
     val normalised = saved.copy(wrappers = saved.wrappers.with(WrapperPrompt.NewChat, "Changed in storage"))
     sessions.storedNow(id, normalised)
 
-    val page = PresetPageState.Shown(stored.copy(content = normalised), sessions.current(id), export = null)
+    val page =
+      PresetPageState.Shown(stored.copy(content = normalised), sessions.current(id), export = null, isDefault = false)
     assertEquals(normalised, page.unsaved.baseline)
     assertFalse(page.hasChanges)
   }
@@ -169,7 +231,7 @@ class PresetCommandsTest {
     turnOff(1, pageShows = saved)
     sessions.storedNow(id, saved)
 
-    val page = PresetPageState.Shown(stored, sessions.current(id), export = null)
+    val page = PresetPageState.Shown(stored, sessions.current(id), export = null, isDefault = false)
 
     assertEquals(listOf(false, false), page.content.entries.map { it.enabled })
   }

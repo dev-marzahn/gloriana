@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.PresetSummary
 import dev.marzahn.gloriana.ui.lists.Deleted
+import dev.marzahn.gloriana.ui.lists.UserOrderMoves
 import dev.marzahn.gloriana.ui.state.WhileCollected
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -24,7 +25,7 @@ sealed interface PresetsListing {
 
   data object CouldNotLoad : PresetsListing
 
-  data class Loaded(val presets: List<PresetSummary>) : PresetsListing
+  data class Loaded(val presets: List<PresetSummary>, val defaultId: Uuid?) : PresetsListing
 }
 
 data class PresetsState(val listing: PresetsListing, val imports: PresetImportState) {
@@ -40,14 +41,18 @@ class PresetsViewModel(
 ) : ViewModel() {
   private val attempt = MutableStateFlow(0)
 
+  val moves = UserOrderMoves(viewModelScope, repository.order, repository.presets(), PresetSummary::id)
+
   val lastDeleted: StateFlow<Deleted?> = commands.deletions.latest
 
   fun focused(delete: Deleted) = commands.deletions.handled(delete)
 
   @OptIn(ExperimentalCoroutinesApi::class)
   private val listing: Flow<PresetsListing> = attempt.flatMapLatest {
-    repository.presets()
-      .map<List<PresetSummary>, PresetsListing> { PresetsListing.Loaded(it) }
+    combine<List<PresetSummary>, Uuid?, PresetsListing>(
+      moves.arranged,
+      repository.defaultPreset(),
+    ) { presets, defaultId -> PresetsListing.Loaded(presets, defaultId) }
       .onStart { emit(PresetsListing.Loading) }
       .catch { emit(PresetsListing.CouldNotLoad) }
   }

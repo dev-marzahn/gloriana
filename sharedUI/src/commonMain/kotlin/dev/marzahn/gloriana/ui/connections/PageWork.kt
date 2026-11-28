@@ -74,7 +74,7 @@ private class PageUnlockSlot(private val session: MutableStateFlow<PageSession>)
   }
 }
 
-private class SaveStart(val form: ConnectionForm, val draft: ConnectionDraft)
+private class SaveInFlight(val form: ConnectionForm, val draft: ConnectionDraft)
 
 internal class PageWork(
   private val context: PageContext,
@@ -164,12 +164,12 @@ internal class PageWork(
       ready = { current, unsaved -> current.isIdle && unsaved.draft === form },
       started = { it.copy(note = null, test = null) },
     )
-    if (started != null) context.scope.launch { finishSave(route, SaveStart(form, draft)) }
+    if (started != null) context.scope.launch { finishSave(route, SaveInFlight(form, draft)) }
   }
 
-  private suspend fun finishSave(route: ConnectionRoute, start: SaveStart) {
+  private suspend fun finishSave(route: ConnectionRoute, start: SaveInFlight) {
     val result = when (route) {
-      is ConnectionRoute.Saved -> repository.update(route.uuid, start.draft)
+      is ConnectionRoute.Saved -> repository.update(route.id, start.draft)
       is ConnectionRoute.New -> repository.create(start.draft)
     }
     when (result) {
@@ -193,7 +193,7 @@ internal class PageWork(
     }
   }
 
-  private suspend fun saved(route: ConnectionRoute, start: SaveStart, written: Connection) {
+  private suspend fun saved(route: ConnectionRoute, start: SaveInFlight, written: Connection) {
     when (route) {
       is ConnectionRoute.Saved -> {
         saves.saved(ConnectionForm.of(written).withHeaderIdsOf(start.form)) { it.copy(errors = FormErrors.None) }

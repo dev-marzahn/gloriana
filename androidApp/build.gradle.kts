@@ -61,6 +61,7 @@ dependencies {
   implementation(libs.koin.android)
 
   testImplementation(libs.koin.test)
+  testImplementation(libs.kotlinx.coroutines.test)
 
   androidTestImplementation(libs.kotlin.test)
   androidTestImplementation(libs.androidx.test.runner)

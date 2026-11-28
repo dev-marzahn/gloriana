@@ -18,7 +18,7 @@ import org.jetbrains.compose.resources.stringResource
 internal fun LeaveQuestion(navigator: ShellNavigator) {
   val pending = navigator.pendingLeave ?: return
   GlorianaConfirmation(
-    discardConfirmation(pending.page.leavingMessage),
+    discardConfirmation(pending.page.leavingTitle, pending.page.leavingMessage),
     onConfirm = pending.discardAndLeave,
     onDismiss = pending.keepEditing,
   )
@@ -39,7 +39,7 @@ internal fun QuitQuestion(navigator: ShellNavigator, quitRequests: QuitRequests)
     else -> pluralStringResource(Res.plurals.discard_quit_more, names.size - 2, names[0], names[1], names.size - 2)
   }
   GlorianaConfirmation(
-    discardConfirmation(message),
+    discardConfirmation(stringResource(Res.string.discard_title), message),
     onConfirm = {
       pages.forEach { it.discard() }
       quitRequests.quit()
@@ -49,8 +49,8 @@ internal fun QuitQuestion(navigator: ShellNavigator, quitRequests: QuitRequests)
 }
 
 @Composable
-private fun discardConfirmation(message: String) = Confirmation(
-  title = stringResource(Res.string.discard_title),
+internal fun discardConfirmation(title: String, message: String) = Confirmation(
+  title = title,
   lines = listOf(message),
   confirmLabel = stringResource(Res.string.discard),
   cancelLabel = stringResource(Res.string.keep_editing),

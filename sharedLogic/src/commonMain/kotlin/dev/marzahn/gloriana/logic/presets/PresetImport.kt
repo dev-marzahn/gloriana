@@ -11,7 +11,6 @@ import dev.marzahn.gloriana.logic.files.utf8Text
 import dev.marzahn.gloriana.logic.presets.file.PresetFileRead
 import dev.marzahn.gloriana.logic.presets.file.PresetJsonReader
 import dev.marzahn.gloriana.logic.presets.storage.PresetWrites
-import dev.marzahn.gloriana.logic.storage.IdFactory
 
 private const val JSON_EXTENSION = ".json"
 
@@ -23,9 +22,7 @@ private sealed interface FileBytes {
   data object Unreadable : FileBytes
 }
 
-class PresetImport internal constructor(private val writes: PresetWrites, ids: IdFactory) {
-  private val reader = PresetJsonReader(ids)
-
+class PresetImport internal constructor(private val writes: PresetWrites, private val reader: PresetJsonReader) {
   suspend fun import(file: PickedFile): PresetImportResult = when (val bytes = readFile(file)) {
     FileBytes.Unreadable -> failed(PresetImportFailure.CantBeOpened)
     FileBytes.TooLarge -> failed(PresetImportFailure.TooLarge)

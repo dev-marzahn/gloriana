@@ -6,6 +6,8 @@ import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.characters.files.JvmCardReader
 import dev.marzahn.gloriana.logic.characters.files.JvmCardWriter
 import dev.marzahn.gloriana.logic.characters.storage.CharacterWrites
+import dev.marzahn.gloriana.logic.chat.storage.CharacterChats
+import dev.marzahn.gloriana.logic.chat.storage.ChatRemovals
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.files.MemoryDestination
 import dev.marzahn.gloriana.logic.files.PickedFile
@@ -24,19 +26,26 @@ class CharacterLibrary(
   transcoder: AvatarTranscoder = AvatarTranscoder { _, _ -> null },
   faults: Faults = Faults.None,
   hold: ImportHold = ImportHold.None,
+  val database: GlorianaDatabase = desktopGlorianaDatabase(directory),
 ) : AutoCloseable {
   val clock = TestClock(epochMillis = 1_000)
-  val database: GlorianaDatabase = desktopGlorianaDatabase(directory)
   internal val updatedAt = UpdatedAtClock(clock)
   internal val assets = AssetStore(LibraryDirectory { directory })
   internal val lock = AssetWriteLock()
+  private val tombstones = Tombstones(database, updatedAt)
+  private val chats = CharacterChats(
+    database.chatReferenceDao(),
+    ChatRemovals(database, database.chatRemovalDao(), updatedAt, tombstones, faults),
+    updatedAt,
+  )
   val repository = CharacterRepository(
     dao = database.characterDao(),
-    writes = CharacterWrites(database, UuidV7IdFactory, updatedAt, Tombstones(database, updatedAt), faults),
+    writes = CharacterWrites(database, UuidV7IdFactory, updatedAt, tombstones, chats, faults),
     reader = JvmCardReader(assets),
     writer = JvmCardWriter(assets, transcoder),
     hold = hold,
     assetLock = lock,
+    chats = chats,
   )
 
   suspend fun importOne(
