@@ -31,6 +31,7 @@ import dev.marzahn.gloriana.ui.components.AppMark
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.LabelledField
+import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.navigation.ShellInsets
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.checking
@@ -47,6 +48,7 @@ import dev.marzahn.gloriana.ui.resources.keys_not_checked_detail
 import dev.marzahn.gloriana.ui.resources.keys_not_erased
 import dev.marzahn.gloriana.ui.resources.new_passphrase
 import dev.marzahn.gloriana.ui.resources.no_keys_held
+import dev.marzahn.gloriana.ui.resources.not_now
 import dev.marzahn.gloriana.ui.resources.passphrase
 import dev.marzahn.gloriana.ui.resources.reset
 import dev.marzahn.gloriana.ui.resources.reset_confirm
@@ -58,7 +60,6 @@ import dev.marzahn.gloriana.ui.resources.reset_title
 import dev.marzahn.gloriana.ui.resources.unlock
 import dev.marzahn.gloriana.ui.resources.unlock_text
 import dev.marzahn.gloriana.ui.resources.unlock_title
-import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Navigation
 import org.jetbrains.compose.resources.pluralStringResource
@@ -176,6 +177,12 @@ internal fun UnlockContent(gate: KeysGate.Shown, onIntent: (GateIntent) -> Unit,
           }
         }
       }
+      GlorianaButton(
+        stringResource(Res.string.not_now),
+        { onIntent(GateIntent.NotNow) },
+        kind = ButtonKind.Ghost,
+        enabled = gate.canSkip,
+      )
     }
   }
 }
@@ -198,7 +205,7 @@ private fun DamagedPrompt(holding: Int, onReset: () -> Unit) {
 }
 
 @Composable
-private fun damagedText(holding: Int): String = if (holding == 0) {
+internal fun damagedText(holding: Int): String = if (holding == 0) {
   stringResource(Res.string.damaged_no_keys)
 } else {
   pluralStringResource(Res.plurals.damaged_text, holding, holding)

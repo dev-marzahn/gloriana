@@ -82,6 +82,8 @@ data class SamplerTexts(val texts: Map<Sampler, String>) : ComparesByValue<Sampl
 
   fun isSet(sampler: Sampler): Boolean = this[sampler].isNotBlank()
 
+  fun holdsValue(sampler: Sampler): Boolean = sampler.entry(this[sampler]) is SamplerEntry.Set
+
   override fun sameAs(other: SamplerTexts): Boolean = byValue() == other.byValue()
 
   private fun byValue(): Map<Sampler, String> = Sampler.entries.associateWith { sampler ->

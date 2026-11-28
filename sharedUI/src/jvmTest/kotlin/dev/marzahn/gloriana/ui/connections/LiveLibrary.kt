@@ -145,6 +145,10 @@ class LiveLibrary private constructor(private val directory: Path, private val d
     vault.unlock(passphrase.toCharArray())
   }
 
+  fun passphraseKeysetReadable(readable: Boolean) {
+    check(passphraseKeysetFileIn(directory).toFile().setReadable(readable))
+  }
+
   fun damagePassphraseKeyset() {
     passphraseKeysetFileIn(directory).writeText("damaged")
   }

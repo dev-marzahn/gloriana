@@ -35,9 +35,9 @@ sealed interface PageIntent {
 
   sealed interface FormIntent : PageAction
 
-  data class Edit(val field: FormField, val change: (ConnectionForm) -> ConnectionForm) : FormIntent
+  class Edit(val field: FormField, val change: FormChange) : FormIntent
 
-  data class Toggle(val change: (ConnectionForm) -> ConnectionForm) : FormIntent
+  class Toggle(val change: FormChange) : FormIntent
 
   data object Discard : FormIntent
 
@@ -63,19 +63,11 @@ sealed interface PageIntent {
 
   data object ConfirmDelete : SubjectIntent
 
-  sealed interface PassphraseIntent : PageAction
+  data object Unlock : PageAction
 
-  data class TypePassphrase(val text: SecretText) : PassphraseIntent
+  data class Passphrase(val intent: PassphraseIntent) : PageAction
 
-  data class TypePassphraseAgain(val text: SecretText) : PassphraseIntent
-
-  data object SubmitPassphrase : PassphraseIntent
-
-  data object ForgotPassphrase : PassphraseIntent
-
-  data object RetryPassphrase : PassphraseIntent
-
-  data object CancelPassphrase : PassphraseIntent
+  data class SetPassphrase(val intent: NewPassphraseIntent) : PageAction
 
   data object Retry : PageIntent
 }

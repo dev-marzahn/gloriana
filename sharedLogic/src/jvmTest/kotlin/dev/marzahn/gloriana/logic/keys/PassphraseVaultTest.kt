@@ -105,6 +105,59 @@ class PassphraseVaultTest {
   }
 
   @Test
+  fun aDamagedPassphraseKeysetKeepsTheKeysLockedUntilAReset() = runTest {
+    val key = passphraseSet().sealed(apiKey(connection), "sk-kept")
+    Files.writeString(keysetFile, "damaged")
+
+    val restarted = vaults.start()
+    assertEquals(VaultState.PassphraseDamaged, restarted.prepare())
+    assertEquals(OpenResult.Locked, restarted.open(apiKey(connection), key))
+    assertEquals(SealResult.Locked, restarted.seal(apiKey(connection), "sk-new"))
+  }
+
+  @Test
+  fun aDeferredUnlockReadsAnUnreadableKeyFileAsLockedUntilItCanBeRead() = runTest {
+    val key = passphraseSet().sealed(apiKey(connection), "sk-kept")
+    assertTrue(keysetFile.toFile().setReadable(false))
+
+    val restarted = vaults.start()
+    restarted.deferUnlock()
+    assertEquals(VaultState.Locked, restarted.state.value)
+    assertEquals(OpenResult.Locked, restarted.open(apiKey(connection), key))
+    assertEquals(SealResult.Locked, restarted.seal(apiKey(connection), "sk-new"))
+    assertEquals(VaultState.Locked, restarted.state.value)
+    assertEquals(PassphraseResult.NotAvailable, restarted.unlock("correct horse".passphrase()))
+
+    assertTrue(keysetFile.toFile().setReadable(true))
+    assertEquals(PassphraseResult.Accepted, restarted.unlock("correct horse".passphrase()))
+    assertEquals(VaultState.PassphraseUnlocked, restarted.state.value)
+  }
+
+  @Test
+  fun aDeferredUnlockEndsOnceTheKeysAreUnlocked() = runTest {
+    passphraseSet()
+    val restarted = vaults.start()
+    restarted.deferUnlock()
+    assertEquals(PassphraseResult.Accepted, restarted.unlock("correct horse".passphrase()))
+    assertTrue(keysetFile.toFile().setReadable(false))
+
+    val change = restarted.changePassphrase("correct horse".passphrase(), "another one".passphrase())
+    assertTrue(keysetFile.toFile().setReadable(true))
+
+    assertEquals(PassphraseResult.NotAvailable, change)
+    assertEquals(VaultState.Closed, restarted.state.value)
+  }
+
+  @Test
+  fun anUnreadableKeyFileWithoutADeferredUnlockStaysUnavailable() = runTest {
+    passphraseSet()
+    assertTrue(keysetFile.toFile().setReadable(false))
+
+    assertEquals(VaultState.Unavailable, vaults.start().prepare())
+    assertTrue(keysetFile.toFile().setReadable(true))
+  }
+
+  @Test
   fun aHeaderAskingForMoreThanTheShippedCostIsDamaged() = runTest {
     passphraseSet()
     Files.writeString(keysetFile, Files.readString(keysetFile).replace("\"memoryKib\":64", "\"memoryKib\":65537"))

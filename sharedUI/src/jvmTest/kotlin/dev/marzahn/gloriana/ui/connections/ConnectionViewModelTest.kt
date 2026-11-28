@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.ui.connections
 
 import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
+import dev.marzahn.gloriana.logic.connection.Sampler
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import kotlinx.coroutines.CoroutineScope
@@ -50,6 +51,25 @@ class ConnectionViewModelTest {
 
   private suspend fun LiveLibrary.writeHeld() =
     withTimeout(WAIT_MILLIS) { while (writes.writesCaught == 0) delay(POLL_MILLIS) }
+
+  @Test
+  fun aSamplerTheNewFormatDoesNotSendIsKeptInStorageForASwitchBack() = LiveLibrary.use { library ->
+    runBlocking {
+      val page = shownPage(library, "Work")
+      val seed = FormField.SamplerField(Sampler.Seed)
+      page.on(PageIntent.Edit(seed) { it.copy(samplers = it.samplers.with(Sampler.Seed, "7")) })
+      page.on(PageIntent.Save)
+      page.settled { it.saved?.fields?.samplers?.seed == 7L }
+
+      page.on(PageIntent.Edit(FormField.Format) { it.copy(format = ApiFormat.OpenAiResponses) })
+      page.on(PageIntent.Save)
+
+      val switched = page.settled { it.saved?.fields?.format == ApiFormat.OpenAiResponses }
+      assertEquals(7L, switched.saved?.fields?.samplers?.seed)
+      assertEquals(7L, library.connections().single().fields.samplers.seed)
+      coroutineContext.cancelChildren()
+    }
+  }
 
   @Test
   fun aDoubleTapOnDeleteDeletesOnce() = LiveLibrary.use { library ->
@@ -172,9 +192,9 @@ class ConnectionViewModelTest {
       }
 
       page.on(PageIntent.Edit(FormField.Name) { it.copy(name = "Home") })
-      page.on(PageIntent.TypePassphrase(SecretText("passphrase-1")))
-      page.on(PageIntent.TypePassphraseAgain(SecretText("passphrase-1")))
-      page.on(PageIntent.SubmitPassphrase)
+      page.on(PageIntent.SetPassphrase(PassphraseIntent.Type(SecretText("passphrase-1"))))
+      page.on(PageIntent.SetPassphrase(PassphraseIntent.TypeAgain(SecretText("passphrase-1"))))
+      page.on(PageIntent.SetPassphrase(PassphraseIntent.Submit))
 
       val settled = page.settled { it.saved?.fields?.name == "Home" }
       assertTrue(checkNotNull(settled.saved).key != null)

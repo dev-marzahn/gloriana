@@ -97,7 +97,7 @@ class TinkKeyVaultTest {
     assertTrue(connection.toString() in Files.readString(dataKeyFile))
 
     val restarted = vaults.start(stored = { setOf(other) })
-    restarted.prepareIfPassphraseProtected()
+    restarted.prepare(KeysOpening.IfPassphraseProtected)
     assertEquals(OpenResult.Missing, restarted.open(apiKey(connection), key))
     assertFalse(connection.toString() in Files.readString(dataKeyFile))
     assertEquals("sk-kept", restarted.opened(apiKey(other), kept))
@@ -128,7 +128,7 @@ class TinkKeyVaultTest {
     var storageOpen = false
     val vault = vaults.start(stored = { if (storageOpen) emptySet() else throw IllegalStateException("closed") })
 
-    vault.prepareIfPassphraseProtected()
+    vault.prepare(KeysOpening.IfPassphraseProtected)
     assertEquals(VaultState.Unlocked, vault.prepare())
     assertTrue(connection.toString() in Files.readString(dataKeyFile))
 
@@ -144,7 +144,7 @@ class TinkKeyVaultTest {
     val keys = dataKeyFile.parent
     Files.setPosixFilePermissions(keys, PosixFilePermissions.fromString("r-x------"))
     try {
-      vault.prepareIfPassphraseProtected()
+      vault.prepare(KeysOpening.IfPassphraseProtected)
       assertTrue(other.toString() in Files.readString(dataKeyFile))
     } finally {
       Files.setPosixFilePermissions(keys, PosixFilePermissions.fromString("rwx------"))

@@ -4,10 +4,11 @@ import dev.marzahn.gloriana.logic.connection.storage.ConnectionsEntityType
 import dev.marzahn.gloriana.logic.connection.storage.DefaultConnectionSetting
 import dev.marzahn.gloriana.logic.keys.ErasingResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysOpening
 import dev.marzahn.gloriana.logic.keys.OpenResult
+import dev.marzahn.gloriana.logic.keys.PassphraseResult
 import dev.marzahn.gloriana.logic.keys.SealResult
 import dev.marzahn.gloriana.logic.keys.SecretSlot
-import dev.marzahn.gloriana.logic.keys.PassphraseResult
 import dev.marzahn.gloriana.logic.keys.Vaults
 import dev.marzahn.gloriana.logic.keys.apiKey
 import dev.marzahn.gloriana.logic.keys.header
@@ -249,7 +250,7 @@ class ConnectionRepositoryTest {
     library.close()
 
     ConnectionLibrary(directory).use { restarted ->
-      restarted.vault.prepareIfStored()
+      restarted.vault.prepare(KeysOpening.IfStored)
 
       assertFalse(restarted.dataKeyFileHolds(keyless.id))
     }
@@ -329,7 +330,7 @@ class ConnectionRepositoryTest {
     val countsBeforeAndAfterAReset = listOf("new horse", "newer horse").map { newPassphrase ->
       ConnectionLibrary(directory, vaults = vaults).use { forgotten ->
         suspend fun holding() = forgotten.vault.countHoldingOpenableSecrets(forgotten.repository.connections())
-        forgotten.vault.prepareIfPassphraseProtected()
+        forgotten.vault.prepare(KeysOpening.IfPassphraseProtected)
         val before = holding()
         assertEquals(ErasingResult.Done, forgotten.vault.reset(newPassphrase.passphrase()))
         before to holding()

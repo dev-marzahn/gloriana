@@ -1,11 +1,11 @@
 package dev.marzahn.gloriana.logic.connection
 
+import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.keys.HeaderName
 import dev.marzahn.gloriana.logic.keys.KeyFindings
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.logic.keys.SecretSlot
 import dev.marzahn.gloriana.logic.keys.VaultState
-import dev.marzahn.gloriana.logic.app.failingAs
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -36,6 +36,8 @@ sealed interface SecretsState {
 
   data class KeychainUnavailable(val held: HeldSecrets) : SecretsState
 
+  data class Locked(val held: HeldSecrets) : SecretsState
+
   data class Unreadable(val held: HeldSecrets) : SecretsState
 }
 
@@ -46,7 +48,8 @@ fun Connection.secretsState(vault: VaultState, findings: KeyFindings): SecretsSt
   val held = heldSecrets ?: return SecretsState.Usable
   return when {
     vault == VaultState.Unavailable -> SecretsState.KeychainUnavailable(held)
-    vault.needsStartingOver || vault == VaultState.PassphraseDamaged -> SecretsState.Unreadable(held)
+    vault == VaultState.Locked || vault == VaultState.PassphraseDamaged -> SecretsState.Locked(held)
+    vault.needsStartingOver -> SecretsState.Unreadable(held)
     else -> missingSecrets(findings)
   }
 }

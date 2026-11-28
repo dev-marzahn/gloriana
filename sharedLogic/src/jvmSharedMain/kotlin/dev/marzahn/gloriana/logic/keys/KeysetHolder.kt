@@ -18,8 +18,21 @@ internal class KeysetHolder(private val keyring: Keyring) {
   var keyset: Keyset = Keyset.Closed
     set(value) {
       field = value
-      mutableState.value = value.state
+      if (value is Keyset.PassphraseUnlocked || value is Keyset.DeviceUnlocked) unlockDeferred = false
+      mutableState.value = shownState()
     }
+
+  @Volatile
+  private var unlockDeferred: Boolean = false
+
+  fun deferUnlock() {
+    unlockDeferred = true
+    mutableState.value = shownState()
+  }
+
+  val readsAsLocked: Boolean get() = unlockDeferred && (keyset == Keyset.Unavailable || keyset == Keyset.Closed)
+
+  private fun shownState(): VaultState = if (readsAsLocked) VaultState.Locked else keyset.state
 
   suspend fun <T> withFiles(action: () -> T): T = withContext(Dispatchers.IO) { mutex.withLock { action() } }
 

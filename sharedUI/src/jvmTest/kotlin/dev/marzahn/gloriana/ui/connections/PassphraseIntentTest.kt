@@ -10,8 +10,10 @@ class PassphraseIntentTest {
   fun noPassphraseIntentOrEntryPrintsWhatWasTyped() {
     val typed = SecretText(PASSPHRASE)
     val printed = listOf(
-      PageIntent.TypePassphrase(typed),
-      PageIntent.TypePassphraseAgain(typed),
+      PassphraseIntent.Type(typed),
+      PassphraseIntent.TypeAgain(typed),
+      PageIntent.Passphrase(PassphraseIntent.Type(typed)),
+      UnlockPrompt.Unlocking(UnlockEntry().typed(typed)),
       ChangeIntent.TypeCurrent(typed),
       ChangeIntent.TypeNew(typed),
       ChangeIntent.TypeAgain(typed),

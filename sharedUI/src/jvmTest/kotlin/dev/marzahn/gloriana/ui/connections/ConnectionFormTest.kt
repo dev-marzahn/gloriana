@@ -97,7 +97,7 @@ class ConnectionFormTest {
   }
 
   @Test
-  fun samplersTheFormatDoesNotTakeAreDroppedOnSave() {
+  fun samplersTheFormatDoesNotTakeAreKeptOnSaveForASwitchBack() {
     val form = ConnectionForm.of(ConnectionTemplate.OpenAi).copy(
       model = "gpt",
       samplers = samplers(Sampler.Seed to "7", Sampler.TopK to "40"),
@@ -105,8 +105,15 @@ class ConnectionFormTest {
     )
 
     val samplers = form.readyDraft().fields.samplers
-    assertNull(samplers.seed)
-    assertNull(samplers.topK)
+    assertEquals(7L, samplers.seed)
+    assertEquals(40L, samplers.topK)
+  }
+
+  @Test
+  fun aSamplerTheFormatHidesStillCountsAsAChange() {
+    val saved = ConnectionForm.of(ConnectionTemplate.Anthropic)
+
+    assertFalse(saved.sameAs(saved.copy(samplers = samplers(Sampler.Seed to "7"))))
   }
 
   @Test

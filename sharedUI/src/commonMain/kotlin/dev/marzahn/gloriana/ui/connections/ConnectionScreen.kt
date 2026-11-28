@@ -5,7 +5,6 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,9 +33,10 @@ import dev.marzahn.gloriana.logic.connection.api.hostOf
 import dev.marzahn.gloriana.ui.components.BackButton
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
+import dev.marzahn.gloriana.ui.components.InfoCard
 import dev.marzahn.gloriana.ui.components.NoteCard
-import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.components.NoteLine
+import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.components.Skeleton
 import dev.marzahn.gloriana.ui.components.SkeletonBlock
 import dev.marzahn.gloriana.ui.components.SkeletonSurface
@@ -51,12 +51,12 @@ import dev.marzahn.gloriana.ui.resources.changes_not_saved
 import dev.marzahn.gloriana.ui.resources.connection_error
 import dev.marzahn.gloriana.ui.resources.connection_error_detail
 import dev.marzahn.gloriana.ui.resources.discard_new_connection
+import dev.marzahn.gloriana.ui.resources.followed_by_dot
 import dev.marzahn.gloriana.ui.resources.ic_check_20
 import dev.marzahn.gloriana.ui.resources.ic_check_circle_20
 import dev.marzahn.gloriana.ui.resources.ic_hub
 import dev.marzahn.gloriana.ui.resources.ic_network_check_20
 import dev.marzahn.gloriana.ui.resources.ic_refresh_20
-import dev.marzahn.gloriana.ui.resources.followed_by_dot
 import dev.marzahn.gloriana.ui.resources.new_connection
 import dev.marzahn.gloriana.ui.resources.not_saved_yet
 import dev.marzahn.gloriana.ui.resources.passphrase
@@ -84,7 +84,6 @@ import kotlin.time.DurationUnit
 
 private val HeaderTile = 56.dp
 private val HeaderIcon = 28.dp
-private val ResultIcon = 20.dp
 private val SkeletonName = 180.dp
 private val SkeletonMeta = 120.dp
 private val SkeletonButtons = 40.dp
@@ -300,22 +299,11 @@ private fun Outcome(page: ConnectionPageState.Shown, onIntent: (PageIntent) -> U
 
 @Composable
 private fun PassedBox(text: String) {
-  val colors = GlorianaTheme.colors
-  val shape = GlorianaTheme.shapes.control
-  val spacing = GlorianaTheme.spacing
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .background(colors.surface2, shape)
-      .border(1.dp, colors.borderSubtle, shape)
-      .padding(spacing.s12),
-    horizontalArrangement = Arrangement.spacedBy(spacing.s10),
-  ) {
-    Icon(painterResource(Res.drawable.ic_check_circle_20), null, Modifier.size(ResultIcon), tint = colors.textMuted)
+  InfoCard(Res.drawable.ic_check_circle_20) {
     Text(
       text,
       style = GlorianaTheme.type.material.bodyMedium,
-      color = colors.text,
+      color = GlorianaTheme.colors.text,
       maxLines = REPLY_LINES,
       overflow = TextOverflow.Ellipsis,
     )

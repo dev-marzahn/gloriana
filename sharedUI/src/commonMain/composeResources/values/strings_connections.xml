@@ -146,7 +146,7 @@
     <string name="range_whole">A whole number</string>
     <string name="sampler_hint_global">%1$s · Model settings sends %2$s</string>
     <string name="sampler_hint_not_sent">%1$s · not sent</string>
-    <string name="sampler_dropped">%1$s isn't sent with %2$s. Saving drops it.</string>
+    <string name="sampler_kept">%1$s isn't sent with %2$s. It's kept for a switch back.</string>
 
     <string name="field_streaming">Streaming</string>
     <string name="streaming_hint">The reply shows as it's written.</string>
@@ -311,6 +311,16 @@
     <string name="unlock">Unlock</string>
     <string name="checking">Checking…</string>
     <string name="forgot_passphrase">Forgot passphrase?</string>
+    <string name="not_now">Not now</string>
+    <string name="key_locked">••• · locked</string>
+    <string name="key_locked_hint">Enter your passphrase to replace it, test, or pick a model.</string>
+    <string name="secrets_locked_line">Locked until you enter your passphrase</string>
+    <string name="keys_locked_one">Your keys are locked, so %1$s sends nothing.</string>
+    <string name="keys_locked_two">Your keys are locked, so %1$s and %2$s send nothing.</string>
+    <plurals name="keys_locked_many">
+        <item quantity="one">Your keys are locked, so %1$d Connection sends nothing.</item>
+        <item quantity="other">Your keys are locked, so %1$d Connections send nothing.</item>
+    </plurals>
     <string name="damaged_title">Your keys can't be read</string>
     <plurals name="damaged_text">
         <item quantity="one">The file that holds your keys is damaged, so the keys and header values of %1$d Connection can't be read. Reset to erase them and set a new passphrase. Everything else in it stays.</item>

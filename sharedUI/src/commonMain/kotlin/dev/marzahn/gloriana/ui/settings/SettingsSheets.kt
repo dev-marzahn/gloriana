@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.ui.settings
 import androidx.compose.runtime.Composable
 import dev.marzahn.gloriana.ui.connections.DeleteConnectionConfirmation
 import dev.marzahn.gloriana.ui.connections.StartOverConfirmation
+import dev.marzahn.gloriana.ui.connections.UnlockPromptSheet
 
 private class DeleteSheet(val row: ConnectionRowState, val deleting: Boolean)
 
@@ -22,6 +23,7 @@ internal fun SettingsSheets(state: SettingsState, onIntent: (SettingsIntent) -> 
       onDismiss = { onIntent(SettingsIntent.CancelDelete) },
     )
   }
+  state.unlock?.let { prompt -> UnlockPromptSheet(prompt) { onIntent(SettingsIntent.Passphrase(it)) } }
   state.startOver?.let { sheet ->
     StartOverConfirmation(
       connections = sheet.holding,

@@ -14,9 +14,9 @@ import dev.marzahn.gloriana.logic.connection.ApiFormat
 import dev.marzahn.gloriana.logic.connection.Sampler
 import dev.marzahn.gloriana.ui.components.InfoLine
 import dev.marzahn.gloriana.ui.resources.Res
-import dev.marzahn.gloriana.ui.resources.sampler_dropped
 import dev.marzahn.gloriana.ui.resources.sampler_hint_global
 import dev.marzahn.gloriana.ui.resources.sampler_hint_not_sent
+import dev.marzahn.gloriana.ui.resources.sampler_kept
 import dev.marzahn.gloriana.ui.resources.samplers_intro
 import dev.marzahn.gloriana.ui.resources.samplers_pick_format
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
@@ -62,8 +62,8 @@ private fun FormatSamplers(page: ConnectionPageState.Shown, editing: FormEditing
         enabled = editing.enabled,
       )
     }
-    Sampler.entries.filter { it !in format.samplerRanges && samplers.isSet(it) }.forEach { sampler ->
-      InfoLine(stringResource(Res.string.sampler_dropped, stringResource(sampler.label), stringResource(format.label)))
+    Sampler.entries.filter { it !in format.samplerRanges && samplers.holdsValue(it) }.forEach { sampler ->
+      InfoLine(stringResource(Res.string.sampler_kept, stringResource(sampler.label), stringResource(format.label)))
     }
   }
 }

@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.ui.settings
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
@@ -10,21 +11,28 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.AnnotatedString
 import dev.marzahn.gloriana.ui.components.GlorianaButton
+import dev.marzahn.gloriana.ui.components.InfoCard
 import dev.marzahn.gloriana.ui.components.NoteCard
-import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.components.NoteLine
+import dev.marzahn.gloriana.ui.components.RetryNote
 import dev.marzahn.gloriana.ui.components.boldThenPlain
+import dev.marzahn.gloriana.ui.connections.WriteFailure
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.delete_failed
 import dev.marzahn.gloriana.ui.resources.delete_failed_detail
+import dev.marzahn.gloriana.ui.resources.ic_lock_20
+import dev.marzahn.gloriana.ui.resources.ic_lock_open_20
 import dev.marzahn.gloriana.ui.resources.ic_refresh_20
 import dev.marzahn.gloriana.ui.resources.ic_restart_alt_20
+import dev.marzahn.gloriana.ui.resources.key_file_unreadable
+import dev.marzahn.gloriana.ui.resources.key_file_unreadable_detail
+import dev.marzahn.gloriana.ui.resources.keys_locked_many
+import dev.marzahn.gloriana.ui.resources.keys_locked_one
+import dev.marzahn.gloriana.ui.resources.keys_locked_two
 import dev.marzahn.gloriana.ui.resources.keys_not_erased
 import dev.marzahn.gloriana.ui.resources.keys_unreadable
 import dev.marzahn.gloriana.ui.resources.keys_unreadable_detail
 import dev.marzahn.gloriana.ui.resources.keys_unreadable_until_loaded_detail
-import dev.marzahn.gloriana.ui.resources.key_file_unreadable
-import dev.marzahn.gloriana.ui.resources.key_file_unreadable_detail
 import dev.marzahn.gloriana.ui.resources.not_made_default
 import dev.marzahn.gloriana.ui.resources.not_made_default_detail
 import dev.marzahn.gloriana.ui.resources.retry
@@ -32,7 +40,7 @@ import dev.marzahn.gloriana.ui.resources.start_over
 import dev.marzahn.gloriana.ui.resources.start_over_failed_detail
 import dev.marzahn.gloriana.ui.resources.start_over_keys_erased
 import dev.marzahn.gloriana.ui.resources.start_over_keys_erased_detail
-import dev.marzahn.gloriana.ui.connections.WriteFailure
+import dev.marzahn.gloriana.ui.resources.unlock
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.pluralStringResource
@@ -41,6 +49,7 @@ import org.jetbrains.compose.resources.stringResource
 @Composable
 internal fun ConnectionNotes(state: SettingsState, onIntent: (SettingsIntent) -> Unit) {
   Column(verticalArrangement = Arrangement.spacedBy(GlorianaTheme.spacing.s8)) {
+    if (state.locked.isNotEmpty()) LockedNote(state.locked) { onIntent(SettingsIntent.AskToUnlock) }
     when (val keys = state.keys) {
       is KeysNote.Unreadable -> StartOverNote(unreadableText(keys.holding), failed = false, onIntent)
       KeysNote.UnreadableWhileTheListCantLoad -> NoteCard {
@@ -81,6 +90,21 @@ private fun StartOverNote(note: AnnotatedString, failed: Boolean, onIntent: (Set
       icon = Res.drawable.ic_restart_alt_20,
     )
   }
+}
+
+@Composable
+private fun LockedNote(names: List<String>, onUnlock: () -> Unit) {
+  InfoCard(Res.drawable.ic_lock_20) {
+    Text(lockedText(names), style = GlorianaTheme.type.material.bodyMedium, color = GlorianaTheme.colors.textMuted)
+    GlorianaButton(stringResource(Res.string.unlock), onUnlock, icon = Res.drawable.ic_lock_open_20)
+  }
+}
+
+@Composable
+private fun lockedText(names: List<String>): String = when (names.size) {
+  1 -> stringResource(Res.string.keys_locked_one, names[0])
+  2 -> stringResource(Res.string.keys_locked_two, names[0], names[1])
+  else -> pluralStringResource(Res.plurals.keys_locked_many, names.size, names.size)
 }
 
 @Composable

@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.countHoldingOpenableSecrets
 import dev.marzahn.gloriana.logic.keys.ErasingResult
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysOpening
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
 import dev.marzahn.gloriana.logic.keys.VaultState
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +26,14 @@ sealed interface KeysGate {
 
   data object Open : KeysGate
 
-  sealed interface Shown : KeysGate
+  sealed interface Shown : KeysGate {
+    val canSkip: Boolean
+      get() = when (this) {
+        is Unlocking -> !entry.checking && !reset.isBusy
+        is Damaged -> !reset.isBusy
+        CouldNotCheck -> true
+      }
+  }
 
   data object CouldNotCheck : Shown
 
@@ -59,6 +67,8 @@ sealed interface GateIntent {
   data object Reset : GateIntent
 
   data object Retry : GateIntent
+
+  data object NotNow : GateIntent
 }
 
 class KeysGateViewModel(
@@ -86,12 +96,13 @@ class KeysGateViewModel(
         mutableGate.value = KeysGate.Checking
         check()
       }
+      GateIntent.NotNow -> notNow()
     }
   }
 
   private fun check() {
     viewModelScope.launch {
-      mutableGate.value = when (vault.prepareIfPassphraseProtected()) {
+      mutableGate.value = when (vault.prepare(KeysOpening.IfPassphraseProtected)) {
         VaultState.Locked -> holdingSecrets()?.let { KeysGate.Unlocking(it) } ?: KeysGate.CouldNotCheck
         VaultState.PassphraseDamaged -> holdingSecrets()?.let { KeysGate.Damaged(it) } ?: KeysGate.CouldNotCheck
         VaultState.Unavailable -> KeysGate.CouldNotCheck
@@ -100,6 +111,12 @@ class KeysGateViewModel(
         -> KeysGate.Open
       }
     }
+  }
+
+  private fun notNow() {
+    if ((mutableGate.value as? KeysGate.Shown)?.canSkip != true) return
+    vault.deferUnlock()
+    mutableGate.value = KeysGate.Open
   }
 
   private suspend fun holdingSecrets(): Int? = vault.countHoldingOpenableSecrets(repository.connections())

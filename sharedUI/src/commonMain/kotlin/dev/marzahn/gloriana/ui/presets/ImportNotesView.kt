@@ -1,26 +1,16 @@
 package dev.marzahn.gloriana.ui.presets
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
-import dev.marzahn.gloriana.ui.components.GlorianaIconButton
+import dev.marzahn.gloriana.ui.components.InfoCard
 import dev.marzahn.gloriana.ui.components.NoteCard
 import dev.marzahn.gloriana.ui.components.NoteLine
 import dev.marzahn.gloriana.ui.components.boldThenPlain
 import dev.marzahn.gloriana.ui.resources.Res
-import dev.marzahn.gloriana.ui.resources.dismiss
-import dev.marzahn.gloriana.ui.resources.ic_close
 import dev.marzahn.gloriana.ui.resources.ic_info_20
 import dev.marzahn.gloriana.ui.resources.import_note_credentials
 import dev.marzahn.gloriana.ui.resources.import_note_credentials_too
@@ -33,10 +23,7 @@ import dev.marzahn.gloriana.ui.resources.samplers_not_copied_other_detail
 import dev.marzahn.gloriana.ui.resources.samplers_not_copied_storage
 import dev.marzahn.gloriana.ui.resources.samplers_not_copied_storage_detail
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
-import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource
-
-private val InfoIconSize = 20.dp
 
 @Composable
 fun ImportNotesView(notes: ImportNotes, presetName: String, onDismiss: () -> Unit, modifier: Modifier = Modifier) {
@@ -82,24 +69,7 @@ private fun infoText(notes: ImportNotes): String = when {
 
 @Composable
 private fun InfoNote(text: String, onDismiss: () -> Unit) {
-  val colors = GlorianaTheme.colors
-  val spacing = GlorianaTheme.spacing
-  val shape = GlorianaTheme.shapes.control
-  Row(
-    Modifier
-      .fillMaxWidth()
-      .background(colors.surface2, shape)
-      .border(1.dp, colors.borderSubtle, shape)
-      .padding(start = spacing.s12, top = spacing.s12, bottom = spacing.s12),
-    horizontalArrangement = Arrangement.spacedBy(spacing.s10),
-  ) {
-    Icon(painterResource(Res.drawable.ic_info_20), null, Modifier.size(InfoIconSize), tint = colors.textMuted)
-    Text(text, Modifier.weight(1f), style = GlorianaTheme.type.material.bodyMedium, color = colors.textMuted)
-    GlorianaIconButton(
-      Res.drawable.ic_close,
-      stringResource(Res.string.dismiss),
-      onDismiss,
-      Modifier.align(Alignment.Top),
-    )
+  InfoCard(Res.drawable.ic_info_20, onDismiss = onDismiss) {
+    Text(text, style = GlorianaTheme.type.material.bodyMedium, color = GlorianaTheme.colors.textMuted)
   }
 }

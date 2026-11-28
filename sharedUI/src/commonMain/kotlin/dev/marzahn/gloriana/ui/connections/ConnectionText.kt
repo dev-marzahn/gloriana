@@ -26,6 +26,7 @@ import dev.marzahn.gloriana.ui.resources.key_unreadable_key
 import dev.marzahn.gloriana.ui.resources.key_unreadable_key_short
 import dev.marzahn.gloriana.ui.resources.keychain_unavailable_line
 import dev.marzahn.gloriana.ui.resources.keychain_unavailable_line_short
+import dev.marzahn.gloriana.ui.resources.secrets_locked_line
 import dev.marzahn.gloriana.ui.resources.what_both
 import dev.marzahn.gloriana.ui.resources.what_headers
 import dev.marzahn.gloriana.ui.resources.what_key
@@ -74,6 +75,8 @@ fun secretsLine(secrets: SecretsState, short: Boolean): RowLine? = when (secrets
     stringResource((if (short) missingShort else missingLines).of(secrets.held)),
     LineTone.Danger,
   )
+  is SecretsState.Locked ->
+    RowLine.Flagged(Res.drawable.ic_lock_20, stringResource(Res.string.secrets_locked_line), LineTone.Muted)
   is SecretsState.KeychainUnavailable -> RowLine.Flagged(
     Res.drawable.ic_lock_20,
     stringResource(if (short) Res.string.keychain_unavailable_line_short else Res.string.keychain_unavailable_line),

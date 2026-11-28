@@ -18,6 +18,7 @@ import dev.marzahn.gloriana.logic.connection.KeyInput
 import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.keys.HeaderName
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysOpening
 import dev.marzahn.gloriana.logic.keys.OpenResult
 import dev.marzahn.gloriana.logic.keys.SealedSecret
 import dev.marzahn.gloriana.logic.keys.SecretSlot
@@ -62,7 +63,7 @@ class KeysAtRestDeviceTest {
       Faults.None,
       stored = { repository.connections().first().map(Connection::id).toSet() },
     )
-    restarted.prepareIfStored()
+    restarted.prepare(KeysOpening.IfStored)
     assertTrue(restarted.findings.first().isMissing(SecretSlot.ApiKey(saved.id)), "the data key is gone")
     ciphertexts.forEach { ciphertext ->
       assertEquals(OpenResult.Missing, vault.open(ciphertext.slot, ciphertext.secret))

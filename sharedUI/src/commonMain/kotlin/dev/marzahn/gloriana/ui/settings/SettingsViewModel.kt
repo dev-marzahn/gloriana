@@ -10,9 +10,14 @@ import dev.marzahn.gloriana.logic.connection.secretChecks
 import dev.marzahn.gloriana.logic.connection.secretsState
 import dev.marzahn.gloriana.logic.keys.KeyFindings
 import dev.marzahn.gloriana.logic.keys.KeyVault
+import dev.marzahn.gloriana.logic.keys.KeysOpening
 import dev.marzahn.gloriana.logic.keys.VaultState
 import dev.marzahn.gloriana.ui.connections.CommandResult
 import dev.marzahn.gloriana.ui.connections.ConnectionCommands
+import dev.marzahn.gloriana.ui.connections.PassphraseIntent
+import dev.marzahn.gloriana.ui.connections.UnlockFlow
+import dev.marzahn.gloriana.ui.connections.UnlockPrompt
+import dev.marzahn.gloriana.ui.connections.UnlockPromptSlot
 import dev.marzahn.gloriana.ui.connections.WriteFailure
 import dev.marzahn.gloriana.ui.connections.failure
 import dev.marzahn.gloriana.ui.connections.inListOrder
@@ -99,6 +104,8 @@ data class SettingsState(
   val connections: ConnectionsList = ConnectionsList.Loading,
   val showsPassphrase: Boolean = false,
   val keys: KeysNote = KeysNote.None,
+  val locked: List<String> = emptyList(),
+  val unlock: UnlockPrompt? = null,
   val startOver: StartOverSheet? = null,
   val rowActivity: RowActivity = RowActivity.Idle,
   val focus: ListFocus = ListFocus.None,
@@ -127,11 +134,16 @@ sealed interface SettingsIntent {
 
   data object ConfirmStartOver : SettingsIntent
 
+  data object AskToUnlock : SettingsIntent
+
+  data class Passphrase(val intent: PassphraseIntent) : SettingsIntent
+
   data object Focused : SettingsIntent
 }
 
 private data class SettingsSession(
   val startOver: StartOverStep = StartOverStep.Idle,
+  val unlock: UnlockPrompt? = null,
   val rows: RowActivity = RowActivity.Idle,
   val focusFirstRow: Boolean = false,
 )
@@ -172,14 +184,27 @@ class SettingsViewModel(
         connections = list,
         showsPassphrase = vaultState.hasPassphrase,
         keys = keysNote(list.holding(findings), vaultState, current.startOver),
+        locked = list.lockedNames(),
+        unlock = current.unlock,
         startOver = current.startOver.sheet(),
         rowActivity = current.rows,
         focus = focus(list, deleted, current.focusFirstRow),
       )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), SettingsState())
 
+  private val unlocking = UnlockFlow(
+    vault,
+    repository,
+    viewModelScope,
+    object : UnlockPromptSlot {
+      override val prompt: UnlockPrompt? get() = session.value.unlock
+
+      override fun show(prompt: UnlockPrompt?) = session.update { it.copy(unlock = prompt) }
+    },
+  )
+
   init {
-    viewModelScope.launch { vault.prepareIfStored() }
+    viewModelScope.launch { vault.prepare(KeysOpening.IfStored) }
     viewModelScope.launch {
       state.collect { shown -> if (shown.connections !is ConnectionsList.Loaded) closeStartOverQuestion() }
     }
@@ -196,6 +221,10 @@ class SettingsViewModel(
       SettingsIntent.AskToStartOver -> startOver(StartOverStep.Confirming(state.value.keys.holdingForTheSheet))
       SettingsIntent.CancelStartOver -> startOver(StartOverStep.Idle)
       SettingsIntent.ConfirmStartOver -> confirmStartOver()
+      SettingsIntent.AskToUnlock -> unlocking.open { prompt ->
+        session.update { current -> if (current.unlock == null) current.copy(unlock = prompt) else current }
+      }
+      is SettingsIntent.Passphrase -> unlocking.on(intent.intent) {}
       SettingsIntent.Focused -> {
         commands.deletions.latest.value?.let(commands.deletions::handled)
         session.update { it.copy(focusFirstRow = false) }
@@ -261,6 +290,11 @@ class SettingsViewModel(
 private fun ConnectionsList.holding(findings: KeyFindings): Int? = when (this) {
   is ConnectionsList.Loaded -> rows.count { findings.holdsOpenableSecrets(it.connection) }
   ConnectionsList.Loading, ConnectionsList.CouldNotLoad -> null
+}
+
+private fun ConnectionsList.lockedNames(): List<String> = when (this) {
+  is ConnectionsList.Loaded -> rows.filter { it.secrets is SecretsState.Locked }.map { it.connection.fields.name }
+  ConnectionsList.Loading, ConnectionsList.CouldNotLoad -> emptyList()
 }
 
 internal fun keysNote(holding: Int?, vault: VaultState, step: StartOverStep): KeysNote = when {

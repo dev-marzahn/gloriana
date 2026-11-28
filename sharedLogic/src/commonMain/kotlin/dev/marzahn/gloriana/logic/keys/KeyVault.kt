@@ -10,11 +10,9 @@ interface KeyVault {
 
   val findings: Flow<KeyFindings>
 
-  suspend fun prepare(): VaultState
+  suspend fun prepare(opening: KeysOpening = KeysOpening.Always): VaultState
 
-  suspend fun prepareIfStored(): VaultState
-
-  suspend fun prepareIfPassphraseProtected(): VaultState
+  fun deferUnlock()
 
   suspend fun seal(slot: SecretSlot, value: String): SealResult
 
@@ -31,6 +29,12 @@ interface KeyVault {
   suspend fun reset(newPassphrase: CharArray): ErasingResult
 
   suspend fun replaceDeviceKeyset(): ErasingResult
+}
+
+enum class KeysOpening {
+  Always,
+  IfStored,
+  IfPassphraseProtected,
 }
 
 @JvmInline

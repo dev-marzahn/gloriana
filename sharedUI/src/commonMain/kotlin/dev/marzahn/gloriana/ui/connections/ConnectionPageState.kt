@@ -138,12 +138,20 @@ sealed interface PageActivity {
 
   data class SettingPassphrase(val entry: NewPassphraseEntry) : Prompt
 
-  data class Unlocking(val entry: UnlockEntry, val then: AfterUnlock) : Prompt
-
-  data class Resetting(val entry: NewPassphraseEntry, val holding: Int, val then: AfterUnlock) : Prompt
+  data class Unlocking(val prompt: UnlockPrompt, val then: AfterUnlock) : Prompt
 }
 
-enum class AfterUnlock { Save, Test, ModelList }
+sealed interface AfterUnlock {
+  data object Save : AfterUnlock
+
+  data object Test : AfterUnlock
+
+  data object ModelList : AfterUnlock
+
+  data object OnlyUnlock : AfterUnlock
+
+  class Edit(val field: FormField, val change: FormChange) : AfterUnlock
+}
 
 sealed interface ConnectionPageState {
   data object Loading : ConnectionPageState

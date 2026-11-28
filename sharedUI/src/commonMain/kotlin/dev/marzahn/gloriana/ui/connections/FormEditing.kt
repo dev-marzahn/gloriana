@@ -17,6 +17,8 @@ class FormEditing(
 
   fun edit(field: FormField, change: (ConnectionForm) -> ConnectionForm) = onIntent(PageIntent.Edit(field, change))
 
+  fun unlock() = onIntent(PageIntent.Unlock)
+
   fun toggle(change: (ConnectionForm) -> ConnectionForm) = onIntent(PageIntent.Toggle(change))
 
   fun openModelList() = onIntent(PageIntent.OpenModelList)

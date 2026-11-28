@@ -36,6 +36,13 @@ data class HeaderRow(val id: Int, val name: String, val storedName: String?, val
 
   val effectiveValue: ValueEdit
     get() = if (storedName != null && value == ValueEdit.Typed(SecretText.Empty)) ValueEdit.Kept else value
+
+  fun needsKeysToBecome(after: HeaderRow): Boolean = renamesStoredValue(after) || startsEnteringValue(after)
+
+  private fun renamesStoredValue(after: HeaderRow) = storedName != null && after.name != name
+
+  private fun startsEnteringValue(after: HeaderRow) = after.value is ValueEdit.Typed && after.value != value &&
+    (value == ValueEdit.Kept || value == ValueEdit.Typed(SecretText.Empty))
 }
 
 data class ConnectionForm(
@@ -75,6 +82,13 @@ data class ConnectionForm(
       KeyEdit.Removed -> headersOrNoKey()
     }
 
+  fun needsKeysToBecome(after: ConnectionForm): Boolean = startsEnteringKey(after) || after.headers.any { row ->
+    headers.firstOrNull { it.id == row.id }?.needsKeysToBecome(row) == true
+  }
+
+  private fun startsEnteringKey(after: ConnectionForm) = after.key is KeyEdit.Typed && after.key != key &&
+    (key == KeyEdit.Kept || key == KeyEdit.Typed(SecretText.Empty))
+
   fun withHeader() = copy(headers = headers + HeaderRow(nextHeaderId(), "", null, ValueEdit.Typed(SecretText.Empty)))
 
   fun withoutHeader(id: Int) = copy(headers = headers.filterNot { it.id == id })
@@ -83,7 +97,7 @@ data class ConnectionForm(
     copy(headers = headers.map { if (it.id == id) change(it) else it })
 
   override fun sameAs(other: ConnectionForm): Boolean =
-    comparable() == other.comparable() && samplers.withOnly(format).sameAs(other.samplers.withOnly(other.format))
+    comparable() == other.comparable() && samplers.sameAs(other.samplers)
 
   private fun headersOrNoKey() = if (keptHeaders.isNotEmpty()) KeyContext.HeadersOnly else KeyContext.NoKey
 
@@ -149,9 +163,6 @@ private fun String.wholeNumber(): Int? = trim().toIntOrNull()
 
 private fun String.byValue(): String = wholeNumber()?.toString() ?: this
 
-private fun SamplerTexts.withOnly(format: ApiFormat?): SamplerTexts =
-  SamplerTexts(texts.filterKeys { format == null || it in format.samplerRanges })
-
 sealed interface FormCheck {
   class Ready(val draft: ConnectionDraft) : FormCheck
 
@@ -206,7 +217,7 @@ private fun ConnectionForm.fields(
     maxReplyTokens = maxReplyTokens,
     streaming = streaming,
     includeUsage = includeUsage,
-    samplers = samplers.toSamplers(format.samplerRanges.keys),
+    samplers = samplers.toSamplers(),
     timeoutSeconds = timeout,
   ).withCustomBody(body)
 }

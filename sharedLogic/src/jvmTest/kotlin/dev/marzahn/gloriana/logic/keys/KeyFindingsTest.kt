@@ -79,7 +79,7 @@ class KeyFindingsTest {
     vaults.start().sealed(apiKey(connection), "sk-kept")
 
     val restarted = vaults.start(stored = { setOf(connection, other) })
-    restarted.prepareIfPassphraseProtected()
+    restarted.prepare(KeysOpening.IfPassphraseProtected)
 
     assertFalse(restarted.missing(apiKey(connection)))
     assertTrue(restarted.missing(apiKey(other)))
@@ -161,7 +161,7 @@ class KeyFindingsTest {
 
     val restarted = vaults.start()
 
-    assertEquals(VaultState.Closed, restarted.prepareIfPassphraseProtected())
+    assertEquals(VaultState.Closed, restarted.prepare(KeysOpening.IfPassphraseProtected))
     assertEquals(readsBefore, vaults.keychain.reads)
   }
 
@@ -169,7 +169,7 @@ class KeyFindingsTest {
   fun withNoKeysetOpeningAStoredOneAsksNoKeychainAndMakesNoFile() = runTest {
     val vault = vaults.start()
 
-    assertEquals(VaultState.Closed, vault.prepareIfStored())
+    assertEquals(VaultState.Closed, vault.prepare(KeysOpening.IfStored))
     assertEquals(0, vaults.keychain.reads)
     assertTrue(vaults.keychain.secrets.isEmpty())
     assertFalse(Files.exists(library.resolve("keys/keyset-device.json")))
@@ -179,7 +179,7 @@ class KeyFindingsTest {
   fun aStoredDeviceKeysetIsOpenedByPrepareIfStored() = runTest {
     vaults.start().sealed(apiKey(connection), "sk-device")
 
-    assertEquals(VaultState.Unlocked, vaults.start().prepareIfStored())
+    assertEquals(VaultState.Unlocked, vaults.start().prepare(KeysOpening.IfStored))
   }
 
   @Test
@@ -187,7 +187,7 @@ class KeyFindingsTest {
     vaults.keychain.noKeychain = true
     vaults.start().apply { setPassphrase("correct horse".passphrase()) }.sealed(apiKey(connection), "sk-pass")
 
-    assertEquals(VaultState.Locked, vaults.start().prepareIfStored())
+    assertEquals(VaultState.Locked, vaults.start().prepare(KeysOpening.IfStored))
   }
 
   @Test
@@ -197,7 +197,7 @@ class KeyFindingsTest {
     first.erase(connection)
     val readsBefore = vaults.keychain.reads
 
-    assertEquals(VaultState.Closed, vaults.start().prepareIfStored())
+    assertEquals(VaultState.Closed, vaults.start().prepare(KeysOpening.IfStored))
     assertEquals(readsBefore, vaults.keychain.reads)
   }
 
@@ -206,6 +206,6 @@ class KeyFindingsTest {
     vaults.keychain.noKeychain = true
     vaults.start().setPassphrase("correct horse".passphrase())
 
-    assertEquals(VaultState.Locked, vaults.start().prepareIfPassphraseProtected())
+    assertEquals(VaultState.Locked, vaults.start().prepare(KeysOpening.IfPassphraseProtected))
   }
 }

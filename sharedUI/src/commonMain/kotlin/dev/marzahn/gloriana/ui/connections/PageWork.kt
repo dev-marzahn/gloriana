@@ -5,6 +5,7 @@ import dev.marzahn.gloriana.logic.connection.ConnectionDraft
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
 import dev.marzahn.gloriana.logic.connection.ConnectionSaveResult
+import dev.marzahn.gloriana.logic.connection.SecretsState
 import dev.marzahn.gloriana.logic.connection.api.ConnectionProbe
 import dev.marzahn.gloriana.logic.keys.KeyVault
 import dev.marzahn.gloriana.ui.state.updateAndClaim
@@ -88,6 +89,15 @@ internal class PageContext(
 private fun PageSession.leaving(next: PageActivity): PageSession =
   copy(activity = next, changesDuringSave = changesDuringSave.takeIf { next == PageActivity.Saving }.orEmpty())
 
+private class PageUnlockSlot(private val session: MutableStateFlow<PageSession>) : UnlockPromptSlot {
+  override val prompt: UnlockPrompt? get() = (session.value.activity as? PageActivity.Unlocking)?.prompt
+
+  override fun show(prompt: UnlockPrompt?) = session.update { current ->
+    val asking = current.activity as? PageActivity.Unlocking ?: return@update current
+    current.leaving(prompt?.let { asking.copy(prompt = it) } ?: PageActivity.Idle)
+  }
+}
+
 internal class PageWork(
   private val context: PageContext,
   private val repository: ConnectionRepository,
@@ -96,9 +106,10 @@ internal class PageWork(
   commands: ConnectionCommands,
 ) {
   private val session = context.session
-  private val probing = PageProbing(context, probe)
+  private val passphrase =
+    PagePassphrase(context, vault, UnlockFlow(vault, repository, context.scope, PageUnlockSlot(session)))
+  private val probing = PageProbing(context, probe, onLocked = passphrase::ask)
   private val subject = PageSubject(context, commands)
-  private val passphrase = PagePassphrase(context, vault, repository)
 
   fun on(intent: PageIntent.PageAction, route: ConnectionRoute) {
     when (intent) {
@@ -125,7 +136,9 @@ internal class PageWork(
         edit(FormField.Model) { it.copy(model = intent.model) }
       }
       is PageIntent.SubjectIntent -> subject.on(intent)
-      is PageIntent.PassphraseIntent -> passphrase.on(intent) { then -> continueWith(then, route) }
+      PageIntent.Unlock -> askToUnlock(AfterUnlock.OnlyUnlock)
+      is PageIntent.Passphrase -> passphrase.unlock(intent.intent) { then -> continueWith(then, route) }
+      is PageIntent.SetPassphrase -> passphrase.set(intent.intent) { then -> continueWith(then, route) }
     }
   }
 
@@ -134,10 +147,26 @@ internal class PageWork(
       AfterUnlock.Save -> save(route)
       AfterUnlock.Test -> probing.test()
       AfterUnlock.ModelList -> probing.openModelList()
+      AfterUnlock.OnlyUnlock -> Unit
+      is AfterUnlock.Edit -> applyEdit(then.field, then.change)
     }
   }
 
-  private fun edit(field: FormField, change: (ConnectionForm) -> ConnectionForm) = changeForm(change) { current ->
+  private fun askToUnlock(then: AfterUnlock) {
+    context.idlePage() ?: return
+    passphrase.ask(then)
+  }
+
+  private fun edit(field: FormField, change: FormChange) {
+    val page = context.page() ?: return
+    if (page.secrets is SecretsState.Locked && page.form.needsKeysToBecome(change(page.form))) {
+      askToUnlock(AfterUnlock.Edit(field, change))
+    } else {
+      applyEdit(field, change)
+    }
+  }
+
+  private fun applyEdit(field: FormField, change: FormChange) = changeForm(change) { current ->
     current.copy(
       errors = current.errors.without(field),
       modelListNote = current.modelListNote.takeUnless { field == FormField.Model },
@@ -206,7 +235,7 @@ internal class PageWork(
         context.showErrors(form.errorsOf(result.problems), form)
       }
       ConnectionSaveResult.NeedsPassphrase -> context.activity(PageActivity.SettingPassphrase(NewPassphraseEntry()))
-      ConnectionSaveResult.Locked -> context.activity(PageActivity.Unlocking(UnlockEntry(), AfterUnlock.Save))
+      ConnectionSaveResult.Locked -> passphrase.ask(AfterUnlock.Save)
       ConnectionSaveResult.KeysUnavailable -> idle {
         it.copy(note = PageNote.KeysBlockedSave(KeysProblem.KeychainUnavailable))
       }

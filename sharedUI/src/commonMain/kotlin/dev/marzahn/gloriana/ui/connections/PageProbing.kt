@@ -10,7 +10,11 @@ import kotlin.time.TimeSource
 private val testWaives = setOf(ConnectionProblem.NameEmpty)
 private val modelListWaives = testWaives + ConnectionProblem.ModelEmpty
 
-internal class PageProbing(private val context: PageContext, private val probe: ConnectionProbe) {
+internal class PageProbing(
+  private val context: PageContext,
+  private val probe: ConnectionProbe,
+  private val onLocked: (AfterUnlock) -> Unit,
+) {
   private val session = context.session
 
   fun test() {
@@ -20,25 +24,25 @@ internal class PageProbing(private val context: PageContext, private val probe: 
     session.update { it.copy(activity = PageActivity.Testing, note = null, test = null) }
     context.scope.launch {
       val started = TimeSource.Monotonic.markNow()
-      val next: (PageSession) -> PageSession = when (val outcome = probe.test(draft, page.saved)) {
-        is ProbeResult.Done -> { current ->
-          current.copy(activity = PageActivity.Idle, test = TestOutcome.Passed(started.elapsedNow(), outcome.value))
-        }
-        is ProbeResult.Refused -> {
-          context.showErrors(page.form.errorsOf(outcome.problems), page.form)
-          return@launch
-        }
-        is ProbeResult.Failed -> when (val refusal = outcome.error.refusal(probed)) {
-          is Refusal.Host -> { current ->
-            current.copy(activity = PageActivity.Idle, test = TestOutcome.Failed(refusal.failure))
+      val step = probe.test(draft, page.saved).step(
+        probed,
+        done = { reply ->
+          { it.copy(activity = PageActivity.Idle, test = TestOutcome.Passed(started.elapsedNow(), reply)) }
+        },
+        failed = { refusal ->
+          when (refusal) {
+            is Refusal.Host -> { current ->
+              current.copy(activity = PageActivity.Idle, test = TestOutcome.Failed(refusal.failure))
+            }
+            is Refusal.Keys -> { current -> current.copy(activity = PageActivity.Idle, note = refusal.note) }
           }
-          is Refusal.Keys -> { current -> current.copy(activity = PageActivity.Idle, note = refusal.note) }
-          Refusal.Locked -> { current ->
-            current.copy(activity = PageActivity.Unlocking(UnlockEntry(), AfterUnlock.Test))
-          }
-        }
+        },
+      )
+      when (step) {
+        is ProbeStep.Show -> session.update(step.next)
+        is ProbeStep.Refused -> context.showErrors(page.form.errorsOf(step.problems), page.form)
+        ProbeStep.Locked -> onLocked(AfterUnlock.Test)
       }
-      session.update(next)
     }
   }
 
@@ -49,32 +53,52 @@ internal class PageProbing(private val context: PageContext, private val probe: 
     val asking = PageActivity.PickingModel(ModelList.Asking)
     session.update { it.copy(activity = asking, modelListNote = null) }
     context.scope.launch {
-      val next: (PageSession) -> PageSession = when (val outcome = probe.models(draft, page.saved)) {
-        is ProbeResult.Done -> if (outcome.value.isEmpty()) {
-          { current -> current.copy(activity = PageActivity.Idle, modelListNote = ModelListNote.NoneListed) }
-        } else {
-          { current -> current.copy(activity = PageActivity.PickingModel(ModelList.Listed(outcome.value))) }
-        }
-        is ProbeResult.Refused -> {
-          context.showErrors(page.form.errorsOf(outcome.problems), page.form)
-          return@launch
-        }
-        is ProbeResult.Failed -> when (val refusal = outcome.error.refusal(probed)) {
-          is Refusal.Host -> { current ->
+      val step = probe.models(draft, page.saved).step(
+        probed,
+        done = { models ->
+          if (models.isEmpty()) {
+            { it.copy(activity = PageActivity.Idle, modelListNote = ModelListNote.NoneListed) }
+          } else {
+            { it.copy(activity = PageActivity.PickingModel(ModelList.Listed(models))) }
+          }
+        },
+        failed = { refusal ->
+          { current ->
             current.copy(
               activity = PageActivity.PickingModel(ModelList.Failed(refusal)),
-              modelListNote = ModelListNote.Failed(refusal.failure),
+              modelListNote = (refusal as? Refusal.Host)?.let { ModelListNote.Failed(it.failure) },
             )
           }
-          is Refusal.Keys -> { current ->
-            current.copy(activity = PageActivity.PickingModel(ModelList.Failed(refusal)))
-          }
-          Refusal.Locked -> { current ->
-            current.copy(activity = PageActivity.Unlocking(UnlockEntry(), AfterUnlock.ModelList))
-          }
+        },
+      )
+      when (step) {
+        is ProbeStep.Show -> session.update { current ->
+          if (current.activity == asking) step.next(current) else current
         }
+        is ProbeStep.Refused -> context.showErrors(page.form.errorsOf(step.problems), page.form)
+        ProbeStep.Locked -> if (session.value.activity == asking) onLocked(AfterUnlock.ModelList)
       }
-      session.update { current -> if (current.activity == asking) next(current) else current }
     }
+  }
+}
+
+private sealed interface ProbeStep {
+  class Show(val next: (PageSession) -> PageSession) : ProbeStep
+
+  class Refused(val problems: Set<ConnectionProblem>) : ProbeStep
+
+  data object Locked : ProbeStep
+}
+
+private inline fun <T> ProbeResult<T>.step(
+  probed: Probed,
+  done: (T) -> (PageSession) -> PageSession,
+  failed: (Refusal.Shown) -> (PageSession) -> PageSession,
+): ProbeStep = when (this) {
+  is ProbeResult.Done -> ProbeStep.Show(done(value))
+  is ProbeResult.Refused -> ProbeStep.Refused(problems)
+  is ProbeResult.Failed -> when (val refusal = error.refusal(probed)) {
+    is Refusal.Shown -> ProbeStep.Show(failed(refusal))
+    Refusal.Locked -> ProbeStep.Locked
   }
 }
