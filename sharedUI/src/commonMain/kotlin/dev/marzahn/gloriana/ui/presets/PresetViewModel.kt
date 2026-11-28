@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.EntryRole
+import dev.marzahn.gloriana.logic.presets.MoveDirection
 import dev.marzahn.gloriana.logic.presets.Preset
 import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
@@ -11,6 +12,11 @@ import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.PresetRow
 import dev.marzahn.gloriana.logic.presets.StoredPreset
 import dev.marzahn.gloriana.logic.presets.WrapperPrompt
+import dev.marzahn.gloriana.logic.presets.moved
+import dev.marzahn.gloriana.logic.presets.withEntry
+import dev.marzahn.gloriana.logic.presets.withGroupAdded
+import dev.marzahn.gloriana.logic.presets.withGroupRenamed
+import dev.marzahn.gloriana.logic.presets.withoutGroup
 import dev.marzahn.gloriana.ui.files.ExportState
 import dev.marzahn.gloriana.ui.files.SaveTarget
 import kotlinx.coroutines.ExperimentalCoroutinesApi

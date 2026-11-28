@@ -30,8 +30,11 @@ import androidx.navigationevent.compose.NavigationBackHandler
 import androidx.navigationevent.compose.rememberNavigationEventState
 import dev.marzahn.gloriana.logic.presets.EntryPlacement
 import dev.marzahn.gloriana.logic.presets.EntryRole
+import dev.marzahn.gloriana.logic.presets.MoveDirection
 import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetEntry
+import dev.marzahn.gloriana.logic.presets.canMove
+import dev.marzahn.gloriana.logic.presets.placeOf
 import dev.marzahn.gloriana.ui.components.FieldNote
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaRadioButton
@@ -82,7 +85,8 @@ private val RadioIndent = 56.dp
 private val FilledIconSize = 20.dp
 private val SkeletonLine = 180.dp
 
-internal fun depthOf(text: String): Int? = text.trim().toIntOrNull()?.takeIf { it >= 0 }
+internal fun depthOf(text: String): Int? =
+  text.trim().toIntOrNull()?.takeUnless { EntryPlacement.InChat(it).hasNegativeDepth }
 
 private class DepthEntry(private val typed: MutableState<String>) {
   val text: String get() = typed.value
@@ -102,7 +106,10 @@ private class DepthEntry(private val typed: MutableState<String>) {
 }
 
 private fun PresetContent.inChatDepth(entryId: Uuid): Int? =
-  (entries.firstOrNull { it.id == entryId }?.placement as? EntryPlacement.InChat)?.depth
+  when (val placement = entries.firstOrNull { it.id == entryId }?.placement) {
+    null, EntryPlacement.Relative -> null
+    is EntryPlacement.InChat -> placement.depth
+  }
 
 @Composable
 fun PresetEntryScreen(route: PresetEntryRoute, modifier: Modifier = Modifier) {

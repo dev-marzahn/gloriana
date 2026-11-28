@@ -1,12 +1,9 @@
-package dev.marzahn.gloriana.ui.presets
+package dev.marzahn.gloriana.logic.presets
 
-import dev.marzahn.gloriana.logic.presets.PresetEntry
-import dev.marzahn.gloriana.logic.presets.PresetGroup
-import dev.marzahn.gloriana.logic.presets.PresetRow
 import kotlin.uuid.Uuid
 
 fun List<PresetRow>.groupOf(entryId: Uuid): PresetGroup? =
-  take(indexOfRow(entryId).coerceAtLeast(0)).lastOrNull { it is PresetGroup } as? PresetGroup
+  take(indexOfRow(entryId).coerceAtLeast(0)).filterIsInstance<PresetGroup>().lastOrNull()
 
 fun List<PresetRow>.entriesUnder(groupId: Uuid): List<PresetEntry> {
   val start = indexOfRow(groupId)

@@ -16,9 +16,9 @@ internal const val GROUPS_KEY = "groups"
 internal const val GROUP_NAME_KEY = "name"
 internal const val GROUP_AT_KEY = "at"
 
-internal enum class WrapperHome {
-  TopLevel,
-  GlorianaKey,
+internal enum class WrapperHome(val omitsDefault: Boolean) {
+  TopLevel(omitsDefault = false),
+  GlorianaKey(omitsDefault = true),
 }
 
 internal val WrapperPrompt.home: WrapperHome

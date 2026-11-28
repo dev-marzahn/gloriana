@@ -1,7 +1,10 @@
 package dev.marzahn.gloriana.ui.presets
 
+import dev.marzahn.gloriana.logic.presets.MoveDirection
 import dev.marzahn.gloriana.logic.presets.PresetGroup
 import dev.marzahn.gloriana.logic.presets.PresetRow
+import dev.marzahn.gloriana.logic.presets.canMove
+import dev.marzahn.gloriana.logic.presets.carriesEntries
 import kotlin.uuid.Uuid
 
 class PanelLayout(val rows: List<PresetRow>, val hidden: Set<Uuid>, val heights: Map<Uuid, Int>) {
@@ -16,8 +19,8 @@ class PanelLayout(val rows: List<PresetRow>, val hidden: Set<Uuid>, val heights:
   private fun center(id: Uuid): Float? = tops[id]?.let { it + height(id) / 2f }
 
   private fun neighbour(id: Uuid, direction: MoveDirection): Uuid? {
-    val row = rows.firstOrNull { it.id == id } ?: return null
-    val candidates = if (row is PresetGroup && rows.entriesUnder(id).isNotEmpty()) {
+    if (rows.none { it.id == id }) return null
+    val candidates = if (rows.carriesEntries(id)) {
       visible.filterIsInstance<PresetGroup>()
     } else {
       visible

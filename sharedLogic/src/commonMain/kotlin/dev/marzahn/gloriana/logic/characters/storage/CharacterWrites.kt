@@ -83,7 +83,7 @@ internal class CharacterWrites(
   private suspend fun removeChildren(previous: CharacterRows) {
     children.deleteGreetings(previous.character.id)
     children.deleteAssets(previous.character.id)
-    previous.greetings.forEach { tombstones.record(CharacterGreetingsEntityType, RowKey.Row(it.id)) }
-    previous.assets.forEach { tombstones.record(CharacterAssetsEntityType, RowKey.Row(it.id)) }
+    tombstones.record(CharacterGreetingsEntityType, *previous.greetings.map { RowKey.Row(it.id) }.toTypedArray())
+    tombstones.record(CharacterAssetsEntityType, *previous.assets.map { RowKey.Row(it.id) }.toTypedArray())
   }
 }

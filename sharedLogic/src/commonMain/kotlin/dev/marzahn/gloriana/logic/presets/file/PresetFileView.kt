@@ -68,7 +68,7 @@ internal class PresetFileView(val source: JsonObject) {
     holder(prompt.home)?.string(prompt.key) ?: prompt.pinnedDefault
   }
 
-  fun holder(home: WrapperHome): JsonObject? = when (home) {
+  private fun holder(home: WrapperHome): JsonObject? = when (home) {
     WrapperHome.TopLevel -> source
     WrapperHome.GlorianaKey -> gloriana
   }

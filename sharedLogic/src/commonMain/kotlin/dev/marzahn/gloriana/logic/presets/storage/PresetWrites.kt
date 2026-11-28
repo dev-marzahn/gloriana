@@ -4,7 +4,7 @@ import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.presets.Preset
 import dev.marzahn.gloriana.logic.presets.PresetContent
 import dev.marzahn.gloriana.logic.presets.PresetDeleteResult
-import dev.marzahn.gloriana.logic.presets.PresetEntry
+import dev.marzahn.gloriana.logic.presets.PresetGroup
 import dev.marzahn.gloriana.logic.presets.PresetProblem
 import dev.marzahn.gloriana.logic.presets.PresetSaveResult
 import dev.marzahn.gloriana.logic.presets.PresetWritePoint
@@ -21,13 +21,12 @@ import kotlin.uuid.Uuid
 
 internal class PresetWrites(
   private val database: GlorianaDatabase,
+  private val dao: PresetDao,
   private val ids: IdFactory,
   private val clock: UpdatedAtClock,
   private val tombstones: Tombstones,
   private val faults: Faults,
 ) {
-  private val dao = database.presetDao()
-
   suspend fun insert(name: String, content: PresetContent, source: JsonObject): Uuid = database.writeTransaction {
     val id = ids.newId()
     val now = clock.now()
@@ -46,9 +45,10 @@ internal class PresetWrites(
     id
   }
 
-  suspend fun save(preset: Preset): PresetSaveResult = database.writeTransaction {
+  suspend fun save(edited: Preset): PresetSaveResult = database.writeTransaction {
+    val preset = edited.copy(name = edited.name.trim())
     val previous = dao.rows(preset.id) ?: return@writeTransaction PresetSaveResult.Gone
-    val problems = foreignRows(preset, previous)
+    val problems = problems(preset, previous)
     if (problems.isNotEmpty()) return@writeTransaction PresetSaveResult.Refused(problems)
     val now = clock.now()
     dao.update(
@@ -69,16 +69,24 @@ internal class PresetWrites(
     remove(previous.children)
     faults.reached(PresetWritePoint.DeleteChildrenRemoved)
     dao.delete(id)
+    faults.reached(PresetWritePoint.DeleteRowRemoved)
     tombstones.record(PresetsEntityType, RowKey.Row(id))
     PresetDeleteResult.Deleted
   }
 
-  private suspend fun foreignRows(preset: Preset, previous: PresetRows): Set<PresetProblem> {
+  private suspend fun problems(preset: Preset, previous: PresetRows): Set<PresetProblem> {
+    val rows = preset.content.rows
+    val rowIds = rows.map { it.id }
     val storedEntries = previous.entries.map { it.id }.toSet()
+    val repeated = rowIds.groupingBy { it }.eachCount().filterValues { it > 1 }.keys
     val unknownEntries = preset.content.entries.map { it.id }.filter { it !in storedEntries }
-    val otherPresets = dao.idsOfOtherPresets(preset.id, preset.content.rows.map { it.id })
-    val groupsOnEntries = preset.content.rows.filter { it !is PresetEntry && it.id in storedEntries }.map { it.id }
-    return (unknownEntries + otherPresets + groupsOnEntries).map(PresetProblem::ForeignRow).toSet()
+    val groupsOnEntries = rows.filter { it is PresetGroup && it.id in storedEntries }.map { it.id }
+    val foreign = unknownEntries + groupsOnEntries + dao.idsOfOtherPresets(preset.id, rowIds)
+    val negativeDepths = preset.content.entries.filter { it.placement.hasNegativeDepth }.map { it.id }
+    return setOfNotNull(PresetProblem.EmptyName.takeIf { preset.name.isEmpty() }) +
+      repeated.map(PresetProblem::RepeatedRow) +
+      foreign.map(PresetProblem::ForeignRow) +
+      negativeDepths.map(PresetProblem::NegativeDepth)
   }
 
   private suspend fun syncChildren(presetId: Uuid, content: PresetContent, kept: List<PresetChildEntity>, now: Long) {
@@ -95,8 +103,11 @@ internal class PresetWrites(
   }
 
   private suspend fun remove(children: List<PresetChildEntity>) {
-    dao.deleteEntries(children.filterIsInstance<PresetEntryEntity>().map { it.id })
-    dao.deleteGroups(children.filterIsInstance<PresetGroupEntity>().map { it.id })
-    children.forEach { tombstones.record(it.entityType, RowKey.Row(it.id)) }
+    val entries = children.filterIsInstance<PresetEntryEntity>().map { it.id }
+    val groups = children.filterIsInstance<PresetGroupEntity>().map { it.id }
+    dao.deleteEntries(entries)
+    dao.deleteGroups(groups)
+    tombstones.record(PresetEntriesEntityType, *entries.map(RowKey::Row).toTypedArray())
+    tombstones.record(PresetGroupsEntityType, *groups.map(RowKey::Row).toTypedArray())
   }
 }

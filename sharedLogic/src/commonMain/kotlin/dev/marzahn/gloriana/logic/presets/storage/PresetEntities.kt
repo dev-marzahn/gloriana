@@ -50,7 +50,6 @@ internal data class PresetEntity(
 internal sealed interface PresetChildEntity {
   val id: Uuid
   val updatedAt: Long
-  val entityType: EntityType
 
   fun stamped(updatedAt: Long): PresetChildEntity
 }
@@ -73,8 +72,6 @@ internal data class PresetEntryEntity(
   val inChatDepth: Int?,
   override val updatedAt: Long,
 ) : PresetChildEntity {
-  override val entityType: EntityType get() = PresetEntriesEntityType
-
   override fun stamped(updatedAt: Long) = copy(updatedAt = updatedAt)
 }
 
@@ -90,8 +87,6 @@ internal data class PresetGroupEntity(
   val name: String,
   override val updatedAt: Long,
 ) : PresetChildEntity {
-  override val entityType: EntityType get() = PresetGroupsEntityType
-
   override fun stamped(updatedAt: Long) = copy(updatedAt = updatedAt)
 }
 
@@ -105,17 +100,19 @@ internal data class PresetRows(
   fun decoded(): DecodedPreset {
     val wrappers = decodedWrappers(preset.wrappers)
     val source = decodedSource(preset.sourceJson)
-    val entryRows = entries.map { entity -> entity.position to entity.toEntry() }
-    return if (wrappers == null || source == null || entryRows.any { (_, entry) -> entry == null }) {
+    val entryRows = decodedEntries()
+    return if (wrappers == null || source == null || entryRows == null) {
       DecodedPreset.Unreadable
     } else {
-      val rows = (entryRows.mapNotNull { (position, entry) -> entry?.let { position to it } } +
-        groups.map { it.position to PresetGroup(it.id, it.name) })
+      val rows = (entryRows + groups.map { it.position to PresetGroup(it.id, it.name) })
         .sortedBy { (position) -> position }
         .map { (_, row) -> row }
       DecodedPreset.Readable(Preset(preset.id, preset.name, PresetContent(rows, wrappers)), source)
     }
   }
+
+  private fun decodedEntries(): List<Pair<Int, PresetRow>>? =
+    entries.map { entity -> entity.position to (entity.toEntry() ?: return null) }
 }
 
 internal sealed interface DecodedPreset {
@@ -181,7 +178,10 @@ internal fun PresetRow.toEntity(presetId: Uuid, position: Int, updatedAt: Long):
     filledByApp = filledByApp,
     enabled = enabled,
     role = role.storedValue,
-    inChatDepth = (placement as? EntryPlacement.InChat)?.depth,
+    inChatDepth = when (placement) {
+      EntryPlacement.Relative -> null
+      is EntryPlacement.InChat -> placement.depth
+    },
     updatedAt = updatedAt,
   )
   is PresetGroup -> PresetGroupEntity(id, presetId, position, name, updatedAt)

@@ -73,7 +73,6 @@ internal class PresetJsonReader(private val ids: IdFactory) {
 private fun PromptFields.entry(id: Uuid, identifier: String, enabled: Boolean) =
   PresetEntry(id, identifier, name, text, filledByApp, enabled, role, placement)
 
-
 private fun JsonElement?.isSet(): Boolean = when (this) {
   null, JsonNull -> false
   is JsonPrimitive -> if (isString) content.isNotEmpty() else content != "false" && content != "0"

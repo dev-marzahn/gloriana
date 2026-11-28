@@ -66,6 +66,36 @@ class TombstonesTest {
   }
 
   @Test
+  fun aBatchReadsTheClockOnceAndGrowsOnlyTheTombstonesAlreadyThere() = runTest {
+    val again = RowKey.Row(UuidV7IdFactory.newId())
+    val fresh = RowKey.Row(UuidV7IdFactory.newId())
+    tombstones.record(EntityType("preset_entries"), again)
+    tombstones.record(EntityType("preset_groups"), fresh)
+    val advancing = AdvancingClock(epochMillis = 4_000)
+
+    Tombstones(database, UpdatedAtClock(advancing)).record(EntityType("preset_entries"), again, fresh)
+
+    assertEquals(
+      setOf(
+        TombstoneEntity("preset_entries", again, deletedAt = 4_000, updatedAt = 5_001),
+        TombstoneEntity("preset_entries", fresh, deletedAt = 4_000, updatedAt = 4_000),
+        TombstoneEntity("preset_groups", fresh, deletedAt = 5_000, updatedAt = 5_000),
+      ),
+      storedTombstones().toSet(),
+    )
+  }
+
+  @Test
+  fun anEmptyBatchWritesNothing() = runTest {
+    val probe = WriteLockProbeClock(dataDirectory.resolve(DATABASE_FILE_NAME).toString())
+
+    Tombstones(database, UpdatedAtClock(probe)).record(EntityType("characters"))
+
+    assertEquals(emptyList(), probe.writeLockHeldAtEachRead)
+    assertEquals(emptyList(), storedTombstones())
+  }
+
+  @Test
   fun aTombstoneInADeleteThatFailsIsNotKept() = runTest {
     assertFailsWith<IllegalStateException> {
       database.useWriterConnection { connection ->

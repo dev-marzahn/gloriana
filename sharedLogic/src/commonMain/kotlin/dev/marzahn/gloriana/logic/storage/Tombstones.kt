@@ -10,18 +10,21 @@ import kotlin.jvm.JvmInline
 value class EntityType(val name: String)
 
 class Tombstones(private val database: GlorianaDatabase, private val clock: UpdatedAtClock) {
-  suspend fun record(entityType: EntityType, key: RowKey) {
+  suspend fun record(entityType: EntityType, vararg keys: RowKey) {
+    if (keys.isEmpty()) return
     val dao = database.tombstoneDao()
     database.writeTransaction {
       val now = clock.now()
-      val previous = dao.find(entityType.name, key)
+      val previous = dao.find(entityType.name, keys.toList()).associate { it.rowKey to it.updatedAt }
       dao.upsert(
-        TombstoneEntity(
-          entityType = entityType.name,
-          rowKey = key,
-          deletedAt = now,
-          updatedAt = clock.updatedAt(previous?.updatedAt, now),
-        ),
+        keys.map { key ->
+          TombstoneEntity(
+            entityType = entityType.name,
+            rowKey = key,
+            deletedAt = now,
+            updatedAt = clock.updatedAt(previous[key], now),
+          )
+        },
       )
     }
   }
@@ -38,10 +41,10 @@ internal data class TombstoneEntity(
 @Dao
 internal interface TombstoneDao {
   @Upsert
-  suspend fun upsert(tombstone: TombstoneEntity)
+  suspend fun upsert(tombstones: List<TombstoneEntity>)
 
-  @Query("SELECT * FROM tombstones WHERE entityType = :entityType AND rowKey = :rowKey")
-  suspend fun find(entityType: String, rowKey: RowKey): TombstoneEntity?
+  @Query("SELECT * FROM tombstones WHERE entityType = :entityType AND rowKey IN (:rowKeys)")
+  suspend fun find(entityType: String, rowKeys: List<RowKey>): List<TombstoneEntity>
 
   @Query("SELECT * FROM tombstones ORDER BY updatedAt")
   suspend fun all(): List<TombstoneEntity>

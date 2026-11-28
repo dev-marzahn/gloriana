@@ -124,12 +124,20 @@ class PresetReaderTest {
   }
 
   @Test
-  fun anImportedPresetWithANegativeDepthCanBeSaved() = runTest {
+  fun aNegativeDepthInAFileReadsAsZeroAndSavesButANegativeEditIsRefused() = runTest {
     PresetLibrary(directory).use { library ->
       val preset = library.stored(library.imported("only-prompts.json").id)
+      val deep = preset.content.entries[2]
 
+      assertEquals(EntryPlacement.InChat(0), deep.placement)
       assertEquals(PresetSaveResult.Saved, library.repository.save(preset))
-      assertEquals(EntryPlacement.InChat(0), library.stored(preset.id).content.entries[2].placement)
+      assertEquals(preset, library.stored(preset.id))
+      val negative = deep.copy(placement = EntryPlacement.InChat(-3))
+      val rows = preset.content.rows.map { if (it == deep) negative else it }
+      assertEquals(
+        PresetSaveResult.Refused(setOf(PresetProblem.NegativeDepth(deep.id))),
+        library.repository.save(preset.copy(content = preset.content.copy(rows = rows))),
+      )
     }
   }
 

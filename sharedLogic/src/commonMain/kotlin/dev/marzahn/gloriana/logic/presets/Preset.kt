@@ -9,9 +9,15 @@ enum class EntryRole {
 }
 
 sealed interface EntryPlacement {
-  data object Relative : EntryPlacement
+  val hasNegativeDepth: Boolean
 
-  data class InChat(val depth: Int) : EntryPlacement
+  data object Relative : EntryPlacement {
+    override val hasNegativeDepth: Boolean get() = false
+  }
+
+  data class InChat(val depth: Int) : EntryPlacement {
+    override val hasNegativeDepth: Boolean get() = depth < 0
+  }
 }
 
 enum class FilledWith(internal val identifiers: Set<String>) {
