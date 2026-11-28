@@ -41,6 +41,7 @@ internal data class ConnectionEntity(
   val customBody: String,
   val headers: String,
   val apiKey: String?,
+  val position: Long,
   val updatedAt: Long,
 )
 
@@ -113,7 +114,7 @@ private fun ConnectionEntity.readable(): Connection? {
   )
 }
 
-internal fun Connection.toEntity(updatedAt: Long) = ConnectionEntity(
+internal fun Connection.toEntity(position: Long, updatedAt: Long) = ConnectionEntity(
   id = id,
   name = fields.name,
   nameKey = nameKey(fields.name),
@@ -129,6 +130,7 @@ internal fun Connection.toEntity(updatedAt: Long) = ConnectionEntity(
   customBody = StoredJson.encodeToString(fields.customBody),
   headers = StoredJson.encodeToString(headers.map { StoredHeader(it.name, it.value.base64()) }),
   apiKey = key?.base64(),
+  position = position,
   updatedAt = updatedAt,
 )
 

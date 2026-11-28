@@ -77,6 +77,7 @@ import dev.marzahn.gloriana.ui.resources.snack_deleted
 import dev.marzahn.gloriana.ui.resources.snack_made_default_persona
 import dev.marzahn.gloriana.ui.resources.snack_saved
 import dev.marzahn.gloriana.ui.testing.LiveLibrary
+import dev.marzahn.gloriana.ui.testing.rememberUnstoredMoves
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.WidthClass
 import kotlinx.coroutines.runBlocking
@@ -369,7 +370,9 @@ class PersonaScreensTest {
   fun theListShowsItsSkeletonOnlyAfterAShortWait() = runComposeUiTest {
     LiveLibrary.use { library ->
       mainClock.autoAdvance = false
-      showAlone(library) { PersonasContent(PersonasListing.Loading, PersonasActions(), null, {}) }
+      showAlone(library) {
+        PersonasContent(PersonasListing.Loading, PersonasActions(), null, {}, rememberUnstoredMoves())
+      }
 
       onNodeWithTag(SKELETON_TAG).assertDoesNotExist()
       mainClock.advanceTimeBy(SKELETON_WAIT_MILLIS + 1)

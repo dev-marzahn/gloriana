@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.app.ShippedDefaultsAtStart
 import dev.marzahn.gloriana.logic.personas.Persona
 import dev.marzahn.gloriana.logic.personas.PersonaRepository
 import dev.marzahn.gloriana.ui.lists.Deleted
+import dev.marzahn.gloriana.ui.lists.UserOrderMoves
 import dev.marzahn.gloriana.ui.state.WhileCollected
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +35,8 @@ class PersonasViewModel(
 ) : ViewModel() {
   private val attempt = MutableStateFlow(0)
 
+  val moves = UserOrderMoves(viewModelScope, repository.order, repository.personas(), Persona::id)
+
   val lastDeleted: StateFlow<Deleted?> = commands.deletions.latest
 
   fun focused(delete: Deleted) = commands.deletions.handled(delete)
@@ -44,7 +47,7 @@ class PersonasViewModel(
       shippedDefaults.missing.await()
       emitAll(
         combine<List<Persona>, Uuid?, PersonasListing>(
-          repository.personas(),
+          moves.arranged,
           repository.defaultPersona(),
         ) { personas, defaultId -> PersonasListing.Loaded(personas, defaultId) },
       )

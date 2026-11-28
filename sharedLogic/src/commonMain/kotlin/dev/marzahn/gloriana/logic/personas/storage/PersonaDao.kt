@@ -4,13 +4,23 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.Query
 import androidx.room.Update
+import dev.marzahn.gloriana.logic.storage.PlacedRow
 import kotlinx.coroutines.flow.Flow
 import kotlin.uuid.Uuid
 
 @Dao
 internal interface PersonaDao {
-  @Query("SELECT * FROM $PERSONAS_TABLE ORDER BY id")
+  @Query("SELECT * FROM $PERSONAS_TABLE ORDER BY position")
   fun observeAll(): Flow<List<PersonaEntity>>
+
+  @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM $PERSONAS_TABLE")
+  suspend fun nextPosition(): Long
+
+  @Query("SELECT id, position, updatedAt FROM $PERSONAS_TABLE ORDER BY position")
+  suspend fun placedRows(): List<PlacedRow>
+
+  @Query("UPDATE $PERSONAS_TABLE SET position = :position, updatedAt = :updatedAt WHERE id = :id")
+  suspend fun place(id: Uuid, position: Long, updatedAt: Long)
 
   @Query("SELECT * FROM $PERSONAS_TABLE WHERE id = :id")
   fun observe(id: Uuid): Flow<PersonaEntity?>

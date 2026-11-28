@@ -6,6 +6,7 @@ import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
 import androidx.room.Upsert
+import dev.marzahn.gloriana.logic.storage.PlacedRow
 import kotlinx.coroutines.flow.Flow
 import kotlin.uuid.Uuid
 
@@ -15,9 +16,18 @@ internal interface PresetDao {
     "SELECT id, name, " +
       "(SELECT COUNT(*) FROM $PRESET_ENTRIES_TABLE WHERE presetId = p.id) AS entries, " +
       "(SELECT COUNT(*) FROM $PRESET_ENTRIES_TABLE WHERE presetId = p.id AND enabled) AS entriesOn " +
-      "FROM $PRESETS_TABLE p ORDER BY nameKey, name",
+      "FROM $PRESETS_TABLE p ORDER BY position",
   )
   fun summaries(): Flow<List<PresetSummaryRow>>
+
+  @Query("SELECT COALESCE(MAX(position) + 1, 0) FROM $PRESETS_TABLE")
+  suspend fun nextPosition(): Long
+
+  @Query("SELECT id, position, updatedAt FROM $PRESETS_TABLE ORDER BY position")
+  suspend fun placedRows(): List<PlacedRow>
+
+  @Query("UPDATE $PRESETS_TABLE SET position = :position, updatedAt = :updatedAt WHERE id = :id")
+  suspend fun place(id: Uuid, position: Long, updatedAt: Long)
 
   @Query("SELECT id FROM $PRESETS_TABLE")
   fun observeIds(): Flow<List<Uuid>>

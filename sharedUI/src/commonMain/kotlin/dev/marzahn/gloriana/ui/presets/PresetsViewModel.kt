@@ -6,6 +6,7 @@ import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.logic.presets.PresetRepository
 import dev.marzahn.gloriana.logic.presets.PresetSummary
 import dev.marzahn.gloriana.ui.lists.Deleted
+import dev.marzahn.gloriana.ui.lists.UserOrderMoves
 import dev.marzahn.gloriana.ui.state.WhileCollected
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -40,6 +41,8 @@ class PresetsViewModel(
 ) : ViewModel() {
   private val attempt = MutableStateFlow(0)
 
+  val moves = UserOrderMoves(viewModelScope, repository.order, repository.presets(), PresetSummary::id)
+
   val lastDeleted: StateFlow<Deleted?> = commands.deletions.latest
 
   fun focused(delete: Deleted) = commands.deletions.handled(delete)
@@ -47,7 +50,7 @@ class PresetsViewModel(
   @OptIn(ExperimentalCoroutinesApi::class)
   private val listing: Flow<PresetsListing> = attempt.flatMapLatest {
     combine<List<PresetSummary>, Uuid?, PresetsListing>(
-      repository.presets(),
+      moves.arranged,
       repository.defaultPreset(),
     ) { presets, defaultId -> PresetsListing.Loaded(presets, defaultId) }
       .onStart { emit(PresetsListing.Loading) }

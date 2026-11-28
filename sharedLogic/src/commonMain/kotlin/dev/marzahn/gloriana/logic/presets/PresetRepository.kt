@@ -15,6 +15,7 @@ import dev.marzahn.gloriana.logic.settings.MakeDefaultResult
 import dev.marzahn.gloriana.logic.storage.ChatSetting
 import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.IdFactory
+import dev.marzahn.gloriana.logic.storage.Reordering
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.uuid.Uuid
@@ -41,6 +42,8 @@ class PresetRepository internal constructor(
     failingAs({ if (it.isStorageFull()) PresetSaveResult.StorageFull else PresetSaveResult.Failed }) {
       writes.save(preset)
     }
+
+  val order: Reordering get() = writes.order
 
   fun defaultPreset(): Flow<Uuid?> = default.observe()
 

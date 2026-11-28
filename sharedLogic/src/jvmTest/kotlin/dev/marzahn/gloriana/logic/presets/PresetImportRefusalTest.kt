@@ -54,7 +54,7 @@ class PresetImportRefusalTest {
   }
 
   @Test
-  fun aPresetIsNamedFromItsFileWithoutJsonAndListsByName() = runTest {
+  fun aPresetIsNamedFromItsFileWithoutJsonAndJoinsTheEndOfTheList() = runTest {
     PresetLibrary(directory).use { library ->
       listOf("Zephyr.JSON", "alpha.json", " Mid .json", "notes.txt", ".json").forEach { name ->
         library.import.import(CorpusFile(name, PresetCorpus.bytes("minimal.json")))
@@ -62,7 +62,7 @@ class PresetImportRefusalTest {
       library.import.import(CorpusFile("alpha.json", PresetCorpus.bytes("minimal.json")))
 
       assertEquals(
-        listOf(".json", "alpha", "alpha", "Mid", "notes.txt", "Zephyr"),
+        listOf("Zephyr", "alpha", "Mid", "notes.txt", ".json", "alpha"),
         library.repository.presets().first().map { it.name },
       )
     }

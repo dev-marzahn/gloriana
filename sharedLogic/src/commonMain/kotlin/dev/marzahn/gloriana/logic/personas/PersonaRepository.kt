@@ -8,6 +8,7 @@ import dev.marzahn.gloriana.logic.personas.storage.PersonaWrites
 import dev.marzahn.gloriana.logic.settings.MakeDefaultResult
 import dev.marzahn.gloriana.logic.storage.ChatSetting
 import dev.marzahn.gloriana.logic.storage.ChatsUsing
+import dev.marzahn.gloriana.logic.storage.Reordering
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlin.uuid.Uuid
@@ -35,6 +36,8 @@ class PersonaRepository internal constructor(
   suspend fun delete(id: Uuid): PersonaDeleteResult = failingAs(PersonaDeleteResult.Failed) {
     default.unlessDefault(id, refused = PersonaDeleteResult.IsDefault) { writes.delete(id, chatsMoveTo = it) }
   }
+
+  val order: Reordering get() = writes.order
 
   suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { default.make(id) }
 

@@ -7,6 +7,7 @@ enum class PresetWritePoint : FaultPoint {
   SaveRowWritten,
   DeleteChildrenRemoved,
   DeleteRowRemoved,
+  MoveRowsWritten,
   ;
 
   override val key: String

@@ -192,4 +192,15 @@
     </plurals>
     <string name="discard">Discard</string>
     <string name="keep_editing">Keep editing</string>
+    <string name="reorder_kind">Reorder %1$s</string>
+    <string name="reorder_hint">Drag a row by its handle. Each move is saved.</string>
+    <string name="reorder_hint_keys">Drag a handle, or Tab to it and press Space. Each move is saved.</string>
+    <string name="reorder_move_row">Move %1$s</string>
+    <string name="reorder_lifted">%1$s lifted, %2$d of %3$d. Up and down move it, Space drops it, Escape puts it back.</string>
+    <string name="reorder_step">%1$s, %2$d of %3$d.</string>
+    <string name="reorder_moved">%1$s moved to %2$d of %3$d.</string>
+    <string name="reorder_not_moved">%1$s wasn't moved.</string>
+    <string name="reorder_not_moved_detail">The list shows the order last saved. Move it again.</string>
+    <string name="reorder_not_moved_storage">%1$s wasn't moved: there isn't enough storage.</string>
+    <string name="reorder_not_moved_storage_detail">Free some space, then move it again.</string>
 </resources>

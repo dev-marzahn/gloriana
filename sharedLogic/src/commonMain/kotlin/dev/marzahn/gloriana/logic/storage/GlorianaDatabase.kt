@@ -39,7 +39,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 internal const val DATABASE_FILE_NAME = "library.db"
-internal const val DATABASE_VERSION = 6
+internal const val DATABASE_VERSION = 7
 
 @Database(
   entities = [
@@ -87,7 +87,7 @@ abstract class GlorianaDatabase : RoomDatabase() {
 }
 
 internal val migrations: List<Migration> =
-  listOf(AddCharacters, AddConnectionsAndLibrarySettings, AddPresets, AddPersonas, AddChats)
+  listOf(AddCharacters, AddConnectionsAndLibrarySettings, AddPresets, AddPersonas, AddChats, AddUserOrder)
 
 internal fun RoomDatabase.Builder<GlorianaDatabase>.buildGlorianaDatabase(
   queries: CoroutineDispatcher = Dispatchers.IO,

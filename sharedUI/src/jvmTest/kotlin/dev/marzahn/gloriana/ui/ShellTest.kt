@@ -53,6 +53,7 @@ import dev.marzahn.gloriana.ui.settings.SettingsActions
 import dev.marzahn.gloriana.ui.settings.SettingsContent
 import dev.marzahn.gloriana.ui.settings.SettingsRoute
 import dev.marzahn.gloriana.ui.settings.SettingsState
+import dev.marzahn.gloriana.ui.testing.rememberUnstoredMoves
 import kotlinx.coroutines.flow.MutableSharedFlow
 import org.jetbrains.compose.resources.getString
 import kotlin.test.Test
@@ -94,6 +95,7 @@ class ShellTest {
                 SettingsState(ConnectionsList.Loaded(emptyList())),
                 SettingsActions(onOpen = {}, onCreate = {}, onIntent = {}),
                 selected = null,
+                moves = rememberUnstoredMoves(),
               )
             }
             entry<Pushed> { Text(PUSHED) }

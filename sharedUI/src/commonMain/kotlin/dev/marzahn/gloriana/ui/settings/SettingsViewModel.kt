@@ -21,6 +21,7 @@ import dev.marzahn.gloriana.ui.connections.UnlockPromptSlot
 import dev.marzahn.gloriana.ui.connections.WriteFailure
 import dev.marzahn.gloriana.ui.connections.failure
 import dev.marzahn.gloriana.ui.lists.Deleted
+import dev.marzahn.gloriana.ui.lists.UserOrderMoves
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
@@ -150,9 +151,11 @@ class SettingsViewModel(
   private val attempts = MutableStateFlow(0)
   private val session = MutableStateFlow(SettingsSession())
 
+  val moves = UserOrderMoves(viewModelScope, repository.order, repository.connections(), Connection::id)
+
   @OptIn(ExperimentalCoroutinesApi::class)
   private val stored: Flow<Result<Stored>> = attempts.flatMapLatest {
-    combine(repository.connections(), repository.defaultConnection(), ::Stored)
+    combine(moves.arranged, repository.defaultConnection(), ::Stored)
       .map { Result.success(it) }
       .catch { emit(Result.failure(it)) }
   }

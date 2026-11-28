@@ -6,6 +6,7 @@ enum class PersonaWritePoint : FaultPoint {
   InsertRowWritten,
   UpdateRowWritten,
   DeleteRowRemoved,
+  MoveRowsWritten,
   ;
 
   override val key: String

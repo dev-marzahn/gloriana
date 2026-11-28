@@ -37,13 +37,13 @@ private val EntryRole.storedValue: String
     EntryRole.Assistant -> "assistant"
   }
 
-@Entity(tableName = PRESETS_TABLE, indices = [Index("nameKey")])
+@Entity(tableName = PRESETS_TABLE)
 internal data class PresetEntity(
   @PrimaryKey val id: Uuid,
   val name: String,
-  val nameKey: String,
   val wrappers: String,
   val sourceJson: String,
+  val position: Long,
   val updatedAt: Long,
 )
 

@@ -95,9 +95,11 @@ private val DotSlot = 14.dp
 private val Dot = 8.dp
 private val DotHalo = 3.dp
 
-private fun Modifier.rowClick(selection: RowSelection, shape: Shape, onClick: () -> Unit): Modifier {
+private fun Modifier.rowClick(selection: RowSelection, shape: Shape, onClick: (() -> Unit)?): Modifier {
   val indication = GlorianaIndication(shape)
-  return if (selection == RowSelection.NotSelectable) {
+  return if (onClick == null) {
+    this
+  } else if (selection == RowSelection.NotSelectable) {
     clickable(interactionSource = null, indication = indication, role = Role.Button, onClick = onClick)
   } else {
     selectable(
@@ -113,7 +115,7 @@ private fun Modifier.rowClick(selection: RowSelection, shape: Shape, onClick: ()
 fun ListRow(
   name: String,
   line: RowLine?,
-  onClick: () -> Unit,
+  onClick: (() -> Unit)?,
   avatar: @Composable () -> Unit,
   modifier: Modifier = Modifier,
   selection: RowSelection = RowSelection.NotSelectable,
