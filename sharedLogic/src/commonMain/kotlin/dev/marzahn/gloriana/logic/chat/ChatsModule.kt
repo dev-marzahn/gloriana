@@ -1,5 +1,7 @@
 package dev.marzahn.gloriana.logic.chat
 
+import dev.marzahn.gloriana.logic.chat.file.ChatExport
+import dev.marzahn.gloriana.logic.chat.file.ChatFileReads
 import dev.marzahn.gloriana.logic.chat.storage.CharacterChats
 import dev.marzahn.gloriana.logic.chat.storage.ChatReferences
 import dev.marzahn.gloriana.logic.chat.storage.ChatRemovals
@@ -22,6 +24,8 @@ val chatsModule = module {
   single { ChatWrites(get(), get(), get(), get(), get()) }
   single { ChatOpenings(get(), get(), get(), get()) }
   single { ChatRepository(get(), get(), get(), get(), get(), get(), get(), get()) }
+  single { ChatFileReads(get(), get(), get(), get(), get()) }
+  single { ChatExport(get()) }
   single { LeftoverDrafts(get(), get(), get(), get(), get(), get(), get()) }
   single(createdAtStart = true) { LeftoverDraftsAtStart(get(), get(), get()) }
 }

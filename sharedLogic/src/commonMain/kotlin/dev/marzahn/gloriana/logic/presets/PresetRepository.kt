@@ -4,6 +4,8 @@ import dev.marzahn.gloriana.logic.app.failingAs
 import dev.marzahn.gloriana.logic.assets.isStorageFull
 import dev.marzahn.gloriana.logic.files.ExportDestination
 import dev.marzahn.gloriana.logic.files.ExportWrite
+import dev.marzahn.gloriana.logic.files.writeAll
+import dev.marzahn.gloriana.logic.files.writeOnIo
 import dev.marzahn.gloriana.logic.presets.file.PresetJsonWriter
 import dev.marzahn.gloriana.logic.presets.storage.DecodedPreset
 import dev.marzahn.gloriana.logic.presets.storage.DefaultPreset
@@ -52,12 +54,13 @@ class PresetRepository internal constructor(
     when (val decoded = dao.rows(id)?.decoded()) {
       null -> PresetExportResult.Gone
       DecodedPreset.Unreadable -> PresetExportResult.Unreadable
-      is DecodedPreset.Readable -> written(PresetJsonWriter.encode(decoded.preset.content, decoded.source), destination)
+      is DecodedPreset.Readable -> destination.writeOnIo { sink -> sink.writeAll(decoded.encoded()) }.asPresetExport()
     }
+}
 
-  private fun written(file: ByteArray, destination: ExportDestination): PresetExportResult =
-    when (val written = destination.write { sink -> sink.write(file, 0, file.size) }) {
-      ExportWrite.Written -> PresetExportResult.Exported
-      is ExportWrite.Failed -> PresetExportResult.Failed(written.problem)
-    }
+private fun DecodedPreset.Readable.encoded() = PresetJsonWriter.encode(preset.content, source)
+
+private fun ExportWrite.asPresetExport(): PresetExportResult = when (this) {
+  ExportWrite.Written -> PresetExportResult.Exported
+  is ExportWrite.Failed -> PresetExportResult.Failed(problem)
 }

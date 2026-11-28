@@ -28,6 +28,14 @@ internal interface ChatDao {
   )
   fun observeShownMessages(chatId: Uuid): Flow<List<ShownMessageRow>>
 
+  @Transaction
+  @Query("SELECT * FROM $CHATS_TABLE WHERE id = :id")
+  suspend fun rows(id: Uuid): ChatRows?
+
+  @Transaction
+  @Query("SELECT * FROM $MESSAGES_TABLE WHERE chatId = :chatId ORDER BY position")
+  suspend fun messagesWithSwipes(chatId: Uuid): List<MessageWithSwipes>
+
   @Insert
   suspend fun insert(chat: ChatEntity)
 

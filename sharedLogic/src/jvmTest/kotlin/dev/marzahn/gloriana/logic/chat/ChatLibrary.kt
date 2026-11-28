@@ -7,6 +7,8 @@ import dev.marzahn.gloriana.logic.app.ShippedDefaultsAtStart
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.characters.CharacterLibrary
 import dev.marzahn.gloriana.logic.characters.CharacterLookup
+import dev.marzahn.gloriana.logic.chat.file.ChatExport
+import dev.marzahn.gloriana.logic.chat.file.ChatFileReads
 import dev.marzahn.gloriana.logic.chat.storage.ChatRemovals
 import dev.marzahn.gloriana.logic.chat.storage.ChatWrites
 import dev.marzahn.gloriana.logic.connection.ConnectionLookup
@@ -38,8 +40,10 @@ private val nothingLogged = ProblemLog { message, cause -> throw AssertionError(
 
 class FaultSwitch : Faults {
   var failing: FaultPoint? = null
+  val onReaching = mutableMapOf<FaultPoint, () -> Unit>()
 
   override fun reached(point: FaultPoint) {
+    onReaching[point]?.invoke()
     if (point == failing) throw FaultInjected(point)
   }
 }
@@ -81,6 +85,9 @@ class ChatLibrary(
     personas.prompts,
     presets.repository,
     connections.repository,
+  )
+  val export = ChatExport(
+    ChatFileReads(database, database.chatDao(), CharacterLookup(database.characterDao()), personas.prompts, faults),
   )
 
   suspend fun shippedDefaultsWritten() = check(shippedDefaults.missing.await().isEmpty())

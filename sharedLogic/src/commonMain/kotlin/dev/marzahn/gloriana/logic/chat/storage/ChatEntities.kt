@@ -126,6 +126,15 @@ internal data class ShownMessageRow(
   )
 }
 
+internal data class MessageWithSwipes(
+  @Embedded val message: MessageEntity,
+  @Relation(parentColumn = "id", entityColumn = "messageId")
+  val swipes: List<SwipeEntity>,
+) {
+  val orderedSwipes: List<Swipe>
+    get() = swipes.sortedBy { it.swipeIndex }.map { Swipe(it.swipeIndex, it.text, it.reasoning, it.state) }
+}
+
 @TypeConverters(ChatConverters::class)
 internal data class ShownSwipeColumns(val text: String, val reasoning: String, val state: SwipeState)
 
