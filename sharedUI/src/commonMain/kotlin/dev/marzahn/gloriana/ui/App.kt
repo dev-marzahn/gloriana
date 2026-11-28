@@ -9,8 +9,11 @@ import androidx.navigation3.runtime.NavEntry
 import androidx.navigation3.runtime.NavKey
 import androidx.navigation3.runtime.rememberDecoratedNavEntries
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
+import dev.marzahn.gloriana.ui.connections.KeysGateBeforeShell
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.navigation.Destination
+import dev.marzahn.gloriana.ui.navigation.QuitQuestion
+import dev.marzahn.gloriana.ui.navigation.QuitRequests
 import dev.marzahn.gloriana.ui.navigation.Shell
 import dev.marzahn.gloriana.ui.navigation.ShellNavigator
 import dev.marzahn.gloriana.ui.navigation.platformHasSystemBack
@@ -24,7 +27,13 @@ import org.koin.core.annotation.KoinExperimentalAPI
 @OptIn(KoinExperimentalAPI::class)
 @Composable
 fun App(modifier: Modifier = Modifier) {
-  GlorianaApp(koinEntryProvider(), modifier, messages = koinInject())
+  GlorianaApp(
+    koinEntryProvider(),
+    modifier,
+    messages = koinInject(),
+    quitRequests = koinInject(),
+    beforeShell = { shell -> KeysGateBeforeShell(shell = shell) },
+  )
 }
 
 @Composable
@@ -34,6 +43,8 @@ internal fun GlorianaApp(
   navigator: ShellNavigator = rememberShellNavigator(),
   hasSystemBack: Boolean = platformHasSystemBack,
   messages: AppMessages = remember { AppMessages() },
+  quitRequests: QuitRequests = remember { QuitRequests() },
+  beforeShell: @Composable (shell: @Composable () -> Unit) -> Unit = { shell -> shell() },
 ) {
   val decorators = listOf(
     rememberSaveableStateHolderNavEntryDecorator<NavKey>(),
@@ -44,7 +55,8 @@ internal fun GlorianaApp(
   }
   BoxWithConstraints(modifier) {
     GlorianaTheme(WidthClass.of(maxWidth)) {
-      Shell(navigator, entries, hasSystemBack, messages)
+      QuitQuestion(navigator, quitRequests)
+      beforeShell { Shell(navigator, entries, hasSystemBack, messages) }
     }
   }
 }

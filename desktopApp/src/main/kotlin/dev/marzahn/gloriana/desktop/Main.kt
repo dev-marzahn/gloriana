@@ -8,22 +8,37 @@ import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import dev.marzahn.gloriana.desktop.di.desktopAppModule
 import dev.marzahn.gloriana.ui.App
+import dev.marzahn.gloriana.ui.navigation.QuitRequests
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.app_name
 import org.jetbrains.compose.resources.stringResource
 import org.koin.core.context.startKoin
+import java.awt.Desktop
 import java.awt.Dimension
 
+private const val SLF4J_VERBOSITY = "slf4j.internal.verbosity"
+private const val ONLY_ERRORS = "ERROR"
+private const val USE_SYSTEM_PROXIES = "java.net.useSystemProxies"
 private val OpeningSize = DpSize(1280.dp, 800.dp)
 private val MinimumSize = DpSize(400.dp, 600.dp)
 
 private fun DpSize.inAwtUnits() = Dimension(width.value.toInt(), height.value.toInt())
 
+private fun askBeforeSystemQuit(quits: QuitRequests) {
+  if (!Desktop.isDesktopSupported()) return
+  val desktop = Desktop.getDesktop()
+  if (!desktop.isSupported(Desktop.Action.APP_QUIT_HANDLER)) return
+  desktop.setQuitHandler { _, response -> quits.request(quit = response::performQuit, stay = response::cancelQuit) }
+}
+
 fun main() {
-  startKoin { modules(desktopAppModule) }
+  System.setProperty(SLF4J_VERBOSITY, ONLY_ERRORS)
+  System.setProperty(USE_SYSTEM_PROXIES, true.toString())
+  val quits = startKoin { modules(desktopAppModule) }.koin.get<QuitRequests>()
+  askBeforeSystemQuit(quits)
   application {
     Window(
-      onCloseRequest = ::exitApplication,
+      onCloseRequest = { quits.request(quit = ::exitApplication) },
       state = rememberWindowState(size = OpeningSize),
       title = stringResource(Res.string.app_name),
     ) {

@@ -3,6 +3,8 @@ package dev.marzahn.gloriana.logic.characters
 import dev.marzahn.gloriana.logic.brand.avatarGradientColors
 import dev.marzahn.gloriana.logic.characters.CardFixtures.sha256
 import dev.marzahn.gloriana.logic.characters.files.PlaceholderAvatar
+import dev.marzahn.gloriana.logic.files.ExportFailure
+import dev.marzahn.gloriana.logic.files.ExportProblem
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonObject

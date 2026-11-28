@@ -2,7 +2,6 @@ package dev.marzahn.gloriana.ui.library
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.GridItemSpan
@@ -18,20 +17,24 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import dev.marzahn.gloriana.ui.characters.CardFiles
 import dev.marzahn.gloriana.ui.characters.CharacterRoute
 import dev.marzahn.gloriana.ui.characters.FullScreenAvatar
-import dev.marzahn.gloriana.ui.characters.ImportNote
-import dev.marzahn.gloriana.ui.characters.RunningFile
 import dev.marzahn.gloriana.ui.characters.pickCharacter
-import dev.marzahn.gloriana.ui.characters.rememberCardFilePicker
 import dev.marzahn.gloriana.ui.components.EmptyAction
 import dev.marzahn.gloriana.ui.components.EmptyBlock
 import dev.marzahn.gloriana.ui.components.ErrorNote
+import dev.marzahn.gloriana.ui.components.Segment
+import dev.marzahn.gloriana.ui.components.SegmentedControl
+import dev.marzahn.gloriana.ui.files.rememberFilePicker
 import dev.marzahn.gloriana.ui.navigation.Destination
+import dev.marzahn.gloriana.ui.navigation.LibraryKind
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.navigation.TopLevelContent
 import dev.marzahn.gloriana.ui.navigation.TopLevelScreen
+import dev.marzahn.gloriana.ui.presets.PresetsLibrary
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.characters_error
 import dev.marzahn.gloriana.ui.resources.characters_nothing_picked
@@ -42,9 +45,13 @@ import dev.marzahn.gloriana.ui.resources.ic_auto_stories
 import dev.marzahn.gloriana.ui.resources.ic_person_add
 import dev.marzahn.gloriana.ui.resources.library_empty
 import dev.marzahn.gloriana.ui.resources.library_empty_text
+import dev.marzahn.gloriana.ui.resources.library_kind_characters
+import dev.marzahn.gloriana.ui.resources.library_kind_presets
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import dev.marzahn.gloriana.ui.theme.Navigation
+import org.jetbrains.compose.resources.StringResource
 import org.jetbrains.compose.resources.stringResource
+import org.koin.compose.koinInject
 import org.koin.compose.viewmodel.koinViewModel
 import kotlin.uuid.Uuid
 
@@ -61,11 +68,37 @@ class LibraryActions(
 )
 
 @Composable
-fun LibraryScreen(modifier: Modifier = Modifier, viewModel: LibraryViewModel = koinViewModel()) {
+fun LibraryScreen(modifier: Modifier = Modifier) {
+  val navigator = LocalShellNavigator.current
+  val kindPicker = @Composable { LibraryKindPicker(navigator.libraryKind) { navigator.showLibraryKind(it) } }
+  when (navigator.libraryKind) {
+    LibraryKind.Characters -> CharactersLibrary(kindPicker, modifier)
+    LibraryKind.Presets -> PresetsLibrary(kindPicker, modifier)
+  }
+}
+
+@Composable
+private fun LibraryKindPicker(kind: LibraryKind, onPick: (LibraryKind) -> Unit) {
+  val segments = LibraryKind.entries.map { Segment(it, stringResource(it.label)) }
+  SegmentedControl(segments, kind, onPick)
+}
+
+private val LibraryKind.label: StringResource
+  get() = when (this) {
+    LibraryKind.Characters -> Res.string.library_kind_characters
+    LibraryKind.Presets -> Res.string.library_kind_presets
+  }
+
+@Composable
+private fun CharactersLibrary(
+  kindPicker: @Composable () -> Unit,
+  modifier: Modifier = Modifier,
+  viewModel: LibraryViewModel = koinViewModel(),
+) {
   val state by viewModel.state.collectAsStateWithLifecycle()
   val navigator = LocalShellNavigator.current
   val onWorkbench = GlorianaTheme.widthClass.navigation == Navigation.Workbench
-  val picker = rememberCardFilePicker(viewModel::import)
+  val picker = rememberFilePicker(CardFiles, viewModel::import)
   var creating by rememberSaveable { mutableStateOf(false) }
   var previewing by rememberSaveable { mutableStateOf<String?>(null) }
   var enlarged by rememberSaveable { mutableStateOf(false) }
@@ -83,7 +116,7 @@ fun LibraryScreen(modifier: Modifier = Modifier, viewModel: LibraryViewModel = k
     },
   )
   val selected = (navigator.stack(Destination.Library).lastOrNull() as? CharacterRoute)?.uuid?.takeIf { onWorkbench }
-  LibraryContent(state, modifier, actions, selected)
+  LibraryContent(state, modifier, actions, selected, kindPicker)
   if (creating) {
     CreateSheet(onImport = { creating = false; picker.pick() }, onDismiss = { creating = false })
   }
@@ -112,6 +145,7 @@ internal fun LibraryContent(
   modifier: Modifier = Modifier,
   actions: LibraryActions = LibraryActions(),
   selected: Uuid? = null,
+  kindPicker: (@Composable () -> Unit)? = null,
 ) {
   val nothingPicked = EmptyBlock(
     icon = Res.drawable.ic_auto_stories,
@@ -138,7 +172,7 @@ internal fun LibraryContent(
       Grid(header) { metrics -> shown(state, metrics, actions, selected) }
     }
   }
-  TopLevelScreen(Destination.Library, content, modifier)
+  TopLevelScreen(Destination.Library, content, modifier, kindPicker)
 }
 
 @Composable

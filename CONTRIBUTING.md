@@ -62,9 +62,19 @@ run on the JVM only and make the Android plugin warn.
 Koin, one module per layer: `logicModule` (`sharedLogic`), `uiModule` (`sharedUI`) and each app's platform module.
 Each app has one app module (`androidAppModule`, `desktopAppModule`) that includes all three; the app starts Koin with
 it, and a `verify()` test per platform (`AndroidGraphTest`, `DesktopGraphTest`) checks that every definition in it
-resolves. Definitions use the Koin compiler plugin's DSL (`viewModel<LibraryViewModel>()`), which wires constructors
-at compile time. The plugin's own graph check is off: it cannot yet follow modules declared in other Gradle modules,
-so the `verify()` tests are the graph check.
+resolves. `sharedUI` applies the Koin compiler plugin and uses its DSL (`viewModel<LibraryViewModel>()`), which wires
+constructors at compile time; `sharedLogic` and the apps don't apply it and call constructors in `single { … }`
+lambdas, which the `verify()` tests read. The plugin's own graph check is off: it cannot yet follow modules declared in
+other Gradle modules, so the `verify()` tests are the graph check. A feature whose implementation is shared JVM code
+(`jvmShared`) exposes its Koin module to common code through one `internal expect val` (`cardFilesModule`,
+`vaultModule`, `debugModule`).
+
+Debuggable-build hooks live in `logic.debug`: `DebugHooks` reads `debug/hooks.properties` (nothing in a release build)
+and is the one binding of `Faults` and `DebugSwitches`. A write with fault points takes `Faults` and passes
+`FaultPoint`s; a feature's switches are a `DebugSwitch` enum; both keys name their feature
+(`fault.characters.DeleteRowRemoved=kill`, `fault.keys.NewKeysetStaged=fail`, `characters.import.hold=on`,
+`assets.purge.now=on`, `keys.passphrase=on`). Before the feature prefixes, the keys were `fault.<Point>`, `import.hold`
+and `purge.now`; a hooks file with those does nothing now.
 
 ## Storage
 
@@ -139,6 +149,13 @@ Android resource; `LauncherLabelTest` keeps it equal to the Compose `app_name`.
   Create pushes). Screens navigate through `LocalShellNavigator`; each `Destination` keeps its own back stack there.
 - **Back and Escape.** A pushed screen pops on system Back, on Escape (desktop) and with the predictive gesture. System
   Back on a destination's root goes to Chats; Escape on a root does nothing.
+- **Unsaved changes.** A page that edits a copy calls `GuardUnsavedChanges(route, page)` with an `UnsavedPage` while
+  something differs from what is stored. `ShellNavigator` asks before any pop, return to the root or `replaceTop` that
+  would drop it, and Discard runs the page's `discard` first. Two moves never ask: `close(destination, route)`, for a
+  page whose subject is gone (a deleted Connection), and `swap(destination, shown, with)`, for a page whose route
+  changes under it (a new Connection's first Save turns its route into the saved one). On desktop, closing the window
+  and the system quit go through `QuitRequests`, which ask once for every page still holding changes and quit at
+  once when none does. The question sits above the keys gate, so quitting works at the unlock screen too.
 - **Fonts and icons** are bundled resources: Literata and Inter as static TTF files in `composeResources/font`, and
   Material Symbols Outlined (weight 400, grade 0) as vector drawables in `composeResources/drawable`, copied one by
   one as screens need them. Licence texts live in `composeResources/files/licenses` and `THIRD_PARTY_NOTICES.md`.
@@ -147,6 +164,132 @@ Android resource; `LauncherLabelTest` keeps it equal to the Compose `app_name`.
 
 No API key, custom header value or message text is ever logged, put in an error message, or sent anywhere but the
 host the user set up for it. A log line can't be taken back once it is in a crash report or a shared bug report.
+The `checkNoHttpLogging` task (part of `check`, from `gloriana.no-http-logging`) refuses Ktor's and OkHttp's HTTP
+loggers on each app's shipped runtime classpath, and `NoHttpLoggingTest` refuses their imports in any source.
+`KeysAtRestTest` saves a Connection with a marker key and header value through `ConnectionRepository`, searches
+every file the app writes, with the database open, in UTF-8 and UTF-16, and the test's standard output and
+`java.util.logging` output for the markers, then deletes the Connection and checks that no ciphertext of it opens.
+`KeysAtRestDeviceTest` does the same in the Android app's data directory and its logcat; it repeats the JVM test's
+small search helpers, since an Android test can't use the JVM test sources.
+
+Keys and custom header values go through `KeyVault` (`logic.keys`) and nothing else:
+
+- `seal` encrypts a value for a `SecretSlot` (a Connection's key, or one header of it by `HeaderName`) and `open`
+  decrypts it, only when a request is built. The Connection's id, and the header's name in lower case, are bound into
+  the ciphertext, so renaming a header means sealing its value again. Store the `SealedSecret` bytes; never keep the
+  opened value in state. The vault clears every passphrase array it is given.
+- Each Connection has its own data key in `keys/connections.json`, made on its first `seal`. Call `erase` right after a
+  Connection's delete commits, and after every save when the Connection's row, read again, holds no key or header
+  value (a failed save of a new Connection, or a save that removed them all); never erase a data key that stored
+  values still need. A row this version can't read counts as needing its key. Saves and deletes run one at a time
+  inside `DataKeyErasure.oneAtATime`, the only place the erase can be called, so no other save commits between that
+  read and the erase.
+- `findings` tells the screens which values can't be opened: a Connection with no data key on file, or a value `open`
+  found missing. A screen that shows held values collects `KeyVault.secretChecks(connections)` (`logic.connection`):
+  it opens each held value when the keyset opens and again when the held values change, so a value sealed under a data
+  key a reset or Start over erased reads as missing after a restart too, without a send failing first.
+  `Connection.secretsState` turns the findings and the vault state into what a row or page shows. A count of
+  Connections holding keys (the reset and Start over warnings) uses `holdsOpenableSecrets` or
+  `countHoldingOpenableSecrets`, which leave out values a reset or Start over already erased.
+  `prepareIfPassphraseProtected` opens only a passphrase keyset (no keychain is asked) and leaves a device keyset
+  closed; the keys gate calls it at launch and asks for the passphrase whenever the keys are passphrase-protected.
+  `prepareIfStored` opens a keyset only when a data key is filed and the keyset file exists, and never makes one, so
+  a screen that only shows the vault's state (Settings) asks no keychain while no key or header value is stored.
+- At start (`DataKeysSweptAtStart`, through `prepareIfPassphraseProtected`) the vault removes every data key whose
+  Connection `StoredConnections` (bound in
+  `connectionsModule`) doesn't list, so a crash between a delete and its `erase` still erases the key. If the ids or
+  the file can't be read or written, the sweep fails nothing and runs again at the vault's next call, until the first
+  `seal` of the run, after which it waits for the next start. Neither `erase` nor the sweep opens the keyset; `erase`
+  answers `KeyFileResult.Unavailable` when the file can't be written. `open` answers `Missing` for a value whose data
+  key is gone or can't be read, `Locked` until a passphrase is set or entered, `Unreadable` when the keyset is damaged
+  or its device key is gone (only a reset or Start over helps), and `Unavailable` otherwise.
+- One app instance per library. A second desktop instance on the same library can sweep the data key of a Connection
+  the first is still saving, so that value reads as missing.
+- The vault owns the keyset file and opens it only when a key is needed (`prepare` opens it at once). The file's name
+  records what wraps it (`keys/keyset-device.json` or `keys/keyset-passphrase.json`), so even a damaged file keeps its
+  protection. The platform's `DeviceKeyStore` holds named keys: an AES-GCM key in the Android Keystore, or a secret in
+  the OS keychain through java-keyring on desktop; the device keyset's header names its key. A lookup answers `Found`,
+  `Lost` (confirmed gone or invalidated: only then is a new key and keyset made), `Unconfirmed` (the Secret Service
+  reports D-Bus errors as not found; the state is `DeviceKeyNotFound`, retried at each use), `Unusable` (an entry that
+  isn't a key), `Unreachable` (retried at the next use) or `NoStore`. A key that is there but doesn't open the keyset,
+  an unusable entry or a damaged device file give `DeviceDamaged`. In `DeviceDamaged` and `DeviceKeyNotFound` the user
+  can start over with `replaceDeviceKeyset`; nothing replaces a key on its own. Every new keyset is written under a
+  newly named key, and the old key is deleted only after the file is in place, so a replace cut short keeps the old
+  key and file; data keys are erased first, as `reset` does. A desktop key is read back before a keyset is written
+  under it.
+- Which store wraps the keyset is recorded in the file name, so a device that starts on the passphrase stays on it.
+  Where no store exists the state is `NoKeychain`, `seal` answers `NeedsPassphrase` and `setPassphrase` sets one
+  (Argon2id, at most the shipped cost, which needs the Android app's large heap); after a restart it is `Locked`,
+  `seal` answers `Locked`, until `unlock`. `changePassphrase` wraps the same keyset under a new passphrase in one
+  file replace and answers `NotAvailable` in a state it doesn't apply to or when the write fails; a failed write
+  leaves the old file and keeps the vault as it was, so an unlocked vault stays unlocked and nothing asks for the
+  passphrase again before the next launch. `reset` (a forgotten or damaged passphrase) and `replaceDeviceKeyset`
+  (Start over) erase every data key first, then write the new keyset; the rows keep their ciphertext, which then
+  reads as missing. They say which part happened: `Done`, `NothingChanged` (it doesn't apply, or the erase failed)
+  or `KeysErasedKeysetKept` (the keys are gone but the old keyset is still the one on file, so the same step is
+  offered again). In the debuggable Android build, `keys.passphrase=on` skips the Keystore for a fresh library;
+  turned on over a Keystore keyset it leaves the vault `Unavailable`, so clear the app's data first.
+- Files the vault keeps are written with `writeAtomically` (`logic.storage`): a temporary file, synced, renamed over
+  the old one, then the directory synced where the file system allows it; new directories come from
+  `createDirectoriesDurably`. A `.part` file a kill leaves in `keys/` is removed the next time the keyset is opened.
+- `desktopApp/proguard-rules.pro` keeps what Tink, JNA and the keychain backends reach by reflection. Check a change to
+  the rules or those libraries in the release build: run `./gradlew :desktopApp:proguardReleaseJars`, then
+  `java -Duser.home=<empty temp dir> -Dgloriana.debuggable=true` with
+  `-cp "desktopApp/build/compose/tmp/main-release/proguard/*" dev.marzahn.gloriana.desktop.MainKt`, save a
+  Connection with a made-up key, quit and launch again: the page shows the key as saved and
+  `keys/keyset-device.json` is unchanged. For a run without the window, a temporary `seal` and `open` call after Koin
+  starts in `Main.kt` does the same. Remove the `Gloriana Debug` keychain entries afterwards.
+
+## Calling a model
+
+`ModelApi` (`logic.connection.api`) is the one way to ask a saved Connection for a reply: it takes the prompt as
+role-tagged sections and a `Connection`, opens the key and header values from `KeyVault` just for the request, and
+returns a flow of events (text, reasoning, usage, then one finish or one failure). Every failure of the host or the
+vault is a `ModelApiError`, and only a host that can't be reached reads as `Unreachable`; a bug is not caught.
+`ConnectionProbe` (same package) is the one way to try a Connection form before or without saving: Test and the
+host's model list take a `ConnectionDraft` and the stored `Connection`, if any, refuse what the save would refuse
+(the name aside; the model list also lets an empty model through), and store nothing.
+`Connection.asDraft()` is the form as saved.
+
+- `ConnectionDraft.check` (`logic.connection`) is the one check of what the save refuses, for the save and the probe:
+  its `Ready` result holds the normalised fields and the `SecretSources`, where each key or header value comes from
+  (typed, or a stored secret and its slot). Only the save turns sources into a `secretsPlan` for its target. Secret
+  values are opened in one place, `openSecrets`, from sources, mapping a locked, missing or unavailable vault to its
+  `ModelApiError`; `Connection.secretSources()` gives a saved Connection's.
+- Each API format is one `FormatAdapter`: its path and model list target, its own headers, its key header, the
+  request body (the Connection's custom body JSON merged over it with `mergedWith`) and the readers for a stream and a
+  whole reply. A `StreamReader` keeps its own `ReplyState` and decides the final events, also when a stream ends early
+  (`ended`). Custom headers come after the adapter's and replace one of the same name. Whether a reply streams is
+  `ConnectionFields.streamValue`, the merged body's `stream`; the draft check refuses one that isn't a JSON boolean.
+- `Sampler`, `SamplerRange` and each `ApiFormat`'s `samplerRanges` (`logic.connection`) are the one sampler model:
+  the save checks and `mergeSamplers` both use them. A format sends only its own samplers; the Connection's value wins,
+  and a global value goes only where it is inside the format's range. `sentValue`, beside the merge, says what a
+  request sends for one sampler and where it comes from; the Preset sampler offer reads "sent now" from it.
+- `headerFaults` (`logic.connection`) is the one header rule: the save refuses what it finds, and `HostCalls` refuses
+  it again before sending. The key itself must pass `firstUnsendableCharacter`. The HTTP client trims spaces and tabs
+  around a header value, so the checks look at the trimmed value, the draft check stores keys and header values
+  trimmed, and the scrubber learns the trimmed form. A key of only spaces is refused; a header value of only spaces
+  is sent empty, which HTTP allows.
+- `HostCalls` sends every request, streamed or whole, and returns every failure as a `ModelApiError` (`HostReply`,
+  `HostEvent`); nothing it calls throws past it. It reads an event stream from the response body itself
+  (`readEventData`), because Ktor's SSE plugin ends its flow quietly on a read error. The Connection's timeout is the
+  connect and idle timeout, with no total timeout, and no redirect is followed. A request that isn't a chat reply (a
+  model list) is built with `hostRequest` and sent through it too.
+- Every host body that becomes an error (`KeyRejected`, `RateLimited`, `HostError`) goes through `Scrubber` where the
+  error is made: `HostCalls` for a status, the `StreamReader` for an error in the stream, `ModelReplies` for an error
+  in a 200 body. A successful reply is never scrubbed, since a short key would cut into its JSON. The scrubber is
+  built from the secrets the request carries: every value sent under a credential header (each format's key header,
+  `api-key`, `x-goog-api-key`), the Connection's key or a custom header that replaces it, and the token after an
+  `Authorization` scheme, also JSON-escaped and percent-encoded. Other custom header values are not searched for.
+- A stream stops being read at its format's last event (`StreamReader.over`), so nothing a host sends or fails after
+  it reaches the caller.
+- Plain `http` reaches private-network addresses only. The plain client never uses a proxy (`Proxy.NO_PROXY` and
+  sockets made with it, since a bare `Socket` still asks the system for a SOCKS proxy), refuses an address literal
+  that isn't private, and resolves names through `PrivateAddressesOnly`, which refuses a name unless every address
+  is private; OkHttp connects only to the addresses it returns. Android's network security config permits
+  cleartext and trusts system CAs only, so this check is the rule. Desktop sets `java.net.useSystemProxies` first
+  thing in `main`, so `https` requests take the system proxy.
+- Tests run the adapters against the stub host in-process (`startStubHost`), never a mock engine.
 
 ## Versions
 

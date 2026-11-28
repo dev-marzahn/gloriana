@@ -1,12 +1,13 @@
 package dev.marzahn.gloriana.ui.characters
 
-import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.CharacterFields
 import dev.marzahn.gloriana.logic.characters.CharacterNote
 import dev.marzahn.gloriana.logic.characters.DamagedAs
 import dev.marzahn.gloriana.logic.characters.FileImportResult
 import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.Pronouns
+import dev.marzahn.gloriana.ui.files.SavedFileType
+import dev.marzahn.gloriana.ui.files.proposedFileName
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNull
@@ -98,9 +99,9 @@ class CharacterRulesTest {
 
   @Test
   fun `the proposed file name replaces characters files can't hold`() {
-    assertEquals("Oren _ The Storm_.png", proposedFileName("Oren | The Storm?", CardFormat.Png))
-    assertEquals("a_b.json", proposedFileName("a/b", CardFormat.Json))
-    assertEquals("_.png", proposedFileName("  ", CardFormat.Png))
+    assertEquals("Oren _ The Storm_.png", proposedFileName("Oren | The Storm?", SavedFileType.Png))
+    assertEquals("a_b.json", proposedFileName("a/b", SavedFileType.Json))
+    assertEquals("_.png", proposedFileName("  ", SavedFileType.Png))
   }
 
   @Test

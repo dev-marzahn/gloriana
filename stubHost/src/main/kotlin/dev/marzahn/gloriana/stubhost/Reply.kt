@@ -17,7 +17,7 @@ internal data class Tokens(val input: Int, val output: Int, val reasoning: Int) 
   val total: Int get() = input + output
 }
 
-internal data class Reply(val segments: List<Segment>) {
+internal data class Reply(val segments: List<Segment>, val hitLimit: Boolean = false) {
   constructor(vararg segments: Segment) : this(segments.toList())
 
   val refused: Boolean = segments.any { it is Segment.Refusal }
@@ -39,5 +39,6 @@ internal data class Reply(val segments: List<Segment>) {
       Segment.Text("The scene goes on.\n\n<details><summary>Status</summary>Health: 10/10\nMood: calm</details>"),
     )
     val refusal = Reply(Segment.Refusal("I can't help with that request."))
+    val limited = Reply(listOf(Segment.Text("This reply stops at the token limit")), hitLimit = true)
   }
 }

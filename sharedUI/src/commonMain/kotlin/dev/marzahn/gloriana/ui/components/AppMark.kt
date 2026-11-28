@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.vector.PathBuilder
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import dev.marzahn.gloriana.logic.brand.AppMarkCrown
 import dev.marzahn.gloriana.logic.brand.OutlinePoint
@@ -42,11 +43,11 @@ private fun PathBuilder.outline(points: List<OutlinePoint>) {
 }
 
 @Composable
-fun AppMark(modifier: Modifier = Modifier) {
+fun AppMark(modifier: Modifier = Modifier, size: Dp = MarkSize) {
   val name = stringResource(Res.string.app_name)
   Box(
     modifier
-      .size(MarkSize)
+      .size(size)
       .background(GlorianaTheme.colors.accent, GlorianaTheme.shapes.control)
       .semantics { contentDescription = name },
     contentAlignment = Alignment.Center,
@@ -54,7 +55,7 @@ fun AppMark(modifier: Modifier = Modifier) {
     Icon(
       AppMarkCrownVector,
       contentDescription = null,
-      modifier = Modifier.size(CrownSize),
+      modifier = Modifier.size(CrownSize * (size / MarkSize)),
       tint = GlorianaTheme.colors.accentFg,
     )
   }

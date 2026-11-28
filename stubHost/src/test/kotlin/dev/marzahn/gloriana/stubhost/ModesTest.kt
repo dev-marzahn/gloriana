@@ -27,7 +27,8 @@ class ModesTest {
   fun `the failing modes carry their kind of failure`() {
     mapOf("401" to FailureKind.KEY_REJECTED, "429" to FailureKind.RATE_LIMITED, "500" to FailureKind.HOST_ERROR)
       .forEach { (name, kind) -> assertEquals(kind, assertIs<Outcome.Failed>(modes.named(name)?.outcome).failure.kind) }
-    assertEquals(Outcome.EchoesKey, modes.named("key-echo")?.outcome)
+    assertEquals(Outcome.EchoesKey(FailureKind.KEY_REJECTED), modes.named("key-echo")?.outcome)
+    assertEquals(Outcome.EchoesKey(FailureKind.RATE_LIMITED), modes.named("key-echo-429")?.outcome)
   }
 
   @Test
@@ -41,7 +42,8 @@ class ModesTest {
   fun `the names list every mode`() {
     assertEquals(
       listOf(
-        "normal", "reasoning", "status", "refusal", "delay", "slow", "401", "429", "500", "key-echo",
+        "normal", "reasoning", "status", "refusal", "length", "delay", "slow", "401", "403", "429", "500", "key-echo",
+        "key-echo-429", "stream-error", "cut-off", "stall", "linger", "bad-type", "redirect", "empty-list", "no-list",
         "delay-<ms>", "slow-<ms>",
       ),
       modes.names,

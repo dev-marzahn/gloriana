@@ -7,6 +7,8 @@ import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.characters.CharacterRepository
 import dev.marzahn.gloriana.logic.characters.DeleteResult
+import dev.marzahn.gloriana.ui.files.ExportState
+import dev.marzahn.gloriana.ui.files.SaveTarget
 import dev.marzahn.gloriana.ui.messages.AppMessage
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
@@ -63,7 +65,7 @@ class CharacterViewModel(
 
   @OptIn(ExperimentalCoroutinesApi::class)
   val state: StateFlow<CharacterPageState> = inputs.filterNotNull()
-    .flatMapLatest { (id) -> combine(characterOf(id), exports.state(id), delete, ::pageState) }
+    .flatMapLatest { (id) -> combine(characterOf(id), exports.runs.state(id), delete, ::pageState) }
     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(STOP_TIMEOUT_MILLIS), CharacterPageState.Loading)
 
   val closeRequests: SharedFlow<Unit> = closes.asSharedFlow()
@@ -81,10 +83,12 @@ class CharacterViewModel(
   }
 
   fun dismissExportNote() {
-    inputs.value?.let { exports.dismiss(it.id) }
+    inputs.value?.let { exports.runs.dismiss(it.id) }
   }
 
-  fun pageShown(): () -> Unit = inputs.value?.let { exports.pageShown(it.id) } ?: {}
+  fun pageShown(id: Uuid) = exports.runs.pageShown(id)
+
+  fun pageHidden(id: Uuid) = exports.runs.pageHidden(id)
 
   fun askToDelete() {
     delete.value = DeleteProgress.Confirming

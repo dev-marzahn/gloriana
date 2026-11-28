@@ -1,12 +1,8 @@
 package dev.marzahn.gloriana.stubhost
 
-import io.ktor.server.cio.CIO
-import io.ktor.server.engine.embeddedServer
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import kotlin.system.exitProcess
-
-private const val LOOPBACK = "127.0.0.1"
 
 fun main(args: Array<String>) {
   when (val launch = Launch.from(args.toList())) {
@@ -21,12 +17,9 @@ fun main(args: Array<String>) {
 
 private fun serve(launch: Launch.Start): Unit = runBlocking {
   val endpoints = Endpoints(Modes(launch.options.delay, launch.options.slowPause))
-  val server = embeddedServer(CIO, port = launch.options.port, host = LOOPBACK) {
-    stubHost(launch.record, endpoints)
-  }.startSuspend(wait = false)
-  val address = "http://$LOOPBACK:${server.engine.resolvedConnectors().first().port}"
-  println("Stub host on $address")
-  println("Recording requests to ${launch.record.file.toAbsolutePath()} (also at $address$RECORD_PATH)")
+  val host = startStubHost(launch.record, launch.options.port, endpoints)
+  println("Stub host on ${host.address}")
+  println("Recording requests to ${launch.record.file.toAbsolutePath()} (also at ${host.address}$RECORD_PATH)")
   println(endpoints.howToCall)
   awaitCancellation()
 }

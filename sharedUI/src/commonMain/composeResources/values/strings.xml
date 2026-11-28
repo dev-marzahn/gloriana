@@ -12,8 +12,6 @@
     <string name="not_available_yet">Not available yet</string>
     <string name="chats_empty_heading">No chats yet</string>
     <string name="chats_empty_text">Start one from a Character in your Library.</string>
-    <string name="settings_empty_heading">Nothing to set yet</string>
-    <string name="settings_empty_text">Your Connections to AI providers will be set up here.</string>
     <string name="library_empty">No Characters yet</string>
     <string name="library_empty_text">Create one by importing a Character Card.</string>
 

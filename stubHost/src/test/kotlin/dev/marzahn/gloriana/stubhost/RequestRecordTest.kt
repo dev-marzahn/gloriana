@@ -60,11 +60,12 @@ class RequestRecordTest {
   fun `a record file that already exists is appended to`() = runBlocking {
     val file = folder.resolve("record.jsonl")
     Files.writeString(file, "{\"earlier\":true}\n")
-    RequestRecord.open(file, clock).append("POST", "/normal/v1/messages", emptyMap(), "{}")
+    RequestRecord.open(file, clock).append("GET", "/normal/v1/models", "limit=1000", emptyMap(), "")
     assertEquals(
       listOf(
         """{"earlier":true}""",
-        """{"receivedAt":"2026-01-02T03:04:05Z","method":"POST","path":"/normal/v1/messages","headers":{},"body":{}}""",
+        """{"receivedAt":"2026-01-02T03:04:05Z","method":"GET","path":"/normal/v1/models","query":"limit=1000",""" +
+          """"headers":{},"body":null}""",
       ),
       Files.readAllLines(file),
     )
@@ -77,7 +78,7 @@ class RequestRecordTest {
     val largeHeader = "y".repeat(LARGER_THAN_ONE_WRITE)
     val readsWereWhole = withContext(Dispatchers.Default) {
       val appends = (1..count).map { n ->
-        async { record.append("POST", "/n/$n", mapOf("x" to listOf(largeHeader)), "{}") }
+        async { record.append("POST", "/n/$n", "", mapOf("x" to listOf(largeHeader)), "{}") }
       }
       val readers = (1..count).map { async { holdsOnlyWholeLines(record.read()) } }
       appends.awaitAll()

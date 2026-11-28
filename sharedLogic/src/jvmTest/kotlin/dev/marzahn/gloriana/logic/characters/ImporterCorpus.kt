@@ -4,6 +4,9 @@ import dev.marzahn.gloriana.logic.characters.CardFixtures.base64
 import dev.marzahn.gloriana.logic.characters.CardFixtures.image
 import dev.marzahn.gloriana.logic.characters.CardFixtures.png
 import dev.marzahn.gloriana.logic.characters.CardFixtures.zip
+import dev.marzahn.gloriana.logic.files.ByteSource
+import dev.marzahn.gloriana.logic.files.OpenedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject

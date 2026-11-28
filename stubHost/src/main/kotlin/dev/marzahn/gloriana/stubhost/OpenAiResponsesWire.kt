@@ -11,6 +11,12 @@ internal enum class ResponsesStatus {
 
   @SerialName("completed")
   COMPLETED,
+
+  @SerialName("incomplete")
+  INCOMPLETE,
+
+  @SerialName("failed")
+  FAILED,
 }
 
 @Serializable
@@ -22,7 +28,12 @@ internal data class ResponsesResponse(
   val model: String,
   val output: List<ResponsesItem>,
   val usage: ResponsesUsage?,
+  val error: OpenAiErrorDetail? = null,
+  val incompleteDetails: IncompleteDetails? = null,
 )
+
+@Serializable
+internal data class IncompleteDetails(val reason: String)
 
 @Serializable
 internal data class ResponsesUsage(
@@ -87,6 +98,14 @@ internal sealed interface ResponsesEvent {
   @Serializable
   @SerialName("response.completed")
   data class Completed(val response: ResponsesResponse) : ResponsesEvent
+
+  @Serializable
+  @SerialName("response.incomplete")
+  data class Incomplete(val response: ResponsesResponse) : ResponsesEvent
+
+  @Serializable
+  @SerialName("response.failed")
+  data class Failed(val response: ResponsesResponse) : ResponsesEvent
 
   @Serializable
   @SerialName("response.output_item.added")

@@ -56,21 +56,37 @@ private val TopLevelContent.createAction: (() -> Unit)?
   }
 
 @Composable
-fun TopLevelScreen(destination: Destination, content: TopLevelContent, modifier: Modifier = Modifier) {
+fun TopLevelScreen(
+  destination: Destination,
+  content: TopLevelContent,
+  modifier: Modifier = Modifier,
+  kindPicker: (@Composable () -> Unit)? = null,
+) {
   val panes = LocalWorkbenchPanes.current
   if (panes != null) {
-    Workbench(destination, content, panes, modifier)
+    Workbench(destination, content, panes, modifier, kindPicker)
   } else {
     when (content) {
       is TopLevelContent.Empty -> Column(modifier.fillMaxSize()) {
         TitleRow(destination, onCreate = null)
+        kindPicker?.let { KindPickerRow(it) }
         EmptyState(content.block, Modifier.weight(1f).fillMaxWidth().padding(GlorianaTheme.spacing.s16))
       }
       is TopLevelContent.Items -> Box(modifier.fillMaxSize()) {
-        content.list { TitleRow(destination, content.onCreate) }
+        content.list {
+          Column {
+            TitleRow(destination, content.onCreate)
+            kindPicker?.let { KindPickerRow(it) }
+          }
+        }
       }
     }
   }
+}
+
+@Composable
+private fun KindPickerRow(kindPicker: @Composable () -> Unit) {
+  Box(Modifier.fillMaxWidth().padding(bottom = GlorianaTheme.spacing.s8)) { kindPicker() }
 }
 
 @Composable
@@ -79,6 +95,7 @@ private fun Workbench(
   content: TopLevelContent,
   panes: WorkbenchPanes,
   modifier: Modifier = Modifier,
+  kindPicker: (@Composable () -> Unit)? = null,
 ) {
   val colors = GlorianaTheme.colors
   val idle = when (content) {
@@ -88,8 +105,9 @@ private fun Workbench(
   Column(modifier.fillMaxSize()) {
     TopBar(destination, content.createAction)
     Row(Modifier.weight(1f).fillMaxWidth()) {
-      Box(Modifier.width(ListPaneWidth).fillMaxHeight().background(colors.pane)) {
-        if (content is TopLevelContent.Items) content.list {}
+      Column(Modifier.width(ListPaneWidth).fillMaxHeight().background(colors.pane)) {
+        kindPicker?.let { Box(Modifier.fillMaxWidth().padding(GlorianaTheme.spacing.s8)) { it() } }
+        if (content is TopLevelContent.Items) Box(Modifier.weight(1f)) { content.list {} }
       }
       VerticalDivider(color = colors.border)
       DetailPane(panes.detail, idle, Modifier.weight(1f).fillMaxHeight())

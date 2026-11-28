@@ -46,11 +46,25 @@ kotlin {
       api(libs.koin.core)
       implementation(libs.kotlinx.coroutines.core)
       implementation(libs.kotlinx.serialization.json)
+      implementation(libs.ktor.client.core)
+      implementation(libs.ktor.client.content.negotiation)
+      implementation(libs.ktor.serialization.kotlinx.json)
+    }
+    getByName("jvmSharedMain").dependencies {
+      implementation(libs.ktor.client.okhttp)
+      implementation(libs.bouncycastle.prov)
+    }
+    androidMain.dependencies {
+      implementation(libs.tink.android)
+    }
+    jvmMain.dependencies {
+      implementation(libs.tink)
     }
     jvmTest.dependencies {
       implementation(libs.kotlinx.coroutines.test)
       implementation(libs.konsist)
       implementation(libs.androidx.room.testing)
+      implementation(project(":stubHost"))
     }
     getByName("androidDeviceTest").dependencies {
       implementation(libs.kotlin.test)

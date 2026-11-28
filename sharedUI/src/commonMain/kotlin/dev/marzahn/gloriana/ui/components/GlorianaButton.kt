@@ -56,7 +56,7 @@ private fun buttonLook(kind: ButtonKind, state: InteractionState): ButtonLook {
       container = if (state == InteractionState.Rest) colors.accent else colors.accentHover,
       content = colors.accentFg,
       shape = shapes.pill,
-      shadow = shadows.warm,
+      shadow = null,
       border = null,
     )
     ButtonKind.Secondary -> ButtonLook(
@@ -88,6 +88,7 @@ fun GlorianaButton(
   size: ButtonSize = ButtonSize.Regular,
   enabled: Boolean = true,
   stateDescription: String? = null,
+  running: Boolean = false,
 ) {
   val interactionSource = remember { MutableInteractionSource() }
   val look = buttonLook(kind, interactionSource.interactionState())
@@ -121,7 +122,10 @@ fun GlorianaButton(
       interactionSource = interactionSource,
     ) {
       Text(label, style = GlorianaTheme.type.material.labelLarge)
-      if (icon != null) {
+      if (running) {
+        Spacer(Modifier.width(spacing.s8))
+        RunningDot()
+      } else if (icon != null) {
         Spacer(Modifier.width(spacing.s8))
         ButtonIcon(icon, chip = kind == ButtonKind.Primary, enabled = enabled)
       }

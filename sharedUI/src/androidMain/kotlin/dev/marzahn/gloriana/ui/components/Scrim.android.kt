@@ -6,7 +6,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 
-internal actual fun dialogProperties(scrim: Scrim): DialogProperties = DialogProperties(usePlatformDefaultWidth = false)
+internal actual fun dialogProperties(scrim: Scrim, dismissible: Boolean): DialogProperties = DialogProperties(
+  dismissOnBackPress = dismissible,
+  dismissOnClickOutside = dismissible,
+  usePlatformDefaultWidth = false,
+)
 
 @Composable
 internal actual fun ApplyDialogScrim(scrim: Scrim) {

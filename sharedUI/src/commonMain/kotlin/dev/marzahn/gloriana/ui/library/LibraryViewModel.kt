@@ -6,7 +6,7 @@ import dev.marzahn.gloriana.logic.assets.AssetFiles
 import dev.marzahn.gloriana.logic.characters.AlreadyInLibraryAnswer
 import dev.marzahn.gloriana.logic.characters.CharacterRepository
 import dev.marzahn.gloriana.logic.characters.CharacterSummary
-import dev.marzahn.gloriana.logic.characters.PickedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.ui.characters.CharacterImports
 import dev.marzahn.gloriana.ui.characters.ImportState
 import kotlinx.coroutines.ExperimentalCoroutinesApi

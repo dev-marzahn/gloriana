@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -28,38 +27,38 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.text.AnnotatedString
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.marzahn.gloriana.logic.characters.CardFormat
 import dev.marzahn.gloriana.logic.characters.Character
-import dev.marzahn.gloriana.logic.characters.ExportFailure
+import dev.marzahn.gloriana.ui.components.BackButton
 import dev.marzahn.gloriana.ui.components.ButtonKind
 import dev.marzahn.gloriana.ui.components.GlorianaButton
 import dev.marzahn.gloriana.ui.components.GlorianaIconButton
+import dev.marzahn.gloriana.ui.components.NoteCard
+import dev.marzahn.gloriana.ui.components.NoteLine
+import dev.marzahn.gloriana.ui.components.RunningLine
 import dev.marzahn.gloriana.ui.components.Skeleton
 import dev.marzahn.gloriana.ui.components.SkeletonBlock
 import dev.marzahn.gloriana.ui.components.SkeletonSurface
+import dev.marzahn.gloriana.ui.components.boldThenPlain
+import dev.marzahn.gloriana.ui.components.tappable
+import dev.marzahn.gloriana.ui.files.ExportState
+import dev.marzahn.gloriana.ui.files.exportNote
+import dev.marzahn.gloriana.ui.files.proposedFileName
+import dev.marzahn.gloriana.ui.files.rememberFileSaver
 import dev.marzahn.gloriana.ui.library.StartChatButton
 import dev.marzahn.gloriana.ui.navigation.Destination
 import dev.marzahn.gloriana.ui.navigation.LocalShellNavigator
 import dev.marzahn.gloriana.ui.resources.Res
-import dev.marzahn.gloriana.ui.resources.avatar_full_screen
 import dev.marzahn.gloriana.ui.resources.all_characters
+import dev.marzahn.gloriana.ui.resources.avatar_full_screen
 import dev.marzahn.gloriana.ui.resources.delete_character
 import dev.marzahn.gloriana.ui.resources.delete_failed
 import dev.marzahn.gloriana.ui.resources.delete_failed_detail
 import dev.marzahn.gloriana.ui.resources.edit
 import dev.marzahn.gloriana.ui.resources.export
 import dev.marzahn.gloriana.ui.resources.export_again
-import dev.marzahn.gloriana.ui.resources.export_failed
-import dev.marzahn.gloriana.ui.resources.export_failed_cant_write
-import dev.marzahn.gloriana.ui.resources.export_failed_storage
-import dev.marzahn.gloriana.ui.resources.export_failed_unreadable
-import dev.marzahn.gloriana.ui.resources.export_incomplete
-import dev.marzahn.gloriana.ui.resources.export_incomplete_access
-import dev.marzahn.gloriana.ui.resources.export_incomplete_storage
 import dev.marzahn.gloriana.ui.resources.exporting
-import dev.marzahn.gloriana.ui.resources.ic_arrow_back
 import dev.marzahn.gloriana.ui.resources.ic_delete
 import dev.marzahn.gloriana.ui.resources.ic_edit
 import dev.marzahn.gloriana.ui.resources.ic_file_save_20
@@ -77,8 +76,6 @@ import org.koin.compose.viewmodel.koinViewModel
 import kotlin.uuid.Uuid
 
 private val HeaderAvatar = 56.dp
-private val BackIconSize = 16.dp
-private val BackButtonHeight = 40.dp
 private val SkeletonName = 160.dp
 private val SkeletonMeta = 100.dp
 private val SkeletonActions = 40.dp
@@ -98,15 +95,15 @@ fun CharacterScreen(id: Uuid, modifier: Modifier = Modifier, viewModel: Characte
   val navigator = LocalShellNavigator.current
   DisposableEffect(viewModel, id) {
     viewModel.show(id)
-    val release = viewModel.pageShown()
-    onDispose { release() }
+    viewModel.pageShown(id)
+    onDispose { viewModel.pageHidden(id) }
   }
   LaunchedEffect(viewModel) { viewModel.closeRequests.collect { navigator.pop(Destination.Library) } }
   val state by viewModel.state.collectAsStateWithLifecycle()
   var exporting by rememberSaveable { mutableStateOf(false) }
   var enlarged by rememberSaveable { mutableStateOf(false) }
   var pendingFormat by rememberSaveable { mutableStateOf<CardFormat?>(null) }
-  val saver = rememberCardSaver { target -> pendingFormat?.let { viewModel.export(it, target) } }
+  val saver = rememberFileSaver { target -> pendingFormat?.let { viewModel.export(it, target) } }
   val actions = PageActions(
     onBack = { navigator.pop(Destination.Library) },
     onRetry = viewModel::retry,
@@ -122,7 +119,7 @@ fun CharacterScreen(id: Uuid, modifier: Modifier = Modifier, viewModel: Characte
     ExportSheet(character, onChoose = { format ->
       exporting = false
       pendingFormat = format
-      saver.choose(proposedFileName(character.fields.name, format), format)
+      saver.choose(proposedFileName(character.fields.name, format.savedFileType), format.savedFileType)
     }, onDismiss = { exporting = false })
   }
   if (shown.delete == DeleteProgress.Confirming || shown.delete == DeleteProgress.Deleting) {
@@ -136,7 +133,9 @@ fun CharacterScreen(id: Uuid, modifier: Modifier = Modifier, viewModel: Characte
 internal fun CharacterContent(state: CharacterPageState, actions: PageActions, modifier: Modifier = Modifier) {
   val spacing = GlorianaTheme.spacing
   Column(modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(spacing.s16)) {
-    if (GlorianaTheme.widthClass.navigation != Navigation.Workbench) BackToCharacters(actions.onBack)
+    if (GlorianaTheme.widthClass.navigation != Navigation.Workbench) {
+      BackButton(stringResource(Res.string.all_characters), actions.onBack)
+    }
     when (state) {
       CharacterPageState.Loading -> Skeleton { PageSkeleton() }
       CharacterPageState.CouldNotLoad -> NoteCard {
@@ -146,24 +145,6 @@ internal fun CharacterContent(state: CharacterPageState, actions: PageActions, m
       CharacterPageState.Gone -> Unit
       is CharacterPageState.Shown -> ShownPage(state, actions)
     }
-  }
-}
-
-@Composable
-private fun BackToCharacters(onBack: () -> Unit) {
-  val colors = GlorianaTheme.colors
-  val spacing = GlorianaTheme.spacing
-  Row(
-    Modifier
-      .heightIn(min = BackButtonHeight)
-      .tappable(GlorianaTheme.shapes.control, onClick = onBack)
-      .padding(horizontal = spacing.s8),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(spacing.s6),
-  ) {
-    Icon(painterResource(Res.drawable.ic_arrow_back), null, Modifier.size(BackIconSize), tint = colors.textMuted)
-    val label = stringResource(Res.string.all_characters)
-    Text(label, style = GlorianaTheme.type.material.labelLarge, color = colors.textMuted)
   }
 }
 
@@ -249,26 +230,6 @@ private fun ActionsRow(export: ExportState?, actions: PageActions) {
       )
     }
     running?.let { RunningLine(stringResource(Res.string.exporting, it.fileName)) }
-  }
-}
-
-@Composable
-private fun exportNote(export: ExportState?): AnnotatedString? {
-  val failed = export as? ExportState.NotSaved ?: return null
-  val problem = failed.problem
-  return if (problem.incompleteFileLeft) {
-    val detail = when (problem.reason) {
-      ExportFailure.StorageFull -> Res.string.export_incomplete_storage
-      else -> Res.string.export_incomplete_access
-    }
-    boldThenPlain(stringResource(Res.string.export_incomplete, failed.fileName), stringResource(detail))
-  } else {
-    val detail = when (problem.reason) {
-      ExportFailure.StorageFull -> Res.string.export_failed_storage
-      ExportFailure.CantWrite -> Res.string.export_failed_cant_write
-      ExportFailure.StoredFileUnreadable -> Res.string.export_failed_unreadable
-    }
-    boldThenPlain(stringResource(Res.string.export_failed, failed.fileName), stringResource(detail))
   }
 }
 

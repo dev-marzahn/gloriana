@@ -1,0 +1,39 @@
+{
+    "temperature": 1.2,
+    "seed": -1,
+    "impersonation_prompt": "[Write as {{user}}.]",
+    "new_chat_prompt": "[Start]",
+    "new_group_chat_prompt": "[Start a group: {{group}}]",
+    "new_example_chat_prompt": "[Example]",
+    "continue_nudge_prompt": "[Continue.]",
+    "wi_format": "{0}",
+    "scenario_format": "{{scenario}}",
+    "personality_format": "{{personality}}",
+    "group_nudge_prompt": "[Write as {{char}}.]",
+    "send_if_empty": "",
+    "prompts": [
+        { "identifier": "main", "name": "Main Prompt", "role": "system", "content": "Tell the story." },
+        { "identifier": "personaDescription", "name": "Persona Description", "marker": true },
+        { "identifier": "chatHistory", "name": "Chat History", "marker": true },
+        { "identifier": "aside", "name": "Aside", "role": "assistant", "content": "(An aside.)" }
+    ],
+    "prompt_order": [
+        {
+            "character_id": 100001,
+            "order": [
+                { "identifier": "main", "enabled": true },
+                { "identifier": "personaDescription", "enabled": true },
+                { "identifier": "chatHistory", "enabled": true },
+                { "identifier": "aside", "enabled": false }
+            ]
+        }
+    ],
+    "gloriana": {
+        "persona_description_format": "[You are: {{persona}}]",
+        "groups": [
+            { "name": "Setup", "at": 0 },
+            { "name": "Story", "at": 2 },
+            { "name": "Empty", "at": 4 }
+        ]
+    }
+}

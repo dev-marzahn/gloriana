@@ -1,16 +1,15 @@
 package dev.marzahn.gloriana.logic.characters.storage
 
-import androidx.room.immediateTransaction
-import androidx.room.useWriterConnection
 import dev.marzahn.gloriana.logic.characters.Character
 import dev.marzahn.gloriana.logic.characters.CharacterFields
-import dev.marzahn.gloriana.logic.characters.CharacterWriteFaults
+import dev.marzahn.gloriana.logic.debug.Faults
 import dev.marzahn.gloriana.logic.characters.CharacterWritePoint
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.IdFactory
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.Tombstones
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
+import dev.marzahn.gloriana.logic.storage.writeTransaction
 import kotlin.uuid.Uuid
 
 internal sealed interface CharacterWrite {
@@ -26,12 +25,12 @@ internal class CharacterWrites(
   private val ids: IdFactory,
   private val clock: UpdatedAtClock,
   private val tombstones: Tombstones,
-  private val faults: CharacterWriteFaults,
+  private val faults: Faults,
 ) {
   private val characters = database.characterDao()
   private val children = database.characterChildDao()
 
-  suspend fun insert(content: CharacterContent): Uuid = inTransaction {
+  suspend fun insert(content: CharacterContent): Uuid = database.writeTransaction {
     val id = ids.newId()
     val now = clock.now()
     val importedAt = maxOf(now, (characters.latestImportedAt() ?: Long.MIN_VALUE) + 1)
@@ -45,13 +44,13 @@ internal class CharacterWrites(
     fields: CharacterFields,
     replacement: (previous: Character) -> CharacterContent,
     fresh: () -> CharacterContent,
-  ): CharacterWrite = inTransaction {
+  ): CharacterWrite = database.writeTransaction {
     val match = characters.lastImportedMatch(matchKey(fields.name), matchKey(fields.creator))
     val previous = match?.let { characters.rows(it.id) }
     if (previous == null) CharacterWrite.Inserted(insert(fresh())) else replace(previous, replacement)
   }
 
-  suspend fun delete(id: Uuid): Boolean = inTransaction {
+  suspend fun delete(id: Uuid): Boolean = database.writeTransaction {
     val previous = characters.rows(id)
     if (previous != null) {
       removeChildren(previous)
@@ -87,7 +86,4 @@ internal class CharacterWrites(
     previous.greetings.forEach { tombstones.record(CharacterGreetingsEntityType, RowKey.Row(it.id)) }
     previous.assets.forEach { tombstones.record(CharacterAssetsEntityType, RowKey.Row(it.id)) }
   }
-
-  private suspend fun <T> inTransaction(write: suspend () -> T): T =
-    database.useWriterConnection { connection -> connection.immediateTransaction { write() } }
 }

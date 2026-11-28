@@ -17,6 +17,7 @@ data class LookMotion(
   val standard: MotionToken,
   val enter: MotionToken,
   val exit: MotionToken,
+  val emphasized: MotionToken,
   val fadeThroughOut: MotionToken,
   val fadeThroughIn: MotionToken,
   val paneOut: MotionToken,

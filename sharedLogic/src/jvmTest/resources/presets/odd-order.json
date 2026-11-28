@@ -1,0 +1,31 @@
+{
+    "impersonation_prompt": null,
+    "new_chat_prompt": "[Begin]",
+    "wi_format": "{0}",
+    "prompts": [
+        { "identifier": "main", "name": "Main Prompt", "role": "system", "content": "Tell it." },
+        { "identifier": "chatHistory", "name": "Chat History", "marker": true },
+        { "identifier": "tail", "name": "Tail", "role": "system", "content": "Last words." }
+    ],
+    "prompt_order": [
+        {
+            "character_id": 100000,
+            "order": [
+                { "identifier": "MARKER-DANGLING", "enabled": true },
+                { "identifier": "main", "enabled": true },
+                { "identifier": "chatHistory", "enabled": false },
+                { "identifier": "main", "enabled": false },
+                { "identifier": "tail", "enabled": true, "MARKER-ITEM-KEY": 1 }
+            ]
+        }
+    ],
+    "gloriana": {
+        "persona_description_format": "{{persona}}",
+        "MARKER-GLORIANA-KEPT": true,
+        "groups": [
+            { "name": "Late", "at": 2 },
+            { "name": "Early", "at": 0 },
+            { "name": "Out of range", "at": 9 }
+        ]
+    }
+}

@@ -54,6 +54,9 @@ internal enum class AnthropicStopReason {
 
   @SerialName("refusal")
   REFUSAL,
+
+  @SerialName("max_tokens")
+  MAX_TOKENS,
 }
 
 @Serializable
@@ -95,3 +98,19 @@ internal data class AnthropicError(val type: String = "error", val error: Anthro
 
 @Serializable
 internal data class AnthropicErrorDetail(val type: String, val message: String)
+
+@Serializable
+internal data class AnthropicModelPage(
+  val data: List<AnthropicModel>,
+  val hasMore: Boolean,
+  val firstId: String?,
+  val lastId: String?,
+)
+
+@Serializable
+internal data class AnthropicModel(
+  val type: String = "model",
+  val id: String,
+  val displayName: String,
+  val createdAt: String,
+)

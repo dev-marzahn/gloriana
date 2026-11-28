@@ -35,7 +35,7 @@ import dev.marzahn.gloriana.ui.resources.ic_expand_more
 import dev.marzahn.gloriana.ui.resources.ic_image
 import dev.marzahn.gloriana.ui.resources.image_not_loaded
 import dev.marzahn.gloriana.ui.resources.image_not_loaded_alt
-import dev.marzahn.gloriana.ui.characters.tappable
+import dev.marzahn.gloriana.ui.components.tappable
 import dev.marzahn.gloriana.ui.theme.GlorianaTheme
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.stringResource

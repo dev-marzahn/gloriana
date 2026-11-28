@@ -4,7 +4,9 @@ import dev.marzahn.gloriana.stubhost.ResponsesEvent.Completed
 import dev.marzahn.gloriana.stubhost.ResponsesEvent.ContentPartAdded
 import dev.marzahn.gloriana.stubhost.ResponsesEvent.ContentPartDone
 import dev.marzahn.gloriana.stubhost.ResponsesEvent.Created
+import dev.marzahn.gloriana.stubhost.ResponsesEvent.Failed
 import dev.marzahn.gloriana.stubhost.ResponsesEvent.InProgress
+import dev.marzahn.gloriana.stubhost.ResponsesEvent.Incomplete
 import dev.marzahn.gloriana.stubhost.ResponsesEvent.ItemAdded
 import dev.marzahn.gloriana.stubhost.ResponsesEvent.ItemDone
 import dev.marzahn.gloriana.stubhost.ResponsesEvent.OutputTextDelta
@@ -40,11 +42,24 @@ internal data object OpenAiResponses : ApiFormat {
       shapes.flatMapIndexed { outputIndex, shape ->
         listOf(ItemAdded(outputIndex, shape.opening)) + shape.partEvents + ItemDone(outputIndex, shape.done)
       } +
-      Completed(completedResponse(request, reply, shapes))
+      closing(completedResponse(request, reply, shapes))
     return events.mapIndexed(::numbered)
   }
 
+  override fun unfinishedStream(reply: Reply, request: ModelRequest): List<SseEvent> =
+    stream(reply, request).dropLast(1)
+
+  override fun streamError(failure: Failure, request: ModelRequest, sent: Int): SseEvent {
+    val failed = createdResponse(request).copy(status = ResponsesStatus.FAILED, error = openAiErrorDetail(failure))
+    return numbered(sent, Failed(failed))
+  }
+
+  private fun closing(response: ResponsesResponse): ResponsesEvent =
+    if (response.status == ResponsesStatus.INCOMPLETE) Incomplete(response) else Completed(response)
+
   override fun error(failure: Failure): String = openAiError(failure)
+
+  override fun modelList(models: List<StubModel>): String = openAiModelList(models)
 
   private fun numbered(sequenceNumber: Int, event: ResponsesEvent): SseEvent {
     val json = wireJson.encodeToJsonElement(ResponsesEvent.serializer(), event).jsonObject
@@ -108,7 +123,8 @@ private fun createdResponse(request: ModelRequest) =
 
 private fun completedResponse(request: ModelRequest, reply: Reply, shapes: List<ItemShape>) = ResponsesResponse(
   id = RESPONSE_ID,
-  status = COMPLETED,
+  status = if (reply.hitLimit) ResponsesStatus.INCOMPLETE else COMPLETED,
+  incompleteDetails = if (reply.hitLimit) IncompleteDetails("max_output_tokens") else null,
   model = request.model,
   output = shapes.map(ItemShape::done),
   usage = ResponsesUsage(

@@ -15,7 +15,7 @@ class EndpointsTest {
       endpoints.resolve(HttpMethod.Post, "/summary/normal/v1/chat/completions"),
     )
     assertEquals(
-      Target.Model(Mode(Outcome.EchoesKey), OpenAiResponses),
+      Target.Model(Mode(Outcome.EchoesKey(FailureKind.KEY_REJECTED)), OpenAiResponses),
       endpoints.resolve(HttpMethod.Post, "/a/b/key-echo/v1/responses"),
     )
     assertEquals(Target.Model(normal, AnthropicMessages), endpoints.resolve(HttpMethod.Post, "/v1/normal/v1/messages"))
@@ -31,6 +31,16 @@ class EndpointsTest {
     ).forEach { (method, path) ->
       assertEquals(Target.NoModel(AnthropicMessages), endpoints.resolve(method, path), "$method $path")
     }
+  }
+
+  @Test
+  fun `a GET of models in a mode is the model list, anything else there is nowhere`() {
+    assertEquals(Target.ModelList(normal), endpoints.resolve(HttpMethod.Get, "/summary/normal/v1/models"))
+    listOf(
+      HttpMethod.Post to "/normal/v1/models",
+      HttpMethod.Get to "/v1/models",
+      HttpMethod.Get to "/fast/v1/models",
+    ).forEach { (method, path) -> assertEquals(Target.Nowhere, endpoints.resolve(method, path), "$method $path") }
   }
 
   @Test

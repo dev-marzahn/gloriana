@@ -3,6 +3,8 @@ package dev.marzahn.gloriana.logic.characters
 import dev.marzahn.gloriana.logic.assets.AssetHash
 import dev.marzahn.gloriana.logic.characters.card.ParsedCard
 import dev.marzahn.gloriana.logic.characters.storage.CharacterContent
+import dev.marzahn.gloriana.logic.files.ExportDestination
+import dev.marzahn.gloriana.logic.files.PickedFile
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 

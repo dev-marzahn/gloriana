@@ -3,6 +3,7 @@ import com.android.build.api.variant.FilterConfiguration
 plugins {
   id("gloriana.android-app")
   id("gloriana.detekt")
+  id("gloriana.no-http-logging")
 }
 
 android {

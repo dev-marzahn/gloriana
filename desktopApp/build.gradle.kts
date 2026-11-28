@@ -4,6 +4,7 @@ plugins {
   id("gloriana.kotlin-jvm")
   id("gloriana.compose")
   id("gloriana.detekt")
+  id("gloriana.no-http-logging")
 }
 
 dependencies {
@@ -11,6 +12,7 @@ dependencies {
   implementation(compose.desktop.currentOs)
   implementation(libs.compose.components.resources)
   implementation(libs.kotlinx.coroutines.swing)
+  implementation(libs.java.keyring)
   testImplementation(libs.koin.test)
 }
 

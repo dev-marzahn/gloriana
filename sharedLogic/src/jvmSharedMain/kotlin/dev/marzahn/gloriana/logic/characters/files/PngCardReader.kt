@@ -12,6 +12,7 @@ import dev.marzahn.gloriana.logic.characters.SizeLimit
 import dev.marzahn.gloriana.logic.characters.card.CardAssetEntry
 import dev.marzahn.gloriana.logic.characters.card.CardJsonRead
 import dev.marzahn.gloriana.logic.characters.card.ParsedCard
+import dev.marzahn.gloriana.logic.files.JSON_FILE_LIMIT_BYTES
 import java.io.IOException
 import java.io.InputStream
 import java.util.Base64
@@ -39,7 +40,7 @@ internal class PngCardReader(private val staging: Staging) {
     }
     val decoded = listOf(CCV3_KEYWORD, CHARA_KEYWORD).filter { it in cardTexts }
       .map { keyword -> decodeCardText(cardTexts.getValue(keyword)) }
-    val tooLarge = scan == ChunkScan.CardTooLarge || decoded.any { (it?.size ?: 0) > CardLimits.CARD_JSON_BYTES }
+    val tooLarge = scan == ChunkScan.CardTooLarge || decoded.any { (it?.size ?: 0) > JSON_FILE_LIMIT_BYTES }
     if (tooLarge) return CardFileRead.Failed(ImportFailure.TooLarge(SizeLimit.CardJson))
     return when (val card = chooseCard(decoded)) {
       is CardJsonRead.Card -> CardFileRead.Card(imported(card.card, avatar))

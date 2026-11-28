@@ -11,8 +11,8 @@ import dev.marzahn.gloriana.logic.characters.FileImportResult
 import dev.marzahn.gloriana.logic.characters.FileImportStatus
 import dev.marzahn.gloriana.logic.characters.ImportFailure
 import dev.marzahn.gloriana.logic.characters.ImportStatusListener
-import dev.marzahn.gloriana.logic.characters.OpenedFile
-import dev.marzahn.gloriana.logic.characters.PickedFile
+import dev.marzahn.gloriana.logic.files.OpenedFile
+import dev.marzahn.gloriana.logic.files.PickedFile
 import dev.marzahn.gloriana.ui.messages.AppMessages
 import dev.marzahn.gloriana.ui.resources.Res
 import dev.marzahn.gloriana.ui.resources.snack_imported
