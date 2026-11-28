@@ -35,7 +35,7 @@ class ConnectionLibrary(
   val settings = LibrarySettings(database, updatedAt)
   internal val vault: TinkKeyVault =
     vaults.start(faults = keyFaults, stored = ConnectionsNeedingDataKeys(database.connectionDao()))
-  private val default = DefaultConnection(settings, database.connectionDao())
+  private val default = DefaultConnection(database, settings, database.connectionDao())
   val repository = ConnectionRepository(
     dao = database.connectionDao(),
     writes = ConnectionWrites(

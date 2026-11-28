@@ -14,6 +14,9 @@ import dev.marzahn.gloriana.logic.characters.storage.CharacterGreetingEntity
 import dev.marzahn.gloriana.logic.connection.storage.AddConnectionsAndLibrarySettings
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionDao
 import dev.marzahn.gloriana.logic.connection.storage.ConnectionEntity
+import dev.marzahn.gloriana.logic.personas.storage.AddPersonas
+import dev.marzahn.gloriana.logic.personas.storage.PersonaDao
+import dev.marzahn.gloriana.logic.personas.storage.PersonaEntity
 import dev.marzahn.gloriana.logic.presets.storage.AddPresets
 import dev.marzahn.gloriana.logic.presets.storage.PresetDao
 import dev.marzahn.gloriana.logic.presets.storage.PresetEntity
@@ -26,7 +29,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.IO
 
 internal const val DATABASE_FILE_NAME = "library.db"
-internal const val DATABASE_VERSION = 4
+internal const val DATABASE_VERSION = 5
 
 @Database(
   entities = [
@@ -39,6 +42,7 @@ internal const val DATABASE_VERSION = 4
     PresetEntity::class,
     PresetEntryEntity::class,
     PresetGroupEntity::class,
+    PersonaEntity::class,
   ],
   version = DATABASE_VERSION,
 )
@@ -55,9 +59,12 @@ abstract class GlorianaDatabase : RoomDatabase() {
   internal abstract fun librarySettingDao(): LibrarySettingDao
 
   internal abstract fun presetDao(): PresetDao
+
+  internal abstract fun personaDao(): PersonaDao
 }
 
-internal val migrations: List<Migration> = listOf(AddCharacters, AddConnectionsAndLibrarySettings, AddPresets)
+internal val migrations: List<Migration> =
+  listOf(AddCharacters, AddConnectionsAndLibrarySettings, AddPresets, AddPersonas)
 
 internal fun RoomDatabase.Builder<GlorianaDatabase>.buildGlorianaDatabase(
   queries: CoroutineDispatcher = Dispatchers.IO,

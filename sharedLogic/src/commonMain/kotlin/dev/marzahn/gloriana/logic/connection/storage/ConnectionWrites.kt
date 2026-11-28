@@ -5,7 +5,6 @@ import dev.marzahn.gloriana.logic.connection.ConnectionFields
 import dev.marzahn.gloriana.logic.connection.ConnectionProblem
 import dev.marzahn.gloriana.logic.connection.ConnectionSaveResult
 import dev.marzahn.gloriana.logic.connection.ConnectionWritePoint
-import dev.marzahn.gloriana.logic.connection.MakeDefaultResult
 import dev.marzahn.gloriana.logic.connection.Samplers
 import dev.marzahn.gloriana.logic.connection.SamplersUpdateResult
 import dev.marzahn.gloriana.logic.connection.samplerProblems
@@ -94,20 +93,11 @@ internal class ConnectionWrites(
     if (dao.find(id) == null) {
       RowDelete.Gone
     } else {
+      default.clearIf(id)
       dao.delete(id)
       faults.reached(ConnectionWritePoint.DeleteRowRemoved)
       tombstones.record(ConnectionsEntityType, RowKey.Row(id))
-      default.clearIf(id)
       RowDelete.Deleted
-    }
-  }
-
-  suspend fun makeDefault(id: Uuid): MakeDefaultResult = database.writeTransaction {
-    if (dao.find(id) == null) {
-      MakeDefaultResult.Gone
-    } else {
-      default.set(id)
-      MakeDefaultResult.Made
     }
   }
 }

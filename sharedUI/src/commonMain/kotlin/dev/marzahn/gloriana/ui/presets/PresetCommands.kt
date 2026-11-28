@@ -74,7 +74,7 @@ class PresetCommands(
           deletions.record(Deleted(stored.id, index.coerceAtLeast(0)))
           messages.show(AppMessage(getString(Res.string.snack_deleted, stored.name)))
         }
-        PresetDeleteResult.Failed -> sessions.update(stored.id) {
+        PresetDeleteResult.IsDefault, PresetDeleteResult.Failed -> sessions.update(stored.id) {
           it.copy(activity = PresetActivity.Idle, notDeleted = true)
         }
       }

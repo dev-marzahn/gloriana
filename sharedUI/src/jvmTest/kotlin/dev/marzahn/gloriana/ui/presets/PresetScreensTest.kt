@@ -48,7 +48,6 @@ import dev.marzahn.gloriana.ui.resources.more_for
 import dev.marzahn.gloriana.ui.resources.move_down
 import dev.marzahn.gloriana.ui.resources.offer_copy
 import dev.marzahn.gloriana.ui.resources.offer_dont_copy
-import dev.marzahn.gloriana.ui.resources.presets_empty
 import dev.marzahn.gloriana.ui.resources.save
 import dev.marzahn.gloriana.ui.resources.save_changes_first
 import dev.marzahn.gloriana.ui.testing.LiveLibrary
@@ -104,7 +103,7 @@ class PresetScreensTest {
     setContent { library.Show { App() } }
     tap(hasContentDescription(getString(Res.string.destination_library)) and hasClickAction())
     tap(hasText(getString(Res.string.library_kind_presets)) and hasClickAction())
-    waitFor(hasText(getString(Res.string.presets_empty)))
+    waitFor(hasText(library.shippedPreset().name))
     waitForIdle()
   }
 
@@ -121,8 +120,6 @@ class PresetScreensTest {
 
   private fun LiveLibrary.imported(file: PickedFile) = koin.get<PresetImports>().start(file)
 
-  private fun LiveLibrary.presets() = runBlocking { koin.get<PresetRepository>().presets().first() }
-
   private fun LiveLibrary.entries(id: Uuid): List<PresetEntry> = runBlocking {
     val stored = koin.get<PresetRepository>().preset(id).first() as StoredPreset.Readable
     stored.preset.content.entries
@@ -132,8 +129,8 @@ class PresetScreensTest {
     library.koin.get<PresetSessions>().current(id).unsaved?.draft?.entries.orEmpty().map { it.name }
 
   private fun ComposeUiTest.waitForPreset(library: LiveLibrary): Uuid {
-    waitUntil(timeoutMillis = WAIT_MILLIS) { library.presets().isNotEmpty() }
-    return library.presets().single().id
+    waitUntil(timeoutMillis = WAIT_MILLIS) { library.addedPresets().isNotEmpty() }
+    return library.addedPresets().single().id
   }
 
   @Test
@@ -163,7 +160,7 @@ class PresetScreensTest {
 
       waitFor(hasContentDescription(getString(Res.string.more_for, "Tuned")))
       assertNull(library.connections().single().fields.samplers.temperature)
-      assertEquals(listOf("Tuned"), library.presets().map { it.name })
+      assertEquals(listOf("Tuned"), library.addedPresets().map { it.name })
     }
   }
 

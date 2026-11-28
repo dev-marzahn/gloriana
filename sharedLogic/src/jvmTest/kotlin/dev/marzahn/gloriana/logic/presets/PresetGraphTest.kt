@@ -2,6 +2,7 @@ package dev.marzahn.gloriana.logic.presets
 
 import dev.marzahn.gloriana.logic.app.ApplicationScope
 import dev.marzahn.gloriana.logic.debug.Faults
+import dev.marzahn.gloriana.logic.settings.settingsModule
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.storageModule
@@ -25,6 +26,7 @@ class PresetGraphTest {
     val app = koinApplication {
       modules(
         storageModule,
+        settingsModule,
         presetsModule,
         module {
           single { desktopGlorianaDatabase(directory) }

@@ -19,6 +19,12 @@ internal interface PresetDao {
   )
   fun summaries(): Flow<List<PresetSummaryRow>>
 
+  @Query("SELECT id FROM $PRESETS_TABLE")
+  fun observeIds(): Flow<List<Uuid>>
+
+  @Query("SELECT EXISTS(SELECT 1 FROM $PRESETS_TABLE WHERE id = :id)")
+  suspend fun exists(id: Uuid): Boolean
+
   @Transaction
   @Query("SELECT * FROM $PRESETS_TABLE WHERE id = :id")
   fun observeRows(id: Uuid): Flow<PresetRows?>

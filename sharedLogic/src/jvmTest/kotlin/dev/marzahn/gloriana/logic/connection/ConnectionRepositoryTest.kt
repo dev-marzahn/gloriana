@@ -16,6 +16,7 @@ import dev.marzahn.gloriana.logic.keys.header
 import dev.marzahn.gloriana.logic.keys.opened
 import dev.marzahn.gloriana.logic.keys.passphrase
 import dev.marzahn.gloriana.logic.keys.sealed
+import dev.marzahn.gloriana.logic.settings.MakeDefaultResult
 import dev.marzahn.gloriana.logic.storage.RowKey
 import dev.marzahn.gloriana.logic.storage.TombstoneEntity
 import kotlinx.coroutines.flow.first

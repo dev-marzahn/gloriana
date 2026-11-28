@@ -13,7 +13,7 @@ import kotlin.uuid.Uuid
 val connectionsModule = module {
   single { get<GlorianaDatabase>().connectionDao() }
   single { ConnectionsNeedingDataKeys(get()) } bind StoredConnections::class
-  single { DefaultConnection(get(), get()) }
+  single { DefaultConnection(get(), get(), get()) }
   single { ConnectionWrites(get(), get(), get(), get(), get(), get()) }
   single { ConnectionRepository(get(), get(), get(), get(), get(), get()) }
   single { GlobalModelSettings(get()) }

@@ -3,7 +3,7 @@ package dev.marzahn.gloriana.ui.connections
 import dev.marzahn.gloriana.logic.connection.Connection
 import dev.marzahn.gloriana.logic.connection.ConnectionDeleteResult
 import dev.marzahn.gloriana.logic.connection.ConnectionRepository
-import dev.marzahn.gloriana.logic.connection.MakeDefaultResult
+import dev.marzahn.gloriana.logic.settings.MakeDefaultResult
 import dev.marzahn.gloriana.ui.lists.Deleted
 import dev.marzahn.gloriana.ui.lists.LastDeleted
 import dev.marzahn.gloriana.ui.messages.AppMessage

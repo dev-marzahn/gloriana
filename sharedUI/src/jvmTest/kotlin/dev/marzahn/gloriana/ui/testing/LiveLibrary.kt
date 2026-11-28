@@ -3,6 +3,7 @@ package dev.marzahn.gloriana.ui.testing
 import androidx.compose.runtime.Composable
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
 import androidx.sqlite.execSQL
+import dev.marzahn.gloriana.logic.app.ShippedDefaultsAtStart
 import dev.marzahn.gloriana.logic.assets.LibraryDirectory
 import dev.marzahn.gloriana.logic.characters.AvatarTranscoder
 import dev.marzahn.gloriana.logic.connection.ApiFormat
@@ -29,12 +30,16 @@ import dev.marzahn.gloriana.logic.keys.OsKeychain
 import dev.marzahn.gloriana.logic.keys.PassphraseResult
 import dev.marzahn.gloriana.logic.keys.deviceKeysetFileIn
 import dev.marzahn.gloriana.logic.keys.passphraseKeysetFileIn
+import dev.marzahn.gloriana.logic.presets.PresetRepository
+import dev.marzahn.gloriana.logic.presets.PresetSummary
 import dev.marzahn.gloriana.logic.storage.GlorianaDatabase
 import dev.marzahn.gloriana.logic.storage.UpdatedAtClock
 import dev.marzahn.gloriana.logic.storage.desktopGlorianaDatabase
 import dev.marzahn.gloriana.ui.di.uiModule
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.asCoroutineDispatcher
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.koin.compose.KoinIsolatedContext
@@ -126,6 +131,8 @@ class LiveLibrary private constructor(private val directory: Path, private val d
 
   private val vault: KeyVault get() = application.koin.get()
 
+  private val presetRepository: PresetRepository get() = application.koin.get()
+
   @Composable
   fun Show(content: @Composable () -> Unit) {
     KoinIsolatedContext(application, content)
@@ -154,6 +161,18 @@ class LiveLibrary private constructor(private val directory: Path, private val d
   fun connections(): List<Connection> = runBlocking { repository.connections().first() }
 
   fun default(): Uuid? = runBlocking { repository.defaultConnection().first() }
+
+  fun shippedPreset(): PresetSummary = runBlocking {
+    val shipped = checkNotNull(presetRepository.defaultPreset().first())
+    presetRepository.presets().first().single { it.id == shipped }
+  }
+
+  fun addedPresetsChanges(): Flow<List<PresetSummary>> =
+    combine(presetRepository.presets(), presetRepository.defaultPreset()) { presets, shipped ->
+      presets.filter { it.id != shipped }
+    }
+
+  fun addedPresets(): List<PresetSummary> = runBlocking { addedPresetsChanges().first() }
 
   fun globalSamplers(): Samplers = runBlocking { application.koin.get<GlobalModelSettings>().currentSamplers() }
 
@@ -224,6 +243,7 @@ class LiveLibrary private constructor(private val directory: Path, private val d
       single { UpdatedAtClock(writes) }
     }
     return koinApplication { modules(logicModule, uiModule, platform) }
+      .also { started -> runBlocking { started.koin.get<ShippedDefaultsAtStart>().missing.await() } }
   }
 
   fun refuseTheNextKeysetWrite(alongside: () -> Unit) {

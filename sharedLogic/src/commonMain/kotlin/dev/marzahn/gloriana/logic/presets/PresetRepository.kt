@@ -6,8 +6,10 @@ import dev.marzahn.gloriana.logic.files.ExportDestination
 import dev.marzahn.gloriana.logic.files.ExportWrite
 import dev.marzahn.gloriana.logic.presets.file.PresetJsonWriter
 import dev.marzahn.gloriana.logic.presets.storage.DecodedPreset
+import dev.marzahn.gloriana.logic.presets.storage.DefaultPreset
 import dev.marzahn.gloriana.logic.presets.storage.PresetDao
 import dev.marzahn.gloriana.logic.presets.storage.PresetWrites
+import dev.marzahn.gloriana.logic.settings.MakeDefaultResult
 import dev.marzahn.gloriana.logic.storage.ChatSetting
 import dev.marzahn.gloriana.logic.storage.ChatsUsing
 import dev.marzahn.gloriana.logic.storage.IdFactory
@@ -20,6 +22,7 @@ class PresetRepository internal constructor(
   private val writes: PresetWrites,
   private val ids: IdFactory,
   private val chats: ChatsUsing,
+  private val default: DefaultPreset,
 ) {
   fun presets(): Flow<List<PresetSummary>> =
     dao.summaries().map { rows -> rows.map { PresetSummary(it.id, it.name, it.entries, it.entriesOn) } }
@@ -35,7 +38,13 @@ class PresetRepository internal constructor(
       writes.save(preset)
     }
 
-  suspend fun delete(id: Uuid): PresetDeleteResult = failingAs(PresetDeleteResult.Failed) { writes.delete(id) }
+  fun defaultPreset(): Flow<Uuid?> = default.observe()
+
+  suspend fun makeDefault(id: Uuid): MakeDefaultResult = failingAs(MakeDefaultResult.Failed) { default.make(id) }
+
+  suspend fun delete(id: Uuid): PresetDeleteResult = failingAs(PresetDeleteResult.Failed) {
+    default.unlessDefault(id, refused = PresetDeleteResult.IsDefault) { writes.delete(id) }
+  }
 
   suspend fun export(id: Uuid, destination: ExportDestination): PresetExportResult =
     when (val decoded = dao.rows(id)?.decoded()) {

@@ -5,6 +5,10 @@ naming:
   FunctionNaming:
     ignoreAnnotated: ['Composable']
 
+complexity:
+  TooManyFunctions:
+    ignoreAnnotated: ['Dao']
+
 Compose:
   Material2:
     active: true

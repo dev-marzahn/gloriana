@@ -2,7 +2,7 @@ package dev.marzahn.gloriana.logic.storage
 
 import kotlin.uuid.Uuid
 
-enum class ChatSetting { Connection, Preset }
+enum class ChatSetting { Connection, Preset, Persona }
 
 fun interface ChatsUsing {
   suspend fun count(setting: ChatSetting, id: Uuid): Int
